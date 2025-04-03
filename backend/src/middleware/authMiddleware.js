@@ -1,16 +1,33 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Admin = require("../models/GameAdmin");
+
 require("dotenv").config();
 
-exports.adminAuth = (req, res, next) => {
+exports.adminAuth = async (req, res, next) => {
   const token = req.header("Authorization");
-  if (!token) return res.status(401).json({ error: "Access denied" });
+  if (!token) {
+    return res.status(401).json({ error: "Access denied" });
+  }
 
   try {
-    const verified = jwt.verify(token.replace("Bearer ", ""), process.env.JWT_SECRET);
-    req.admin = verified;
+    // Verify token
+    const decoded = jwt.verify(token.replace("Bearer ", ""), process.env.JWT_SECRET);
+    
+    // Fetch admin from the database
+    const adminUser = await Admin.findById(decoded.id).select("-password");
+
+    console.log("Decoded Token:", decoded);
+    console.log("Admin User Found:", adminUser);
+
+    if (!adminUser) {
+      return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+
+    req.user = adminUser; // ✅ Store admin user in req.user
     next();
   } catch (err) {
+    console.error("JWT Verification Error:", err.message);
     res.status(401).json({ error: "Invalid token" });
   }
 };
