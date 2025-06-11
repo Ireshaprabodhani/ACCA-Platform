@@ -1,13 +1,8 @@
-const express = require("express");
-const { signup, userLogin } = require("../controllers/userController");
-const { createTeam } = require("../controllers/teamController");
-const { userAuth } = require("../middleware/authMiddleware");
-
+const express = require('express');
 const router = express.Router();
+const userController = require('../controllers/userController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-router.post("/register", signup);
-router.post("/login", userLogin);
-
-router.post("/team", userAuth, createTeam);
+router.put('/language', authMiddleware, userController.updateLanguage);
 
 module.exports = router;

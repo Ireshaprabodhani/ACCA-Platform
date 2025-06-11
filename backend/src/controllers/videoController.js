@@ -1,53 +1,50 @@
-const Video = require("../models/Video");
+// intro video
+const Video = require('../models/Video');
 
-exports.createVideo = async (req, res) => {
-  try {
-    const video = new Video(req.body);
-    await video.save();
-    res.json({ message: "Video added", video });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+
+exports.setVideo = async (req, res) => {
+  const { type, language, url } = req.body;
+  if (!type || !language || !url) {
+    return res.status(400).json({ error: 'Type, language, and URL are required' });
   }
+
+  const video = await Video.findOneAndUpdate(
+    { type, language },
+    { url },
+    { upsert: true, new: true }
+  );
+
+  res.json({ message: 'Video saved', video });
 };
 
-exports.getAllVideos = async (req, res) => {
-  try {
-    const videos = await Video.find();
-    res.json(videos);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+
+exports.getVideo = async (req, res) => {
+  const { type, language } = req.params;
+
+  const video = await Video.findOne({ type, language });
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  res.json(video);
 };
 
-exports.getVideoById = async (req, res) => {
-  try {
-    const video = await Video.findById(req.params.id);
-    if (!video) return res.status(404).json({ error: "Video not found" });
-
-    res.json(video);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.updateVideo = async (req, res) => {
-  try {
-    const updatedVideo = await Video.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedVideo) return res.status(404).json({ error: "Video not found" });
-
-    res.json({ message: "Video updated", updatedVideo });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
 
 exports.deleteVideo = async (req, res) => {
-  try {
-    const deletedVideo = await Video.findByIdAndDelete(req.params.id);
-    if (!deletedVideo) return res.status(404).json({ error: "Video not found" });
+  const { type, language } = req.params;
 
-    res.json({ message: "Video deleted" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  const deleted = await Video.findOneAndDelete({ type, language });
+  if (!deleted) return res.status(404).json({ error: 'Video not found' });
+
+  res.json({ message: 'Video deleted successfully' });
+};
+
+
+
+exports.getIntroVideo = async (req, res) => {
+  try {
+    const introVideo = await Video.findOne({ type: 'intro' });
+    res.json({ url: introVideo?.url || '' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

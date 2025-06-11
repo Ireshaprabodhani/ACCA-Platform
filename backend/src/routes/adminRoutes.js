@@ -1,41 +1,33 @@
-const express = require("express");
-const { register, login } = require("../controllers/adminController");
-const { getUsers, updateUser, deleteUser } = require("../controllers/userController");
-const { createQuestion, getAllQuestions, getQuestionById, updateQuestion, deleteQuestion } = require("../controllers/questionController");
-const { createVideo,getAllVideos,getVideoById,updateVideo,deleteVideo } = require("../controllers/videoController");
-const {getAllTeams,getTeamById,updateTeam,deleteTeam} = require("../controllers/teamController");
-const { adminAuth } = require("../middleware/authMiddleware");
-
+const express = require('express');
 const router = express.Router();
+const adminCtrl = require('../controllers/adminController');
+const quizCtrl = require('../controllers/quizController');
+const caseCtrl = require('../controllers/caseController');
+const videoCtrl = require('../controllers/videoController');
+const adminAuth = require('../middleware/adminMiddleware');
 
-// Admin Authentication
-router.post("/register", register);
-router.post("/login", login);
+// Admin Auth
+router.post('/login', adminCtrl.login);
 
-// User Management (Admin Only)
-router.get("/users", adminAuth, getUsers);
-router.put("/users/:id", adminAuth, updateUser);
-router.delete("/users/:id", adminAuth, deleteUser);
+// Quiz Management
+router.post('/quiz', adminAuth, quizCtrl.addQuizQuestion);
+router.put('/quiz/:id', adminAuth, quizCtrl.updateQuizQuestion);
+router.delete('/quiz/:id', adminAuth, quizCtrl.deleteQuizQuestion);
 
-// Question Management (CRUD)
-router.post("/questions", adminAuth, createQuestion);  
-router.get("/questions", adminAuth, getAllQuestions); 
-router.get("/questions/:id", adminAuth, getQuestionById); 
-router.put("/questions/:id", adminAuth, updateQuestion); 
-router.delete("/questions/:id", adminAuth, deleteQuestion); 
+// Case Management
+router.post('/case', adminAuth, caseCtrl.addCaseQuestion);
+router.put('/case/:id', adminAuth, caseCtrl.updateCaseQuestion);
+router.delete('/case/:id', adminAuth, caseCtrl.deleteCaseQuestion);
 
-
-router.post("/videos", adminAuth, createVideo);
-router.get("/videos", adminAuth, getAllVideos); 
-router.get("/videos/:id", adminAuth, getVideoById);
-router.put("/videos/:id", adminAuth, updateVideo);
-router.delete("/videos/:id", adminAuth, deleteVideo);
+// Video Management
+router.post('/video', adminAuth, videoCtrl.setVideo); // Add or update
+router.get('/video/:type/:language', adminAuth, videoCtrl.getVideo); // View
+router.delete('/video/:type/:language', adminAuth, videoCtrl.deleteVideo); // Delete
 
 
-router.get("/teams", adminAuth, getAllTeams); 
-router.get("/teams/:id", adminAuth, getTeamById);
-router.put("/teams/:id", adminAuth, updateTeam);
-router.delete("/teams/:id", adminAuth, deleteTeam);
-
+// User & Attempt Tracking
+router.get('/users', adminAuth, adminCtrl.getUsers);
+router.get('/quiz-status', adminAuth, adminCtrl.getQuizStatus);
+router.get('/case-status', adminAuth, adminCtrl.getCaseStatus);
 
 module.exports = router;
