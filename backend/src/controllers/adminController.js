@@ -18,20 +18,85 @@ exports.login = async (req, res) => {
   res.json({ token });
 };
 
-// GET /admin/users
+// get users 
 exports.getUsers = async (req, res) => {
-  const users = await User.find().select('-password');
-  res.json(users);
+  try {
+    const { schoolName } = req.query;
+    const filter = {};
+
+    if (schoolName) {
+      filter.schoolName = schoolName;
+    }
+
+    const users = await User.find(filter).select('-password');
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// GET /admin/quiz-status
+
+// get quiz status
 exports.getQuizStatus = async (req, res) => {
-  const attempts = await QuizAttempt.find().populate('user');
-  res.json(attempts);
+  try {
+    const { schoolName } = req.query;
+
+    let attempts;
+
+    if (schoolName) {
+      // Find users with the schoolName
+      const users = await User.find({ schoolName }).select('_id');
+      const userIds = users.map(user => user._id);
+
+      
+      attempts = await QuizAttempt.find({ userId: { $in: userIds } }).populate('userId', '-password');
+    } else {
+      attempts = await QuizAttempt.find().populate('userId', '-password');
+    }
+
+   
+    const formatted = attempts.map(attempt => {
+      const obj = attempt.toObject();
+      obj.user = obj.userId;
+      delete obj.userId;
+      return obj;
+    });
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// GET /admin/case-status
+
+
+// get case study status
 exports.getCaseStatus = async (req, res) => {
-  const attempts = await CaseAttempt.find().populate('user');
-  res.json(attempts);
+  try {
+    const { schoolName } = req.query;
+
+    let attempts;
+
+    if (schoolName) {
+      const users = await User.find({ schoolName }).select('_id');
+      const userIds = users.map(user => user._id);
+
+      attempts = await CaseAttempt.find({ userId: { $in: userIds } }).populate('userId', '-password');
+    } else {
+      attempts = await CaseAttempt.find().populate('userId', '-password');
+    }
+
+    const formatted = attempts.map(attempt => {
+      const obj = attempt.toObject();
+      obj.user = obj.userId;
+      delete obj.userId;
+      return obj;
+    });
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
+
+

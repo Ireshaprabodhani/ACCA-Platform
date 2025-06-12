@@ -5,10 +5,10 @@ const Video = require('../models/Video');
 
 
 exports.addCaseQuestion = async (req, res) => {
-  const { questionText, options, correctAnswer, language } = req.body;
-  const question = new CaseQuestion({ questionText, options, correctAnswer, language });
-  await question.save();
-  res.json({ message: 'Case question added', question });
+  const { question, options, correctAnswer, language } = req.body;
+  const newquestion = new CaseQuestion({ question, options, correctAnswer, language });
+  await newquestion.save();
+  res.json({ message: 'Case question added', newquestion });
 };
 
 
@@ -38,30 +38,44 @@ exports.getCaseQuestions = async (req, res) => {
   try {
     const user = req.user;
 
-    // Check if user already attempted case study
+    // Prevent multiple attempts
     const existingAttempt = await CaseAttempt.findOne({ userId: user.id });
     if (existingAttempt)
       return res.status(403).json({ message: 'Case study already attempted' });
 
-    const matchConditions = { language: user.language };
-    if (user.schoolName) matchConditions.schoolName = user.schoolName;
+    // ✅ Fix: Use req.query.language instead of req.body.language
+    const language =
+      (req.query.language || user.language || 'English')
+        .trim()
+        .toLowerCase()
+        .replace(/^\w/, c => c.toUpperCase());
 
-    // Fetch all questions or limit if needed, e.g. 10 questions
+    if (!['English', 'Sinhala'].includes(language)) {
+      return res.status(400).json({ message: 'Invalid language selected' });
+    }
+
     const questions = await CaseQuestion.aggregate([
-      { $match: matchConditions },
-      { $sample: { size: 10 } } // adjust size as needed
+      { $match: { language } },
+      { $sample: { size: 10 } }
     ]);
+
+    if (questions.length !== 10) {
+      return res.status(500).json({ message: 'Not enough case study questions available.' });
+    }
 
     res.json(questions);
   } catch (error) {
+    console.error('Error in getCaseQuestions:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
+
+
 exports.submitCaseAnswers = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { answers, timeTaken } = req.body;  // answers = array of selected option indexes, timeTaken in seconds
+    const { answers, timeTaken, language: requestedLanguage } = req.body;
 
     // Prevent multiple submissions
     const existingAttempt = await CaseAttempt.findOne({ userId });
@@ -69,20 +83,29 @@ exports.submitCaseAnswers = async (req, res) => {
       return res.status(403).json({ message: 'Case study answers already submitted' });
 
     const user = req.user;
-    const matchConditions = { language: user.language };
-    if (user.schoolName) matchConditions.schoolName = user.schoolName;
 
-    // Fetch case questions (should match what frontend used)
+    // Normalize or default language
+    const language =
+      (requestedLanguage || user.language || 'English')
+        .trim()
+        .toLowerCase()
+        .replace(/^\w/, c => c.toUpperCase()); // Capitalize first letter
+
+    // Fetch 10 random questions in the specified language
     const questions = await CaseQuestion.aggregate([
-      { $match: matchConditions },
-      { $sample: { size: 10 } }
+      { $match: { language } },
+      { $sample: { size: 10 } },
     ]);
+
+    if (questions.length !== 10) {
+      return res.status(400).json({ message: 'Insufficient case questions found for selected language.' });
+    }
 
     // Calculate score
     let score = 0;
-    answers.forEach((ans, i) => {
-      if (questions[i].answer === ans) score++;
-    });
+    for (let i = 0; i < Math.min(answers.length, questions.length); i++) {
+      if (questions[i]?.answer === answers[i]) score++;
+    }
 
     const caseAttempt = new CaseAttempt({
       userId,
@@ -90,7 +113,7 @@ exports.submitCaseAnswers = async (req, res) => {
       answers,
       score,
       submittedAt: new Date(),
-      language: user.language,
+      language,
       schoolName: user.schoolName || null,
       timeTaken,
     });
@@ -99,6 +122,9 @@ exports.submitCaseAnswers = async (req, res) => {
 
     res.json({ message: 'Case study submitted', score });
   } catch (error) {
+    console.error('Error in submitCaseAnswers:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
+

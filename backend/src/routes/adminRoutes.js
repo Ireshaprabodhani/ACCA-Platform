@@ -20,9 +20,9 @@ router.put('/case/:id', adminAuth, caseCtrl.updateCaseQuestion);
 router.delete('/case/:id', adminAuth, caseCtrl.deleteCaseQuestion);
 
 // Video Management
-router.post('/video', adminAuth, videoCtrl.setVideo); // Add or update
-router.get('/video/:type/:language', adminAuth, videoCtrl.getVideo); // View
-router.delete('/video/:type/:language', adminAuth, videoCtrl.deleteVideo); // Delete
+router.post('/video', adminAuth, videoCtrl.setVideo); 
+router.get('/video/:type/:language', adminAuth, videoCtrl.getVideo);
+router.delete('/video/:type/:language', adminAuth, videoCtrl.deleteVideo); 
 
 
 // User & Attempt Tracking

@@ -1,12 +1,10 @@
-
 const mongoose = require('mongoose');
 
 const quizQuestionSchema = new mongoose.Schema({
-  question: String,
-  options: [String], // 4 options
-  answer: Number, // index of correct option
-  language: { type: String, enum: ['English', 'Sinhala'] },
-  schoolName: String, // optional tag for school-specific questions
+  question: { type: String, required: true },
+  options: [{ type: String, required: true }],
+  answer: { type: Number, required: true },
+  language: { type: String, enum: ['English', 'Sinhala'], required: true },
 });
 
 module.exports = mongoose.model('QuizQuestion', quizQuestionSchema);
