@@ -53,8 +53,6 @@ exports.deleteQuizQuestion = async (req, res) => {
 exports.getRandomQuizQuestions = async (req, res) => {
   try {
     const user = req.user;
-
-    // ✅ Get language from query OR user OR default to English
     const language = (req.query.language || user.language || 'English')
       .trim()
       .toLowerCase()
@@ -62,6 +60,13 @@ exports.getRandomQuizQuestions = async (req, res) => {
 
     if (!['English', 'Sinhala'].includes(language)) {
       return res.status(400).json({ message: 'Invalid language selected' });
+    }
+
+    // Check if user already attempted the quiz
+    const attempt = await QuizAttempt.findOne({ userId: user._id, type: 'quiz', language });
+
+    if (attempt) {
+      return res.status(403).json({ message: 'You have already attempted the quiz.' });
     }
 
     const questions = await QuizQuestion.aggregate([
