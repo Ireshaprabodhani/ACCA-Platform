@@ -8,7 +8,18 @@ import QuizPage from './pages/QuizPage';
 import CaseStudyVideoPage from './pages/CaseStudyVideoPage';
 import CaseStudyQuestionPage from './pages/CaseStudyQuestionPage';
 import ThankYouPage from './pages/ThankYouPage';
+import AdminLayout from './admin/layout/AdminLayout';
+import DashboardHome from './admin/pages/DashboardHome';
+import UsersPage from './admin/pages/UsersPage';
+import QuizQuestionsPage from './admin/pages/QuizQuestionsPage';
+import CaseQuestionsPage from './admin/pages/CaseQuestionsPage';
+import VideosPage from './admin/pages/VideosPage';
+import LeaderboardPage from './admin/pages/LeaderboardPage';
+import QuizAttemptsPage from './admin/pages/QuizAttemptsPage';
+import CaseAttemptsPage from './admin/pages/CaseAttemptsPage';
+import ResultsPage from './admin/pages/ResultsPage';
 import './App.css';
+
 
 
 
@@ -25,6 +36,20 @@ function App() {
         <Route path="/case-video" element={<CaseStudyVideoPage />} />
         <Route path="/case-questions" element={<CaseStudyQuestionPage />} />
         <Route path="/thank-you" element={<ThankYouPage />} />
+
+        {/* ---------- ADMIN ---------- */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<DashboardHome />} />
+          <Route path="quiz-questions" element={<QuizQuestionsPage />} />
+          <Route path="case-questions" element={<CaseQuestionsPage />} />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="videos" element={<VideosPage />} />
+          <Route path="quiz-attempts" element={<QuizAttemptsPage />} />
+          <Route path="case-attempts" element={<CaseAttemptsPage />} />
+          <Route path="results" element={<ResultsPage />} />
+        </Route>
+
       </Routes>
     </BrowserRouter>
   )

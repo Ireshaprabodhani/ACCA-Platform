@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -35,13 +35,27 @@ const IntroductionVideoPage = () => {
   const [isPlaying, setIsPlaying] = useState(true);
   const navigate = useNavigate();
 
-  // ✅ If user has already attempted, redirect
+  // ✅ Check with backend if user already attempted quiz
   useEffect(() => {
-    const attempted = localStorage.getItem("hasAttempted") === "true";
-    if (attempted) {
-      navigate("/thank-you");
-    }
-  }, [navigate]);
+  const token = localStorage.getItem('token');
+  if (!token) { navigate('/login'); return; }
+
+  axios.get(
+      `http://localhost:5000/api/quiz/has-attempted?language=English`,
+      { headers:{Authorization:`Bearer ${token}`} }
+  )
+  .then(res => {
+      if (res.data.hasAttempted) {
+         // already did the quiz – send to thank‑you *now*
+         navigate('/thank-you');
+      }
+  })
+  .catch(err => {
+      console.error('hasAttempted check:', err.response?.data || err);
+      // do **not** redirect on error – just let the user continue
+  });
+}, [navigate]);
+
 
   // ✅ Fetch video URL
   useEffect(() => {
@@ -55,7 +69,7 @@ const IntroductionVideoPage = () => {
       .catch((err) => console.error('Failed to load video:', err));
   }, []);
 
-  // ✅ YouTube video handler
+  // YouTube video handler
   useEffect(() => {
     if (!isYouTubeUrl(videoUrl)) return;
 
@@ -93,8 +107,7 @@ const IntroductionVideoPage = () => {
             if (event.data === YT.PlayerState.ENDED) {
               clearInterval(playerRef.current?.interval);
               setIsEnded(true);
-              localStorage.setItem("hasAttempted", "true");
-              navigate("/thank-you");
+              navigate('/language-selection');
             }
           },
         },
@@ -102,7 +115,7 @@ const IntroductionVideoPage = () => {
     });
   }, [videoUrl, navigate]);
 
-  // ✅ HTML5 video handler
+  // HTML5 video handler
   useEffect(() => {
     if (!videoRef.current || isYouTubeUrl(videoUrl)) return;
 
@@ -120,8 +133,7 @@ const IntroductionVideoPage = () => {
 
   const handleEnded = () => {
     setIsEnded(true);
-    localStorage.setItem("hasAttempted", "true");
-    navigate('/thank-you');
+    navigate('/language-selection');
   };
 
   const handleFullScreen = () => {

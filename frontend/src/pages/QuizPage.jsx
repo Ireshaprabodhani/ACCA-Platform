@@ -1,201 +1,157 @@
+// src/pages/QuizPage.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { useLocation, useNavigate } from 'react-router-dom';
+import axios                        from 'axios';
+import { useLocation, useNavigate } from 'react-router-dom';   // ← ASCII hyphen!
 
-const QuizPage = () => {
-  const location = useLocation();
+const fmt = s =>
+  `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+export default function QuizPage() {
+  const loc      = useLocation();
   const navigate = useNavigate();
 
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes
-  const [hasAttempted, setHasAttempted] = useState(false); // NEW: track if user already attempted
+  const lang = new URLSearchParams(loc.search).get('language') || 'English';
 
-  const language = new URLSearchParams(location.search).get('language') || 'English';
+  /* ─── local state ─────────────────────────────────── */
+  const [questions,    setQuestions]    = useState([]);
+  const [answers,      setAnswers]      = useState([]);     // NEW  array of length 15
+  const [idx,          setIdx]          = useState(0);
+  const [timeLeft,     setTimeLeft]     = useState(15 * 60);
+  const [submitted,    setSubmitted]    = useState(false);
+  const [hasAttempted, setHasAttempted] = useState(false);
+  const [err,          setErr]          = useState('');
 
+  /* ─── pull questions (and block if 403) ───────────── */
   useEffect(() => {
-    const fetchQuestions = async () => {
+    (async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('You must be logged in.');
-          navigate('/login');
-          return;
-        }
-
-        const res = await axios.get(
-          `http://localhost:5000/api/quiz/questions?language=${language}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const { data } = await axios.get(
+          `http://localhost:5000/api/quiz/questions?language=${lang}`,
+          { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` } }
         );
-        setQuestions(res.data);
-      } catch (err) {
-        console.error('Failed to load quiz:', err);
-        if (err.response?.status === 403) {
-          // User already attempted
-          setHasAttempted(true);
-        } else if (err.response?.status === 401) {
-          navigate('/login');
-        } else {
-          setError('Failed to load quiz. Try again.');
-        }
+        setQuestions(data);
+        setAnswers(Array(data.length).fill(null));               // NEW
+      } catch (e) {
+        if (e.response?.status === 403) setHasAttempted(true);
+        else if (e.response?.status === 401) navigate('/login');
+        else  setErr('Failed to load quiz');
       }
-    };
+    })();
+  }, [lang, navigate]);
 
-    fetchQuestions();
-  }, [language, navigate]);
-
-  // Timer logic: only runs if quiz not submitted and user has not already attempted
+  /* ─── timer ───────────────────────────────────────── */
   useEffect(() => {
-    if (submitted || timeLeft <= 0 || hasAttempted) {
-      if (!submitted && !hasAttempted && timeLeft <= 0) handleSubmit(); // Auto-submit on timer end only if allowed
-      return;
+    if (submitted || hasAttempted) return;
+    const id = setInterval(() => setTimeLeft(t => {
+      if (t <= 1) { clearInterval(id); handleSubmit(); return 0; }
+      return t - 1;
+    }), 1000);
+    return () => clearInterval(id);
+  }, [submitted, hasAttempted]);
+
+  /* ─── option picker ──────────────────────────────── */
+  const pick = i =>
+    setAnswers(a => { const c=[...a]; c[idx]=i; return c; });
+
+  /* ─── submit to backend ───────────────────────────── */
+  const handleSubmit = async () => {
+    if (submitted) return;
+    try {
+      await axios.post(
+        'http://localhost:5000/api/quiz/submit',
+        { answers, timeTaken: 15*60 - timeLeft, language: lang },   // NEW payload
+        { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` } }
+      );
+      setSubmitted(true);
+    } catch (e) {
+      setErr(e.response?.data?.message || 'Submit failed');
     }
-    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, submitted, hasAttempted]);
-
-  const formatTime = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const handleOptionSelect = (index, option) => {
-    if (submitted || hasAttempted) return; // prevent selecting if already attempted
-    setAnswers({ ...answers, [index]: option });
-  };
-
-  const handleSubmit = () => {
-    setSubmitted(true);
-    console.log('User answers:', answers);
-    // TODO: send answers to backend, save attempt
-  };
-
-  const handleContinue = () => {
-    navigate('/case-video');
-  };
-
-  const currentQ = questions[currentQuestion];
-
-  // If user already attempted, show message and block quiz UI
+  /* ─── early exit if already attempted ─────────────── */
   if (hasAttempted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-pink-100 to-blue-100">
-        <div className="max-w-md bg-white rounded-lg shadow-lg p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4 text-red-600">You have already attempted this quiz.</h2>
-          <p className="text-gray-700 mb-4">
-            You cannot attempt the quiz more than once. Please contact support if you believe this is a mistake.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Go to Home
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md bg-white shadow p-6 text-center">
+          <h2 className="text-xl font-bold mb-3">You’ve already taken this quiz</h2>
+          <button onClick={()=>navigate('/')} className="px-4 py-2 bg-blue-600 text-white rounded">
+            Home
           </button>
         </div>
       </div>
     );
   }
 
+  /* ─── render normal quiz UI ───────────────────────── */
+  const q = questions[idx];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-100 to-blue-100 p-6 flex flex-col items-center">
-      <div className="w-full max-w-3xl bg-white shadow-lg rounded-lg p-6 relative">
-        <div className="absolute top-4 right-4 text-sm font-bold bg-black text-white px-3 py-1 rounded">
-          ⏳ {formatTime(timeLeft)}
-        </div>
+    <div className="min-h-screen flex flex-col items-center p-6 bg-gradient-to-br from-pink-100 to-blue-100">
+      <div className="w-full max-w-3xl bg-white shadow rounded p-6 relative">
+        <span className="absolute top-4 right-4 bg-black text-white text-sm px-3 py-1 rounded">
+          ⏳ {fmt(timeLeft)}
+        </span>
 
-        <h1 className="text-3xl font-extrabold text-center mb-4 text-purple-700">
-          Quiz - {language}
-        </h1>
+        <h1 className="text-2xl font-bold text-center mb-4">Quiz – {lang}</h1>
 
-        {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded text-center mb-4">
-            {error}
-          </div>
-        )}
+        {err && <p className="text-red-600 text-center mb-4">{err}</p>}
 
-        {questions.length > 0 && currentQ ? (
-          <div className="space-y-4">
-            <div className="text-xl font-semibold text-indigo-800">
-              Question {currentQuestion + 1} of {questions.length}
+        {q ? (
+          <>
+            <p className="font-semibold mb-2">
+              Question {idx+1} / {questions.length}
+            </p>
+
+            <div className="bg-yellow-100 border border-yellow-400 p-4 rounded">
+              <p className="font-semibold mb-4">{q.question}</p>
+              {q.options.map((opt,i)=>(
+                <button key={i}
+                        onClick={()=>pick(i)}
+                        disabled={submitted}
+                        className={`block w-full text-left px-4 py-2 mb-2 rounded border
+                          ${answers[idx]===i ? 'bg-green-300 border-green-600 font-bold'
+                                             : 'bg-white hover:bg-blue-100'}`}>
+                  {opt}
+                </button>
+              ))}
             </div>
 
-            <div className="bg-yellow-100 p-5 rounded-lg shadow-inner border-2 border-yellow-400">
-              <p className="text-lg font-bold">{currentQ.question}</p>
-              <div className="mt-4 grid gap-3">
-                {currentQ.options.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleOptionSelect(currentQuestion, opt)}
-                    disabled={submitted}
-                    className={`px-4 py-2 rounded-lg text-left transition-all border-2 ${
-                      answers[currentQuestion] === opt
-                        ? 'bg-green-300 border-green-600 text-black font-bold'
-                        : 'bg-white hover:bg-blue-100 border-gray-300'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+            {/* nav / submit */}
             <div className="flex justify-between mt-6">
-              <button
-                onClick={() => setCurrentQuestion((prev) => Math.max(prev - 1, 0))}
-                className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
-                disabled={currentQuestion === 0 || submitted}
-              >
-                ⬅ Previous
+              <button onClick={()=>setIdx(i=>Math.max(i-1,0))}
+                      disabled={idx===0 || submitted}
+                      className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50">
+                ‹ Prev
               </button>
 
-              {currentQuestion < questions.length - 1 ? (
-                <button
-                  onClick={() => setCurrentQuestion((prev) => prev + 1)}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                  disabled={submitted}
-                >
-                  Next ➡
+              {idx < questions.length-1 ? (
+                <button onClick={()=>setIdx(i=>i+1)}
+                        disabled={submitted}
+                        className="px-4 py-2 bg-blue-600 text-white rounded">
+                  Next ›
                 </button>
-              ) : (
-                !submitted && (
-                  <button
-                    onClick={handleSubmit}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Submit Quiz
-                  </button>
-                )
+              ) : !submitted && (
+                <button onClick={handleSubmit}
+                        className="px-4 py-2 bg-red-600 text-white rounded">
+                  Submit
+                </button>
               )}
             </div>
 
             {submitted && (
-              <div className="text-center mt-6 space-y-4">
-                <div className="text-green-700 font-semibold">
-                  ✅ Quiz submitted successfully!
-                </div>
-                <button
-                  onClick={handleContinue}
-                  className="px-6 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700"
-                >
-                  🚀 Continue to Case Study Video
+              <div className="text-center mt-6">
+                <p className="text-green-700 font-semibold mb-4">✅ Submitted!</p>
+                <button onClick={()=>navigate('/case-video')}
+                        className="px-6 py-3 bg-purple-600 text-white rounded">
+                  Continue to Case Study
                 </button>
               </div>
             )}
-          </div>
-        ) : !error ? (
-          <p className="text-center text-gray-600">Loading questions...</p>
-        ) : null}
+          </>
+        ) : (
+          <p className="text-center">Loading…</p>
+        )}
       </div>
     </div>
   );
-};
-
-export default QuizPage;
+}

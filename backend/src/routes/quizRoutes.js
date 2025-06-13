@@ -7,5 +7,12 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.get('/questions', authMiddleware, quizController.getRandomQuizQuestions);
 router.post('/submit', authMiddleware, quizController.submitQuizAnswers);
 
+router.get(
+  '/has-attempted',                 
+  authMiddleware,
+  quizController.hasUserAttemptedQuiz
+);
+
+
 module.exports = router;
 

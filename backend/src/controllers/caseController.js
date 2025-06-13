@@ -23,6 +23,44 @@ exports.deleteCaseQuestion = async (req, res) => {
   res.json({ message: 'Case question deleted' });
 };
 
+exports.listCaseQuestions = async (req, res) => {
+  try {
+    const { language, search, page = 1, limit = 50 } = req.query;
+
+    const filter = {};
+    if (language) filter.language = language;
+    if (search)  filter.question = { $regex: search, $options: 'i' };
+
+    const skip = (page - 1) * limit;
+
+    const [total, questions] = await Promise.all([
+      CaseQuestion.countDocuments(filter),
+      CaseQuestion.find(filter)
+        .sort({ createdAt: -1 })          // newest first
+        .skip(skip)
+        .limit(Number(limit))
+    ]);
+
+    res.json({ total, page: Number(page), questions });
+  } catch (err) {
+    console.error('listCaseQuestions:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/* ------------------------------------------------------------------
+ * GET  /api/admin/case/:id   – single record (for edit views etc.)
+ * ------------------------------------------------------------------ */
+exports.getCaseQuestion = async (req, res) => {
+  try {
+    const q = await CaseQuestion.findById(req.params.id);
+    if (!q) return res.status(404).json({ message: 'Not found' });
+    res.json(q);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getCaseVideo = async (req, res) => {
   try {
     const caseVideo = await Video.findOne({ type: 'case' });

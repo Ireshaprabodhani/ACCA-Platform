@@ -10,24 +10,37 @@ const adminAuth = require('../middleware/adminMiddleware');
 router.post('/login', adminCtrl.login);
 
 // Quiz Management
-router.post('/quiz', adminAuth, quizCtrl.addQuizQuestion);
-router.put('/quiz/:id', adminAuth, quizCtrl.updateQuizQuestion);
-router.delete('/quiz/:id', adminAuth, quizCtrl.deleteQuizQuestion);
+/* ---- LIST + GET ONE ---- */
+router.get('/quiz',       adminAuth, quizCtrl.listQuizQuestions); //  →  /api/admin/quiz
+router.get('/quiz/:id',   adminAuth, quizCtrl.getQuizQuestion);   //  →  /api/admin/quiz/:id
+
+/* ---- CREATE / UPDATE / DELETE ---- */
+router.post('/quiz',        adminAuth, quizCtrl.addQuizQuestion);
+router.put('/quiz/:id',     adminAuth, quizCtrl.updateQuizQuestion);
+router.delete('/quiz/:id',  adminAuth, quizCtrl.deleteQuizQuestion);
+
 
 // Case Management
+router.get('/case',       adminAuth, caseCtrl.listCaseQuestions); 
+router.get('/case/:id',   adminAuth, caseCtrl.getCaseQuestion);  
+
+/* ---- CREATE / UPDATE / DELETE ---- */
 router.post('/case', adminAuth, caseCtrl.addCaseQuestion);
 router.put('/case/:id', adminAuth, caseCtrl.updateCaseQuestion);
 router.delete('/case/:id', adminAuth, caseCtrl.deleteCaseQuestion);
 
 // Video Management
-router.post('/video', adminAuth, videoCtrl.setVideo); 
-router.get('/video/:type/:language', adminAuth, videoCtrl.getVideo);
-router.delete('/video/:type/:language', adminAuth, videoCtrl.deleteVideo); 
+router.post   ('/video',        adminAuth, videoCtrl.setVideo);
+router.get    ('/video/:type',  adminAuth, videoCtrl.getVideo);
+router.delete ('/video/:type',  adminAuth, videoCtrl.deleteVideo);
 
 
-// User & Attempt Tracking
+// User Tracking
 router.get('/users', adminAuth, adminCtrl.getUsers);
-router.get('/quiz-status', adminAuth, adminCtrl.getQuizStatus);
-router.get('/case-status', adminAuth, adminCtrl.getCaseStatus);
+
+// Attempt Tracking
+router.get('/quiz-status', adminAuth, adminCtrl.getQuizAttemptStatus);
+router.get('/case-status', adminAuth, adminCtrl.getCaseAttemptStatus);
+router.get('/results', adminAuth, adminCtrl.getSchoolResults);
 
 module.exports = router;
