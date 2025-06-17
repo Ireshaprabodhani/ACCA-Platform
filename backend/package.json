@@ -1,0 +1,32 @@
+{
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.1",
+    "multer": "^1.4.5-lts.2",
+    "pg": "^8.16.0",
+    "uuid": "^11.1.0"
+  },
+  "name": "acca-platform",
+  "description": "",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ireshaprabodhani/ACCA-Platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ireshaprabodhani/ACCA-Platform/issues"
+  },
+  "homepage": "https://github.com/Ireshaprabodhani/ACCA-Platform#readme"
+}
