@@ -2,12 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const fetchJSON = async (url) => {
+  // 1️⃣  prefer adminToken; fall back to user token only if allowed
   const jwt =
-    localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
+    localStorage.getItem('adminToken') || localStorage.getItem('token');
+
+  if (!jwt) throw new Error('No token ‑ please log in');
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+
+  // 2️⃣  if token is invalid/expired, force logout
+  if (res.status === 401) {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('token');
+    throw new Error('Unauthorized – please log in again');
+  }
+
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 };
+
 
 // Animation variants for fade & slide up
 const fadeInUp = {
