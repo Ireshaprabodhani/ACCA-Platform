@@ -109,6 +109,8 @@ export default function CaseStudyQuestionPage() {
   const progress = questions.length ? ((index + 1) / questions.length) * 100 : 0;
   const q = questions[index];
 
+  const canSwitchLanguage = index === 0 && answers.every(a => a === null);
+
   const optionStyle = (i) =>
     answers[index] === i
       ? 'border-2 border-indigo-600 bg-indigo-100'
@@ -127,12 +129,17 @@ export default function CaseStudyQuestionPage() {
         <div className="flex justify-between items-center mb-6">
           <select
             value={language}
-            onChange={e => setLanguage(e.target.value)}
+            onChange={e => {
+              if (canSwitchLanguage) setLanguage(e.target.value);
+            }}
             className="p-2 rounded border border-gray-300"
-            disabled={submitted}
           >
-            <option value="English">English</option>
-            <option value="Sinhala">Sinhala</option>
+            <option value="English" disabled={language !== 'English' && !canSwitchLanguage}>
+              English
+            </option>
+            <option value="Sinhala" disabled={language !== 'Sinhala' && !canSwitchLanguage}>
+              Sinhala
+            </option>
           </select>
 
           <div className={`text-md font-medium px-4 py-1 rounded ${timeLeft < 60 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
