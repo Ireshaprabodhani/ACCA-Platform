@@ -18,6 +18,9 @@ import LeaderboardPage from './admin/pages/LeaderboardPage';
 import QuizAttemptsPage from './admin/pages/QuizAttemptsPage';
 import CaseAttemptsPage from './admin/pages/CaseAttemptsPage';
 import ResultsPage from './admin/pages/ResultsPage';
+import AdminLoginPage from './admin/pages/AdminLoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import './App.css';
 
 
@@ -36,8 +39,11 @@ function App() {
         <Route path="/case-video" element={<CaseStudyVideoPage />} />
         <Route path="/case-questions" element={<CaseStudyQuestionPage />} />
         <Route path="/thank-you" element={<ThankYouPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
         {/* ---------- ADMIN ---------- */}
+        <Route path="/admin-login" element={<AdminLoginPage />} /> 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="quiz-questions" element={<QuizQuestionsPage />} />

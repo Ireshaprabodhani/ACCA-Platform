@@ -37,10 +37,13 @@ router.delete ('/video/:type',  adminAuth, videoCtrl.deleteVideo);
 
 // User Tracking
 router.get('/users', adminAuth, adminCtrl.getUsers);
+router.delete('/users/:id', adminAuth, adminCtrl.deleteUser);  
 
 // Attempt Tracking
 router.get('/quiz-status', adminAuth, adminCtrl.getQuizAttemptStatus);
 router.get('/case-status', adminAuth, adminCtrl.getCaseAttemptStatus);
 router.get('/results', adminAuth, adminCtrl.getSchoolResults);
+router.get('/stats', adminAuth, adminCtrl.getStats);
+router.get('/leaderboard', adminAuth, adminCtrl.getLeaderboard);
 
 module.exports = router;

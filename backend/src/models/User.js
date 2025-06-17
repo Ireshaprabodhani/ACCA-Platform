@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const { randomBytes } = require('node:crypto');
 
 const memberSchema = new mongoose.Schema({
   firstName: String,
@@ -9,7 +10,14 @@ const memberSchema = new mongoose.Schema({
   gender: String,
   age: Number,
   grade: String,
-});
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
+},
+
+{ timestamps: true } 
+
+
+);
 
 const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
@@ -22,7 +30,12 @@ const userSchema = new mongoose.Schema({
   grade: String,
   schoolName: String,
   members: [memberSchema],
-});
+  
+},
+
+{ timestamps: true } 
+
+);
 
 // Hash password before save
 userSchema.pre('save', async function (next) {
@@ -31,8 +44,13 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-userSchema.methods.comparePassword = function (password) {
-  return bcrypt.compare(password, this.password);
+userSchema.methods.comparePassword = function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.methods.generatePasswordReset = function () {
+  this.resetPasswordToken   = randomBytes(20).toString('hex');
+  this.resetPasswordExpires = Date.now() + 3600000; // 1 hour
 };
 
 module.exports = mongoose.model('User', userSchema);

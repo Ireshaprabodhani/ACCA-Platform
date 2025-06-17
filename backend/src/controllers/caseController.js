@@ -48,9 +48,7 @@ exports.listCaseQuestions = async (req, res) => {
   }
 };
 
-/* ------------------------------------------------------------------
- * GET  /api/admin/case/:id   – single record (for edit views etc.)
- * ------------------------------------------------------------------ */
+
 exports.getCaseQuestion = async (req, res) => {
   try {
     const q = await CaseQuestion.findById(req.params.id);

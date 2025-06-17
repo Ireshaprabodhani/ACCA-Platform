@@ -4,9 +4,7 @@ import axios from 'axios';
 
 const StatCard = ({ icon, label, value, color }) => (
   <div className="flex items-center gap-4 bg-white shadow rounded-lg p-5">
-    <div
-      className={`p-3 rounded-full text-white ${color}`}
-    >
+    <div className={`p-3 rounded-full text-white ${color}`}>
       {icon}
     </div>
     <div>
@@ -25,19 +23,24 @@ const DashboardHome = () => {
   });
 
   useEffect(() => {
-    // Hit your admin stats endpoint if you have one
-    axios
-      .get('http://localhost:5000/api/admin/stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      })
-      .then(({ data }) => setStats(data))
-      .catch(console.error);
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    axios.get('http://localhost:5000/api/admin/stats', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    .then(({ data }) => setStats(data))
+    .catch(err => {
+      console.error('Failed to fetch stats:', err);
+      // optionally, set error state here
+    });
   }, []);
 
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Quick Stats</h2>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           icon={<Users size={20} />}

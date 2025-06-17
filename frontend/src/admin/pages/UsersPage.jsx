@@ -1,7 +1,8 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 
 const UsersPage = () => {
   const [rows, setRows] = useState([]);
@@ -10,6 +11,7 @@ const UsersPage = () => {
 
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
+  /* ─────────────────── API ─────────────────── */
   const loadRows = () => {
     const url = schoolFilter
       ? `http://localhost:5000/api/admin/users?schoolName=${encodeURIComponent(
@@ -20,19 +22,36 @@ const UsersPage = () => {
     axios
       .get(url, { headers: tokenHeader })
       .then((res) => setRows(res.data))
-      .catch(console.error);
+      .catch(() => toast.error('Failed to load users'));
   };
 
+  const deleteUser = (id, name) => {
+    if (!window.confirm(`Delete user “${name}” ?`)) return;
+
+    toast
+      .promise(
+        axios.delete(`http://localhost:5000/api/admin/users/${id}`, {
+          headers: tokenHeader,
+        }),
+        { loading: 'Deleting…', success: 'Deleted', error: 'Error' }
+      )
+      .then(loadRows);
+  };
+
+  /* ─────────────────── Effects ─────────────────── */
   useEffect(loadRows, [schoolFilter]);
 
+  /* ─────────────────── Toggle expand ─────────────────── */
   const toggle = (id) => setExpanded((cur) => (cur === id ? null : id));
 
+  /* ─────────────────── UI ─────────────────── */
   return (
-    <div>
+    <div className="p-6">
+      <Toaster position="top-center" />
+
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Users</h2>
 
-        {/* simple school filter */}
         <input
           placeholder="Filter by school…"
           value={schoolFilter}
@@ -50,13 +69,14 @@ const UsersPage = () => {
               <th className="px-3 py-2 text-center">School</th>
               <th className="px-3 py-2 text-center">Registered</th>
               <th className="px-3 py-2 w-24 text-center">Members</th>
+              <th className="px-3 py-2 w-24 text-center">Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {rows.map((u) => (
               <React.Fragment key={u._id}>
-                {/* top row */}
+                {/* primary row */}
                 <tr className="border-t">
                   <td className="px-3 py-2">
                     {u.firstName} {u.lastName}
@@ -82,12 +102,22 @@ const UsersPage = () => {
                       )}
                     </button>
                   </td>
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      onClick={() =>
+                        deleteUser(u._id, `${u.firstName} ${u.lastName}`)
+                      }
+                      className="inline-flex items-center gap-1 text-red-600 hover:underline"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </td>
                 </tr>
 
                 {/* expandable members row */}
                 {expanded === u._id && (
                   <tr className="bg-blue-50">
-                    <td colSpan={5} className="px-4 py-3">
+                    <td colSpan={6} className="px-4 py-3">
                       {u.members && u.members.length ? (
                         <div className="grid sm:grid-cols-3 gap-3">
                           {u.members.map((m, idx) => (
@@ -98,9 +128,7 @@ const UsersPage = () => {
                               <p className="font-semibold">
                                 {m.firstName} {m.lastName}
                               </p>
-                              <p className="text-xs text-gray-500">
-                                {m.email}
-                              </p>
+                              <p className="text-xs text-gray-500">{m.email}</p>
                               <p className="text-xs">
                                 Grade {m.grade} · {m.gender}
                               </p>

@@ -8,7 +8,7 @@ const ThankYouPage = () => {
     <div className="min-h-screen flex flex-col justify-center items-center bg-green-50 text-center p-6">
       <h1 className="text-4xl font-bold text-green-700 mb-4">🎉 Thank You!</h1>
       <p className="text-lg text-gray-800 mb-6">
-        Your case study submission has been received successfully.
+        Your successfully finsh the game.
       </p>
       <button
         onClick={() => navigate('/')}

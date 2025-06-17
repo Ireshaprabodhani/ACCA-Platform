@@ -1,85 +1,70 @@
-import React, { useRef, useState, useEffect } from 'react'; 
+// src/pages/IntroductionVideoPage.jsx
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const getYouTubeId = (url) => {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
-  return match ? match[1] : null;
-};
+/* ─── tiny helpers ───────────────────────────────────────── */
+const getYouTubeId = (url) =>
+  (url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/) || [])[1] || '';
+const isYouTubeUrl = (url) => /youtu\.?be/.test(url);
 
-const isYouTubeUrl = (url) => {
-  return url.includes('youtube.com') || url.includes('youtu.be');
-};
-
-const loadYouTubeAPI = () => {
-  return new Promise((resolve) => {
-    if (window.YT && window.YT.Player) {
-      resolve(window.YT);
-    } else {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.body.appendChild(tag);
-      window.onYouTubeIframeAPIReady = () => {
-        resolve(window.YT);
-      };
-    }
+const loadYT = () =>
+  new Promise((resolve) => {
+    if (window.YT?.Player) return resolve(window.YT);
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.body.appendChild(s);
+    window.onYouTubeIframeAPIReady = () => resolve(window.YT);
   });
-};
 
-const IntroductionVideoPage = () => {
-  const videoRef = useRef(null);
-  const playerRef = useRef(null);
-  const lastAllowedTimeRef = useRef(0);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [isEnded, setIsEnded] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const navigate = useNavigate();
+/* ─── component ──────────────────────────────────────────── */
+export default function IntroductionVideoPage() {
+  const [url, setUrl] = useState('');
+  const [isPlaying, setPlay] = useState(true);
+  const [hasEnded, setHasEnded] = useState(false);
+  const nav = useNavigate();
+  const vidRef = useRef(null);
+  const lastRef = useRef(0); // watch‑dog for seeking
+  const ytPlayerRef = useRef(null);
 
-  // ✅ Check with backend if user already attempted quiz
+  /* 1️⃣  gate‑keep: already completed quiz? */
   useEffect(() => {
-  const token = localStorage.getItem('token');
-  if (!token) { navigate('/login'); return; }
+    const tok = localStorage.getItem('token');
+    if (!tok) {
+      nav('/login');
+      return;
+    }
 
-  axios.get(
-      `http://localhost:5000/api/quiz/has-attempted?language=English`,
-      { headers:{Authorization:`Bearer ${token}`} }
-  )
-  .then(res => {
-      if (res.data.hasAttempted) {
-         // already did the quiz – send to thank‑you *now*
-         navigate('/thank-you');
-      }
-  })
-  .catch(err => {
-      console.error('hasAttempted check:', err.response?.data || err);
-      // do **not** redirect on error – just let the user continue
-  });
-}, [navigate]);
+    axios
+      .get('http://localhost:5000/api/quiz/has-attempted?language=English', {
+        headers: { Authorization: `Bearer ${tok}` },
+      })
+      .then((r) => r.data.hasAttempted && nav('/thank-you'))
+      .catch(console.error);
+  }, [nav]);
 
-
-  // ✅ Fetch video URL
+  /* 2️⃣  fetch video url (intro) */
   useEffect(() => {
     axios
       .get('http://localhost:5000/api/video/intro', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       })
-      .then((res) => setVideoUrl(res.data.url))
-      .catch((err) => console.error('Failed to load video:', err));
+      .then((r) => setUrl(r.data.url))
+      .catch(console.error);
   }, []);
 
-  // YouTube video handler
+  /* 3️⃣  YouTube handler */
   useEffect(() => {
-    if (!isYouTubeUrl(videoUrl)) return;
+    if (!isYouTubeUrl(url)) return;
 
-    loadYouTubeAPI().then((YT) => {
-      const player = new YT.Player('youtube-player', {
-        height: '450',
-        width: '800',
-        videoId: getYouTubeId(videoUrl),
+    loadYT().then((YT) => {
+      ytPlayerRef.current = new YT.Player('yt-player', {
+        height: 450,
+        width: 800,
+        videoId: getYouTubeId(url),
         playerVars: {
           autoplay: 1,
+          playsinline: 1,
           controls: 0,
           disablekb: 1,
           modestbranding: 1,
@@ -87,132 +72,141 @@ const IntroductionVideoPage = () => {
           fs: 0,
         },
         events: {
-          onReady: (event) => {
-            event.target.mute();
-            event.target.playVideo();
+          onReady: (e) => {
+            e.target.playVideo();
           },
-          onStateChange: (event) => {
-            if (event.data === YT.PlayerState.PLAYING) {
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.PLAYING) {
               const interval = setInterval(() => {
-                const currentTime = player.getCurrentTime();
-                if (currentTime - lastAllowedTimeRef.current > 1.5) {
-                  player.seekTo(lastAllowedTimeRef.current, true);
+                const t = ytPlayerRef.current.getCurrentTime();
+                if (t - lastRef.current > 1.5) {
+                  ytPlayerRef.current.seekTo(lastRef.current, true);
                 } else {
-                  lastAllowedTimeRef.current = currentTime;
+                  lastRef.current = t;
                 }
               }, 1000);
-              playerRef.current = { player, interval };
+              const clear = () => clearInterval(interval);
+              // Clear interval on pause or ended
+              if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
+                clear();
+              }
             }
-
-            if (event.data === YT.PlayerState.ENDED) {
-              clearInterval(playerRef.current?.interval);
-              setIsEnded(true);
-              navigate('/language-selection');
+            if (e.data === YT.PlayerState.ENDED) {
+              setHasEnded(true);
             }
           },
         },
       });
     });
-  }, [videoUrl, navigate]);
+  }, [url]);
 
-  // HTML5 video handler
+  /* 4️⃣  HTML‑5 video handler */
   useEffect(() => {
-    if (!videoRef.current || isYouTubeUrl(videoUrl)) return;
+    if (!vidRef.current || isYouTubeUrl(url)) return;
 
-    const video = videoRef.current;
-    const interval = setInterval(() => {
-      if (video.currentTime - lastAllowedTimeRef.current > 1.5) {
-        video.currentTime = lastAllowedTimeRef.current;
-      } else {
-        lastAllowedTimeRef.current = video.currentTime;
-      }
+    const v = vidRef.current;
+    const i = setInterval(() => {
+      if (v.currentTime - lastRef.current > 1.5) v.currentTime = lastRef.current;
+      else lastRef.current = v.currentTime;
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [videoUrl]);
+    return () => clearInterval(i);
+  }, [url]);
 
-  const handleEnded = () => {
-    setIsEnded(true);
-    navigate('/language-selection');
-  };
-
-  const handleFullScreen = () => {
-    if (videoRef.current) {
-      if (videoRef.current.requestFullscreen) {
-        videoRef.current.requestFullscreen();
-      } else if (videoRef.current.webkitRequestFullscreen) {
-        videoRef.current.webkitRequestFullscreen();
-      } else if (videoRef.current.msRequestFullscreen) {
-        videoRef.current.msRequestFullscreen();
-      }
-    }
-  };
-
-  const togglePlayPause = () => {
-    if (!videoRef.current || isYouTubeUrl(videoUrl)) return;
-
-    if (videoRef.current.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
+  const togglePlay = () => {
+    if (!vidRef.current || isYouTubeUrl(url)) return;
+    if (vidRef.current.paused) {
+      vidRef.current.play();
+      setPlay(true);
     } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
+      vidRef.current.pause();
+      setPlay(false);
     }
+  };
+
+  const full = () => {
+    const v = vidRef.current;
+    if (!v || isYouTubeUrl(url)) return;
+    (v.requestFullscreen || v.webkitRequestFullscreen || v.msRequestFullscreen)?.call(v);
+  };
+
+  const goNext = () => {
+    nav('/language-selection');
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4">
-      <h1 className="text-3xl font-bold mb-6">Introduction Video</h1>
+    <div
+      className="min-h-screen flex items-center justify-center
+                    bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6"
+    >
+      <div
+        className="bg-white bg-opacity-95 backdrop-blur-md rounded-2xl shadow-2xl
+                      w-full max-w-4xl p-8 flex flex-col items-center"
+      >
+        <h1
+          className="text-3xl md:text-4xl font-extrabold mb-6
+                       bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
+        >
+          📽️ Introduction Video
+        </h1>
 
-      {isYouTubeUrl(videoUrl) ? (
-        <div id="youtube-player" className="rounded-lg shadow-lg" />
-      ) : (
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          muted
-          autoPlay
-          playsInline
-          controls={false}
-          onEnded={handleEnded}
-          onCanPlay={() => {
-            videoRef.current?.play().catch((e) => console.log('Play failed:', e));
-          }}
-          className="rounded-lg max-w-full max-h-[60vh] shadow-lg"
-        />
-      )}
-
-      {!isYouTubeUrl(videoUrl) && (
-        <div className="flex items-center justify-center space-x-4 mt-4">
-          <button
-            onClick={togglePlayPause}
-            className="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700"
-          >
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            onChange={(e) => {
-              if (videoRef.current) {
-                videoRef.current.volume = e.target.value;
-              }
-            }}
-            className="w-24"
-            defaultValue="1"
+        {/* video frame */}
+        {isYouTubeUrl(url) ? (
+          <div id="yt-player" className="rounded-xl overflow-hidden shadow-lg w-full" />
+        ) : (
+          <video
+            ref={vidRef}
+            src={url}
+            autoPlay
+            playsInline
+            controls={false}
+            onEnded={() => setHasEnded(true)}
+            onCanPlay={() => vidRef.current?.play().catch(() => {})}
+            className="rounded-xl w-full max-h-[60vh] shadow-lg"
           />
+        )}
+
+        {/* custom controls for HTML5 source */}
+        {!isYouTubeUrl(url) && (
+          <div className="flex gap-4 mt-6">
+            <button
+              onClick={togglePlay}
+              className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+            >
+              {isPlaying ? '⏸ Pause' : '▶️ Play'}
+            </button>
+
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.02"
+              defaultValue="1"
+              onChange={(e) => {
+                if (vidRef.current) vidRef.current.volume = e.target.value;
+              }}
+              className="w-32 accent-purple-600"
+            />
+
+            <button
+              onClick={full}
+              className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+            >
+              ⛶ Full Screen
+            </button>
+          </div>
+        )}
+
+        {/* Continue button shown only after video ends */}
+        {hasEnded && (
           <button
-            onClick={handleFullScreen}
-            className="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700"
+            onClick={goNext}
+            className="mt-8 px-6 py-3 bg-pink-600 text-white rounded-lg font-bold hover:bg-pink-700 transition"
           >
-            Full Screen
+            Continue →
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
-};
-
-export default IntroductionVideoPage;
+}
