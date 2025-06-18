@@ -1,6 +1,6 @@
 version: 1
 applications:
-  - appRoot: frontend
+  - appRoot: frontend          # 👈  points Amplify to your React code
     frontend:
       phases:
         preBuild:
@@ -8,9 +8,9 @@ applications:
             - npm ci
         build:
           commands:
-            - npm run build
+            - npm run build    # CRA or Vite – same command
       artifacts:
-        baseDirectory: dist         # ← Vite output
+        baseDirectory: build   # ← use **build** for CRA  (option A)
         files:
           - '**/*'
       cache:
