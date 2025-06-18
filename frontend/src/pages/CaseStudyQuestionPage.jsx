@@ -4,42 +4,45 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CaseStudyQuestionPage() {
+  /* ────────── state ────────── */
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState([]);
-  const [index, setIndex] = useState(0);
-  const [language, setLanguage] = useState('English');
-  const [timeLeft, setTimeLeft] = useState(2 * 60);
-  const [sending, setSending] = useState(false);
+  const [answers,   setAnswers]   = useState([]);
+  const [index,     setIndex]     = useState(0);
+  const [language,  setLanguage]  = useState('English');
+  const [timeLeft,  setTimeLeft]  = useState(2 * 60);
+  const [sending,   setSending]   = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
+  const [error,     setError]     = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const navigate = useNavigate();
-  const timerRef = useRef(null);
+  const navigate     = useNavigate();
+  const timerRef     = useRef(null);
   const submittedRef = useRef(false);
-  const audioRef = useRef(null);
-  const answersRef = useRef([]);
-  const timeLeftRef = useRef(timeLeft);
-  const languageRef = useRef(language);
+  const audioRef     = useRef(null);
+  const answersRef   = useRef([]);
+  const timeLeftRef  = useRef(timeLeft);
+  const languageRef  = useRef(language);
 
-  useEffect(() => { answersRef.current = answers; }, [answers]);
+  /* keep refs in sync */
+  useEffect(() => { answersRef.current  = answers;  }, [answers]);
   useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
   useEffect(() => { languageRef.current = language; }, [language]);
 
+  /* ────────── helpers ────────── */
   const handleSubmit = useCallback(async () => {
     if (submittedRef.current || sending) return;
     submittedRef.current = true;
     setSending(true);
     setSubmitted(true);
-    if (audioRef.current) audioRef.current.pause();
+    audioRef.current?.pause();
 
     try {
       await axios.post(
         'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/submit',
         {
-          answers: answersRef.current,
-          timeTaken: 20 * 60 - timeLeftRef.current,
-          language: languageRef.current,
+          answers   : answersRef.current,
+          timeTaken : 20 * 60 - timeLeftRef.current,
+          language  : languageRef.current,
         },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
@@ -52,8 +55,9 @@ export default function CaseStudyQuestionPage() {
     }
   }, [sending, navigate]);
 
+  /* ────────── load questions ────────── */
   useEffect(() => {
-    const fetchQuestions = async () => {
+    (async () => {
       try {
         setIsLoading(true);
         const { data } = await axios.get(
@@ -63,9 +67,7 @@ export default function CaseStudyQuestionPage() {
         setQuestions(data);
         setAnswers(Array(data.length).fill(null));
         setIndex(0);
-        if (audioRef.current) {
-          audioRef.current.play().catch(() => {});
-        }
+        audioRef.current?.play().catch(() => {});
       } catch (err) {
         if (err.response?.status === 403) navigate('/thank-you');
         else if (err.response?.status === 401) navigate('/login');
@@ -73,51 +75,48 @@ export default function CaseStudyQuestionPage() {
       } finally {
         setIsLoading(false);
       }
-    };
-
-    fetchQuestions();
+    })();
   }, [language, navigate]);
 
+  /* ────────── countdown ────────── */
   useEffect(() => {
     if (isLoading || submitted) return;
-
     const tick = () => {
       setTimeLeft(prev => {
-        const next = prev - 1;
-        if (next <= 0) {
+        if (prev <= 1) {
           clearInterval(timerRef.current);
           handleSubmit();
           return 0;
         }
-        return next;
+        return prev - 1;
       });
     };
-
     timerRef.current = setInterval(tick, 1000);
     return () => clearInterval(timerRef.current);
   }, [isLoading, submitted, handleSubmit]);
 
-  useEffect(() => {
-    return () => {
-      clearInterval(timerRef.current);
-      if (audioRef.current) audioRef.current.pause();
-    };
+  /* cleanup on unmount */
+  useEffect(() => () => {
+    clearInterval(timerRef.current);
+    audioRef.current?.pause();
   }, []);
 
+  /* ────────── derived values ────────── */
   const formatTime = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  const allAnswered = answers.every(a => a !== null);
-  const progress = questions.length ? ((index + 1) / questions.length) * 100 : 0;
-  const q = questions[index];
-
+  const allAnswered       = answers.every(a => a !== null);
+  const progress          = questions.length ? ((index + 1) / questions.length) * 100 : 0;
+  const q                 = questions[index];
   const canSwitchLanguage = index === 0 && answers.every(a => a === null);
+  const locked            = !canSwitchLanguage;  /* ➊ */
 
-  const optionStyle = (i) =>
+  const optionStyle = i =>
     answers[index] === i
       ? 'border-2 border-indigo-600 bg-indigo-100'
       : 'border border-gray-300 hover:bg-indigo-50';
 
-  if (isLoading) return <div className="p-10 text-center text-xl">Loading...</div>;
-  if (!questions.length) return <div className="p-10 text-center text-red-500">{error}</div>;
+  /* ────────── render ────────── */
+  if (isLoading)      return <div className="p-10 text-center text-xl">Loading...</div>;
+  if (!questions.length) return <div className="p-10 text-center text-red-500">{error || 'No questions'}</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6">
@@ -126,27 +125,24 @@ export default function CaseStudyQuestionPage() {
       </audio>
 
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+        {/* top bar */}
         <div className="flex justify-between items-center mb-6">
           <select
             value={language}
-            onChange={e => {
-              if (canSwitchLanguage) setLanguage(e.target.value);
-            }}
-            className="p-2 rounded border border-gray-300"
+            disabled={locked}         /* ➋ lock whole dropdown */
+            onChange={e => { if (!locked) setLanguage(e.target.value); }}
+            className="p-2 rounded border border-gray-300 disabled:opacity-50"
           >
-            <option value="English" disabled={language !== 'English' && !canSwitchLanguage}>
-              English
-            </option>
-            <option value="Sinhala" disabled={language !== 'Sinhala' && !canSwitchLanguage}>
-              Sinhala
-            </option>
+            <option value="English">English</option>
+            <option value="Sinhala">Sinhala</option>
           </select>
 
           <div className={`text-md font-medium px-4 py-1 rounded ${timeLeft < 60 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
-            ⏱ Time: {formatTime(timeLeft)}
+            ⏱ Time: {formatTime(timeLeft)}
           </div>
         </div>
 
+        {/* progress bar */}
         <div className="h-3 w-full bg-gray-200 rounded-full mb-6 overflow-hidden">
           <motion.div
             className="h-full bg-indigo-500"
@@ -156,6 +152,7 @@ export default function CaseStudyQuestionPage() {
           />
         </div>
 
+        {/* question card */}
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -185,6 +182,7 @@ export default function CaseStudyQuestionPage() {
           </motion.div>
         </AnimatePresence>
 
+        {/* nav buttons */}
         <div className="flex justify-between items-center mt-8">
           <button
             onClick={() => setIndex(prev => Math.max(0, prev - 1))}
@@ -200,7 +198,7 @@ export default function CaseStudyQuestionPage() {
               disabled={!allAnswered || submitted}
               className="px-5 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
             >
-              {sending ? 'Submitting...' : 'Submit Answers'}
+              {sending ? 'Submitting…' : 'Submit Answers'}
             </button>
           ) : (
             <button
@@ -213,6 +211,7 @@ export default function CaseStudyQuestionPage() {
           )}
         </div>
 
+        {/* modal */}
         {submitted && (
           <motion.div
             initial={{ opacity: 0 }}
