@@ -1,0 +1,21 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # use Node 20 in all phases
+        - nvm install 20
+        - nvm use 20
+        # install dependencies inside the frontend folder
+        - cd frontend && npm ci
+    build:
+      commands:
+        - cd frontend && npm run build
+  artifacts:
+    # Tell Amplify where the static files end up after build
+    baseDirectory: frontend/build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - frontend/node_modules/**/*        # speeds up subsequent builds
