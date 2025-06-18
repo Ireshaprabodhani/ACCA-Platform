@@ -15,12 +15,12 @@ connectDB();
 
 const app = express();
 
-// FIXED: Include both with and without trailing slash
+// UPDATED: Use the correct current frontend URL
 const allowedOrigins = [
-  'https://main.d1vjhvv9srhnme.amplifyapp.com',    // your new URL
+  'https://main.d1vjhvv9srhnme.amplifyapp.com',    // current frontend URL
   'https://main.d1vjhvv9srhnme.amplifyapp.com/',   // with trailing slash
   'http://localhost:5173',                          // local dev
-  'http://localhost:5173/'    
+  'http://localhost:5173/'                          // local dev with slash
 ];
 
 const corsOptions = {
