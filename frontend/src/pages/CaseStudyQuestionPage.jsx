@@ -57,7 +57,7 @@ export default function CaseStudyQuestionPage() {
       try {
         setIsLoading(true);
         const { data } = await axios.get(
-          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/case/questions?language=${language}`,
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/questions?language=${language}`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
         setQuestions(data);
@@ -127,30 +127,20 @@ export default function CaseStudyQuestionPage() {
 
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-2">
-            <select
-              value={language}
-              onChange={e => {
-                if (canSwitchLanguage) setLanguage(e.target.value);
-              }}
-              className={`p-2 rounded border border-gray-300 ${
-                !canSwitchLanguage ? 'bg-gray-100 cursor-not-allowed opacity-70' : 'bg-white'
-              }`}
-              disabled={!canSwitchLanguage}
-            >
-              <option value="English">
-                English
-              </option>
-              <option value="Sinhala">
-                Sinhala
-              </option>
-            </select>
-            {!canSwitchLanguage && (
-              <span className="text-sm text-gray-500">
-                (Language cannot be changed after starting)
-              </span>
-            )}
-          </div>
+          <select
+            value={language}
+            onChange={e => {
+              if (canSwitchLanguage) setLanguage(e.target.value);
+            }}
+            className="p-2 rounded border border-gray-300"
+          >
+            <option value="English" disabled={language !== 'English' && !canSwitchLanguage}>
+              English
+            </option>
+            <option value="Sinhala" disabled={language !== 'Sinhala' && !canSwitchLanguage}>
+              Sinhala
+            </option>
+          </select>
 
           <div className={`text-md font-medium px-4 py-1 rounded ${timeLeft < 60 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
             ⏱ Time: {formatTime(timeLeft)}
@@ -199,7 +189,7 @@ export default function CaseStudyQuestionPage() {
           <button
             onClick={() => setIndex(prev => Math.max(0, prev - 1))}
             disabled={index === 0 || submitted}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition disabled:opacity-50"
           >
             ← Previous
           </button>
@@ -208,7 +198,7 @@ export default function CaseStudyQuestionPage() {
             <button
               onClick={handleSubmit}
               disabled={!allAnswered || submitted}
-              className="px-5 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
             >
               {sending ? 'Submitting...' : 'Submit Answers'}
             </button>
@@ -216,22 +206,12 @@ export default function CaseStudyQuestionPage() {
             <button
               onClick={() => setIndex(prev => Math.min(questions.length - 1, prev + 1))}
               disabled={submitted}
-              className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition"
             >
               Next →
             </button>
           )}
         </div>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded"
-          >
-            {error}
-          </motion.div>
-        )}
 
         {submitted && (
           <motion.div
