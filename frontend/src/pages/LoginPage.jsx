@@ -1,71 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [error, setError] = useState('');
+
+  /* ────────── state ────────── */
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded,  setIsLoaded]  = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
+  /* fade‑in on mount */
+  useEffect(() => { setIsLoaded(true); }, []);
 
-  const handleChange = (e) =>
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  /* ➊ generate particles just once */
+  const particles = useMemo(
+    () => Array.from({ length: 15 }, () => ({
+      left      : Math.random() * 100,
+      top       : Math.random() * 100,
+      delay     : Math.random() * 3,
+      duration  : 4 + Math.random() * 2,
+    })),
+    []
+  );
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setSuccess('');
-  setIsLoading(true);
+  /* ────────── handlers ────────── */
+  const handleChange = e =>
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  try {
-    const res = await fetch('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
 
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.message || 'Login failed');
-      setIsLoading(false);
-      return;
-    }
-
-    // Store token and role
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('role', data.role);
-
-    // Optional decoding (can still be useful)
     try {
-      const payload = jwtDecode(data.token);
-      // console.log(payload); // Debug if needed
-    } catch (_) {}
+      const res = await fetch(
+        'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/login',
+        {
+          method : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body   : JSON.stringify(formData),
+        }
+      );
 
-    setSuccess('Login successful! Redirecting…');
-
-    setTimeout(() => {
-      if (data.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/introduction-video');
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Login failed');
+        setIsLoading(false);
+        return;
       }
-    }, 800);
-  } catch {
-    setError('Network error. Please try again.');
-    setIsLoading(false);
-  }
-};
 
+      /* store token & role */
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role',  data.role);
 
+      /* optional decode for debugging */
+      try { jwtDecode(data.token); } catch (_) {}
+
+      setSuccess('Login successful! Redirecting…');
+
+      setTimeout(() => {
+        navigate(data.role === 'admin' ? '/admin' : '/introduction-video');
+      }, 800);
+    } catch {
+      setError('Network error. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  /* ────────── sub‑components ────────── */
   const InputField = ({ label, type, name, placeholder, value, onChange }) => (
     <div className="mb-6">
       <label className="block text-white font-semibold mb-2 text-sm">{label}</label>
@@ -112,38 +118,41 @@ const LoginPage = () => {
     </button>
   );
 
+  /* ────────── render ────────── */
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-32 h-32 bg-white rounded-full animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-yellow-200 rounded-full animate-bounce animation-delay-300"></div>
-        <div className="absolute bottom-20 left-20 w-40 h-40 bg-pink-200 rounded-full animate-ping animation-delay-500"></div>
+      {/* static background circles */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute top-20  left-20  w-32 h-32  bg-white    rounded-full animate-pulse"></div>
+        <div className="absolute top-40  right-20 w-24 h-24  bg-yellow-200 rounded-full animate-bounce animation-delay-300"></div>
+        <div className="absolute bottom-20 left-20  w-40 h-40  bg-pink-200  rounded-full animate-ping   animation-delay-500"></div>
         <div className="absolute bottom-40 right-40 w-20 h-20 bg-purple-200 rounded-full animate-pulse animation-delay-700"></div>
       </div>
 
-      {/* Floating Particles */}
-      {Array.from({ length: 15 }, (_, i) => (
+      {/* floating particles (now stable) */}
+      {particles.map((p, i) => (
         <div
           key={i}
-          className="absolute w-2 h-2 bg-white rounded-full opacity-40 animate-float"
+          className="absolute w-2 h-2 bg-white rounded-full opacity-40 animate-float pointer-events-none"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 3}s`,
-            animationDuration: `${4 + Math.random() * 2}s`,
+            left            : `${p.left}%`,
+            top             : `${p.top}%`,
+            animationDelay  : `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
           }}
-        ></div>
+        />
       ))}
 
+      {/* login card */}
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className={`
-          w-full max-w-md transform transition-all duration-1000
-          ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-95'}
-        `}>
-          {/* Login Card */}
+        <div
+          className={`
+            w-full max-w-md transform transition-all duration-1000
+            ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-95'}
+          `}
+        >
           <div className="backdrop-blur-lg bg-white bg-opacity-20 p-8 rounded-2xl shadow-2xl border border-white border-opacity-30">
-            {/* Header */}
+            {/* header */}
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
                 Welcome Back!
@@ -153,7 +162,7 @@ const LoginPage = () => {
               </p>
             </div>
 
-            {/* Error and Success Messages */}
+            {/* alerts */}
             {error && (
               <div className="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-400 border-opacity-50 rounded-lg text-red-100 font-semibold backdrop-blur-sm animate-slideIn">
                 ⚠️ {error}
@@ -165,7 +174,7 @@ const LoginPage = () => {
               </div>
             )}
 
-            {/* Login Form */}
+            {/* form */}
             <form onSubmit={handleSubmit} className="space-y-2">
               <InputField
                 label="📧 Email Address"
@@ -185,27 +194,23 @@ const LoginPage = () => {
                 onChange={handleChange}
               />
 
-              <Button 
-                label="🚀 Login to start" 
-                type="submit" 
-                className="w-full mt-6"
-              />
+              <Button label="🚀 Login to start" type="submit" className="w-full mt-6" />
             </form>
 
-            {/* Footer Links */}
+            {/* footer links */}
             <div className="mt-8 space-y-4">
               <div className="text-center">
-                <Link 
+                <Link
                   to="/forgot-password"
                   className="text-yellow-200 hover:text-yellow-100 font-semibold hover:underline transition-colors duration-300"
                 >
                   🔑 Forgot Password?
                 </Link>
               </div>
-              
+
               <div className="text-center text-white text-opacity-80">
                 New to the challenge?{' '}
-                <Link 
+                <Link
                   to="/register"
                   className="text-yellow-200 hover:text-yellow-100 font-bold hover:underline transition-colors duration-300"
                 >
@@ -214,9 +219,9 @@ const LoginPage = () => {
               </div>
             </div>
 
-            {/* Back to Home */}
+            {/* back home */}
             <div className="mt-6 text-center">
-              <Link 
+              <Link
                 to="/"
                 className="inline-flex items-center text-white text-opacity-70 hover:text-opacity-100 font-medium transition-colors duration-300"
               >
@@ -225,7 +230,7 @@ const LoginPage = () => {
             </div>
           </div>
 
-          {/* Additional Info */}
+          {/* tagline */}
           <div className="mt-6 text-center">
             <p className="text-white text-opacity-60 text-sm">
               🎮 Join thousands of students in the ultimate learning challenge
@@ -234,63 +239,25 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Custom CSS for animations */}
+      {/* animations + custom scrollbar */}
       <style jsx>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-15px) rotate(120deg); }
-          66% { transform: translateY(-8px) rotate(240deg); }
+          0%, 100% { transform: translateY(0)   rotate(0deg);   }
+          33%      { transform: translateY(-15px) rotate(120deg); }
+          66%      { transform: translateY(-8px)  rotate(240deg); }
         }
-        
         @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0);     }
         }
+        .animate-float  { animation: float 5s ease-in-out infinite; }
+        .animate-slideIn{ animation: slideIn 0.5s ease-out; }
 
-        .animate-float {
-          animation: float 5s ease-in-out infinite;
-        }
-
-        .animate-slideIn {
-          animation: slideIn 0.5s ease-out;
-        }
-
-        .animation-delay-300 {
-          animation-delay: 300ms;
-        }
-        
-        .animation-delay-500 {
-          animation-delay: 500ms;
-        }
-        
-        .animation-delay-700 {
-          animation-delay: 700ms;
-        }
-
-        /* Custom scrollbar for better aesthetics */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.5);
-        }
+        /* nice scrollbar */
+        ::-webkit-scrollbar         { width: 8px; }
+        ::-webkit-scrollbar-track   { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb   { background: rgba(255,255,255,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
       `}</style>
     </div>
   );

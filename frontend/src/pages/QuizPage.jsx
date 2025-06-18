@@ -2,35 +2,35 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';      // ← animation
-import quizBg from '../../public/1.mp3';                // ← put any mp3 here
+import { motion, AnimatePresence } from 'framer-motion';
+import quizBg from '../../public/1.mp3'; // any mp3
 
-/* ---------- helpers ---------- */
+/* ───────── helpers ───────── */
 const fmt = s =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-/* ---------- component ---------- */
+/* ───────── component ───────── */
 export default function QuizPage() {
   const loc  = useLocation();
   const nav  = useNavigate();
   const lang = new URLSearchParams(loc.search).get('language') || 'English';
 
   /* state */
-  const [questions,    setQuestions]    = useState([]);
-  const [answers,      setAnswers]      = useState([]);
-  const [idx,          setIdx]          = useState(0);
-  const [seconds,      setSeconds]      = useState(2 * 60);
-  const [submitted,    setSubmitted]    = useState(false);
-  const [attempted,    setAttempted]    = useState(false);
-  const [err,          setErr]          = useState('');
+  const [questions, setQuestions] = useState([]);
+  const [answers,   setAnswers]   = useState([]);
+  const [idx,       setIdx]       = useState(0);
+  const [seconds,   setSeconds]   = useState(15 * 60);
+  const [submitted, setSubmitted] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [err,       setErr]       = useState('');
 
   /* refs */
-  const endAtRef  = useRef(null);     // epoch ms when quiz ends
-  const sentRef   = useRef(false);    // guard to avoid double submit
-  const tickRef   = useRef(null);     // interval id
+  const endAtRef  = useRef(null);
+  const sentRef   = useRef(false);
+  const tickRef   = useRef(null);
   const audioRef  = useRef(null);
 
-  /* -------- fetch questions -------- */
+  /* ───────── fetch questions ───────── */
   useEffect(() => {
     (async () => {
       try {
@@ -40,7 +40,8 @@ export default function QuizPage() {
         );
         setQuestions(data);
         setAnswers(Array(data.length).fill(null));
-        endAtRef.current = Date.now() + 15 * 60 * 1000;    // start 15‑min countdown
+        // 15‑minute countdown
+        endAtRef.current = Date.now() + 15 * 60 * 1000;
       } catch (e) {
         if (e.response?.status === 403) setAttempted(true);
         else if (e.response?.status === 401) nav('/login');
@@ -49,40 +50,42 @@ export default function QuizPage() {
     })();
   }, [lang, nav]);
 
-  /* -------- bg‑music -------- */
+  /* ───────── bg‑music control ───────── */
   useEffect(() => {
     if (!audioRef.current) return;
     if (submitted || attempted) audioRef.current.pause();
     else                        audioRef.current.play().catch(()=>{});
   }, [submitted, attempted]);
 
-  /* -------- ticker -------- */
- useEffect(() => {
-  if (!endAtRef.current || questions.length === 0 || submitted || attempted) return;
+  /* ───────── ticker ───────── */
+  useEffect(() => {
+    if (!endAtRef.current || questions.length === 0 || submitted || attempted) return;
 
-  const tick = () => {
-    const remain = Math.floor((endAtRef.current - Date.now()) / 1000);
-    setSeconds(remain >= 0 ? remain : 0);
+    const tick = () => {
+      const remain = Math.floor((endAtRef.current - Date.now()) / 1000);
+      setSeconds(remain >= 0 ? remain : 0);
 
-    if (remain <= 0 && !sentRef.current) {
-      clearInterval(tickRef.current);
-      doSubmit(true);
-    }
-  };
+      if (remain <= 0 && !sentRef.current) {
+        clearInterval(tickRef.current);
+        doSubmit(true);
+      }
+    };
 
-  tick(); // render immediately
-  tickRef.current = setInterval(tick, 1000);
+    tick(); // immediate paint
+    tickRef.current = setInterval(tick, 1000);
+    return () => clearInterval(tickRef.current);
+  }, [questions, submitted, attempted]);
 
-  return () => clearInterval(tickRef.current);
-}, [questions, submitted, attempted]);
+  /* ───────── pick / toggle answer ───────── */
+  const pick = i =>
+    setAnswers(prev => {
+      const next = [...prev];
+      next[idx] = next[idx] === i ? null : i; // toggle
+      return next;
+    });
 
-
-  /* -------- pick answer -------- */
-  const pick = (i) =>
-    setAnswers(a => { const c=[...a]; c[idx]=i; return c; });
-
-  /* -------- submit -------- */
-  const doSubmit = async (auto=true) => {
+  /* ───────── submit ───────── */
+  const doSubmit = async (auto = true) => {
     if (sentRef.current) return;
     sentRef.current = true;
     setSubmitted(true);
@@ -90,28 +93,27 @@ export default function QuizPage() {
     try {
       await axios.post(
         'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/quiz/submit',
-        { answers, timeTaken: 15*60 - seconds, language: lang },
+        { answers, timeTaken: 15 * 60 - seconds, language: lang },
         { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` } }
       );
     } catch (e) {
       if (!auto) setErr(e.response?.data?.message || 'Submit failed');
     } finally {
-      // stop music & redirect a second later
       audioRef.current?.pause();
       setTimeout(() => nav('/case-video'), 1200);
     }
   };
 
-  /* -------- already attempted? -------- */
+  /* ───────── already attempted? ───────── */
   if (attempted) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6
-                      bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 flex justify-center">
+                      bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
         <div className="max-w-md bg-white bg-opacity-95 shadow-xl p-6 text-center rounded-xl">
           <h2 className="text-2xl font-extrabold mb-4 text-purple-700">
             You’ve already taken this quiz
           </h2>
-          <button onClick={()=>nav('/')}
+          <button onClick={() => nav('/')}
                   className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium">
             Home
           </button>
@@ -120,12 +122,14 @@ export default function QuizPage() {
     );
   }
 
-  const q = questions[idx];
+  const q               = questions[idx];
+  const currentAnswered = answers[idx] !== null;
+  const allAnswered     = answers.every(a => a !== null);
 
   return (
     <div className="min-h-screen flex flex-col items-center p-6
                     bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
-      {/* background music element (invisible) */}
+      {/* background music */}
       <audio ref={audioRef} src={quizBg} loop />
 
       <div className="w-full max-w-3xl bg-white bg-opacity-95 shadow-2xl
@@ -142,7 +146,7 @@ export default function QuizPage() {
 
         {err && <p className="text-red-600 text-center mb-4">{err}</p>}
 
-        {/* ------------- animated question card ------------- */}
+        {/* animated question card */}
         <AnimatePresence mode="wait">
           {q && (
             <motion.div
@@ -176,7 +180,7 @@ export default function QuizPage() {
               {/* navigation */}
               <div className="flex justify-between mt-8">
                 <button
-                  onClick={() => setIdx((p) => Math.max(p - 1, 0))}
+                  onClick={() => setIdx(p => Math.max(p - 1, 0))}
                   disabled={idx === 0 || submitted}
                   className="px-5 py-2 bg-gray-300 rounded-lg disabled:opacity-40"
                 >
@@ -185,16 +189,17 @@ export default function QuizPage() {
 
                 {idx < questions.length - 1 ? (
                   <button
-                    onClick={() => setIdx((p) => p + 1)}
-                    disabled={submitted}
-                    className="px-5 py-2 bg-purple-600 text-white rounded-lg"
+                    onClick={() => setIdx(p => p + 1)}
+                    disabled={submitted || !currentAnswered}
+                    className="px-5 py-2 bg-purple-600 text-white rounded-lg disabled:opacity-40"
                   >
                     Next ›
                   </button>
                 ) : !submitted && (
                   <button
                     onClick={() => doSubmit(false)}
-                    className="px-5 py-2 bg-red-600 text-white rounded-lg"
+                    disabled={!allAnswered}
+                    className="px-5 py-2 bg-red-600 text-white rounded-lg disabled:opacity-40"
                   >
                     Submit
                   </button>
