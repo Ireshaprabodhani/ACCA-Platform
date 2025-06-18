@@ -19,7 +19,7 @@ const app = express();
 connectDB();
 
  app.use(cors({
-  origin: 'http://localhost:5173',       
+  origin: 'https://main.d3e4kbhw1zamih.amplifyapp.com/',       
   credentials: true                     
 }));
 
