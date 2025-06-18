@@ -19,25 +19,26 @@ const app = express();
 connectDB();
 
 const allowedOrigins = [
-  'https://main.d3e4kbhw1zamih.amplifyapp.com', // NO trailing slash
-  'http://localhost:5173'                        // keep dev origin
+  'https://main.d3e4kbhw1zamih.amplifyapp.com', 
+  'http://localhost:5173'
 ];
 
 const corsOptions = {
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);              
-    return allowedOrigins.includes(origin)
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);          
+    const clean = origin.replace(/\/$/, '');     
+    return allowedOrigins.includes(clean)
       ? cb(null, true)
-      : cb(new Error('Not allowed by CORS'));
+      : cb(new Error('Blocked by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
 };
 
 
 app.use(express.json());
-app.use(cors(corsOptions));               
+app.use(cors(corsOptions));            
 app.options('*', cors(corsOptions));
 
 app.use('/api/auth', authRoutes);
