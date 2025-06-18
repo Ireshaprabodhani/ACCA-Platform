@@ -10,18 +10,9 @@ applications:
           commands:
             - npm run build
       artifacts:
-        baseDirectory: dist
+        baseDirectory: dist         # ← Vite output
         files:
           - '**/*'
       cache:
         paths:
           - node_modules/**/*
-    customHeaders:
-      - pattern: '**/*.js'
-        headers:
-          - key: 'Content-Type'
-            value: 'application/javascript'
-      - pattern: '**/*.css'
-        headers:
-          - key: 'Content-Type'
-            value: 'text/css'
