@@ -119,7 +119,7 @@ export default function CaseStudyQuestionPage() {
   if (!questions.length) return <div className="p-10 text-center text-red-500">{error || 'No questions'}</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6 flex justify-center">
       <audio ref={audioRef} loop preload="auto">
         <source src="/case-study-bgm.mp3" type="audio/mpeg" />
       </audio>
