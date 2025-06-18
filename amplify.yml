@@ -9,8 +9,9 @@ applications:
         build:
           commands:
             - npm run build
+            - 'echo "/*    /index.html   200" > dist/_redirects'
       artifacts:
-        baseDirectory: dist         # ← Vite output
+        baseDirectory: dist
         files:
           - '**/*'
       cache:
