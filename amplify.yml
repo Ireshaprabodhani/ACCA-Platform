@@ -9,7 +9,26 @@ applications:
         build:
           commands:
             - npm run build
-            - 'echo "/*    /index.html   200" > dist/_redirects'
+            - |
+              cat > dist/_redirects << 'EOF'
+              # Handle static assets first
+              /assets/*  200
+              *.js       200
+              *.css      200
+              *.ico      200
+              *.png      200
+              *.jpg      200
+              *.jpeg     200
+              *.gif      200
+              *.svg      200
+              *.woff     200
+              *.woff2    200
+              *.ttf      200
+              *.eot      200
+              
+              # Handle SPA routing - this should be last
+              /*         /index.html   200
+              EOF
       artifacts:
         baseDirectory: dist
         files:

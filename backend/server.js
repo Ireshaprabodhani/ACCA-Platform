@@ -17,10 +17,10 @@ const app = express();
 
 // FIXED: Include both with and without trailing slash
 const allowedOrigins = [
-  'https://main.d3e4kbhw1zamih.amplifyapp.com',    // without trailing slash
-  'https://main.d3e4kbhw1zamih.amplifyapp.com/',   // with trailing slash
+  'https://main.d1vjhvv9srhnme.amplifyapp.com',    // your new URL
+  'https://main.d1vjhvv9srhnme.amplifyapp.com/',   // with trailing slash
   'http://localhost:5173',                          // local dev
-  'http://localhost:5173/'                          // local dev with slash
+  'http://localhost:5173/'    
 ];
 
 const corsOptions = {
