@@ -104,10 +104,11 @@ export default function CaseStudyQuestionPage() {
   /* ────────── derived values ────────── */
   const formatTime = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   const allAnswered       = answers.every(a => a !== null);
+  const currentAnswered   = answers[index] !== null;         // NEW
   const progress          = questions.length ? ((index + 1) / questions.length) * 100 : 0;
   const q                 = questions[index];
   const canSwitchLanguage = index === 0 && answers.every(a => a === null);
-  const locked            = !canSwitchLanguage;  /* ➊ */
+  const locked            = !canSwitchLanguage;
 
   const optionStyle = i =>
     answers[index] === i
@@ -129,7 +130,7 @@ export default function CaseStudyQuestionPage() {
         <div className="flex justify-between items-center mb-6">
           <select
             value={language}
-            disabled={locked}         /* ➋ lock whole dropdown */
+            disabled={locked}
             onChange={e => { if (!locked) setLanguage(e.target.value); }}
             className="p-2 rounded border border-gray-300 disabled:opacity-50"
           >
@@ -167,11 +168,13 @@ export default function CaseStudyQuestionPage() {
                 <div
                   key={i}
                   onClick={() => {
-                    if (!submitted) {
-                      const updated = [...answers];
-                      updated[index] = i;
-                      setAnswers(updated);
-                    }
+                    if (submitted) return;
+                    setAnswers(prev => {
+                      const updated = [...prev];
+                      // NEW: toggle selection
+                      updated[index] = updated[index] === i ? null : i;
+                      return updated;
+                    });
                   }}
                   className={`p-4 rounded-lg cursor-pointer transition ${optionStyle(i)}`}
                 >
@@ -203,8 +206,8 @@ export default function CaseStudyQuestionPage() {
           ) : (
             <button
               onClick={() => setIndex(prev => Math.min(questions.length - 1, prev + 1))}
-              disabled={submitted}
-              className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition"
+              disabled={submitted || !currentAnswered}  /* NEW */
+              className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition disabled:opacity-50"
             >
               Next →
             </button>
