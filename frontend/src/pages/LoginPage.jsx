@@ -1,35 +1,45 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 
 const LoginPage = () => {
   const navigate = useNavigate();
 
+  /* ────────── state ────────── */
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    setIsLoaded(true);
+  /* ────────── refs to maintain focus ────────── */
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
+
+  /* fade‑in on mount */
+  useEffect(() => { 
+    const timer = setTimeout(() => setIsLoaded(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
+  /* ➊ generate particles just once - memoized to prevent re-renders */
   const particles = useMemo(
-    () =>
-      Array.from({ length: 15 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        delay: Math.random() * 3,
-        duration: 4 + Math.random() * 2,
-      })),
+    () => Array.from({ length: 15 }, () => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 3,
+      duration: 4 + Math.random() * 2,
+    })),
     []
   );
 
-  const handleChange = e =>
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  /* ────────── handlers (memoized to prevent re-renders) ────────── */
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleSubmit = async e => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -52,12 +62,12 @@ const LoginPage = () => {
         return;
       }
 
+      /* store token & role */
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role);
 
-      try {
-        jwtDecode(data.token);
-      } catch (_) {}
+      /* optional decode for debugging */
+      try { jwtDecode(data.token); } catch (_) {}
 
       setSuccess('Login successful! Redirecting…');
 
@@ -68,18 +78,21 @@ const LoginPage = () => {
       setError('Network error. Please try again.');
       setIsLoading(false);
     }
-  };
+  }, [formData, navigate]);
 
-  const InputField = ({ label, type, name, placeholder, value, onChange }) => (
+  /* ────────── memoized sub‑components to prevent re-renders ────────── */
+  const InputField = useCallback(({ label, type, name, placeholder, value, onChange, inputRef }) => (
     <div className="mb-6">
       <label className="block text-white font-semibold mb-2 text-sm">{label}</label>
       <input
+        ref={inputRef}
         type={type}
         name={name}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         required
+        autoComplete={type === 'email' ? 'email' : 'current-password'}
         className="
           w-full px-4 py-3 rounded-lg border-2 border-white border-opacity-30
           bg-white bg-opacity-20 backdrop-blur-sm text-white placeholder-white placeholder-opacity-70
@@ -88,9 +101,9 @@ const LoginPage = () => {
         "
       />
     </div>
-  );
+  ), []);
 
-  const Button = ({ label, type, className }) => (
+  const Button = useCallback(({ label, type, className }) => (
     <button
       type={type}
       disabled={isLoading}
@@ -114,11 +127,12 @@ const LoginPage = () => {
       </span>
       <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-pink-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
     </button>
-  );
+  ), [isLoading]);
 
-  return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
-      {/* background circles */}
+  /* ────────── memoized particles to prevent re-renders ────────── */
+  const ParticleBackground = useMemo(() => (
+    <>
+      {/* static background circles */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute top-20 left-20 w-32 h-32 bg-white rounded-full animate-pulse"></div>
         <div className="absolute top-40 right-20 w-24 h-24 bg-yellow-200 rounded-full animate-bounce animation-delay-300"></div>
@@ -126,7 +140,7 @@ const LoginPage = () => {
         <div className="absolute bottom-40 right-40 w-20 h-20 bg-purple-200 rounded-full animate-pulse animation-delay-700"></div>
       </div>
 
-      {/* particles */}
+      {/* floating particles */}
       {particles.map((p, i) => (
         <div
           key={i}
@@ -139,16 +153,41 @@ const LoginPage = () => {
           }}
         />
       ))}
+    </>
+  ), [particles]);
+
+  /* ────────── memoized alert components ────────── */
+  const ErrorAlert = useMemo(() => (
+    error ? (
+      <div className="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-400 border-opacity-50 rounded-lg text-red-100 font-semibold backdrop-blur-sm animate-slideIn">
+        ⚠️ {error}
+      </div>
+    ) : null
+  ), [error]);
+
+  const SuccessAlert = useMemo(() => (
+    success ? (
+      <div className="mb-6 p-4 bg-green-500 bg-opacity-20 border border-green-400 border-opacity-50 rounded-lg text-green-100 font-semibold backdrop-blur-sm animate-slideIn">
+        ✅ {success}
+      </div>
+    ) : null
+  ), [success]);
+
+  /* ────────── render ────────── */
+  return (
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
+      {ParticleBackground}
 
       {/* login card */}
       <div className="min-h-screen flex items-center justify-center px-4">
         <div
           className={`
-            w-full max-w-md transition-all duration-1000
-            ${isLoaded ? 'opacity-100' : 'transform translate-y-10 opacity-0 scale-95'}
+            w-full max-w-md transform transition-all duration-1000
+            ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-95'}
           `}
         >
           <div className="backdrop-blur-lg bg-white bg-opacity-20 p-8 rounded-2xl shadow-2xl border border-white border-opacity-30">
+            {/* header */}
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
                 Welcome Back!
@@ -158,17 +197,11 @@ const LoginPage = () => {
               </p>
             </div>
 
-            {error && (
-              <div className="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-400 border-opacity-50 rounded-lg text-red-100 font-semibold backdrop-blur-sm animate-slideIn">
-                ⚠️ {error}
-              </div>
-            )}
-            {success && (
-              <div className="mb-6 p-4 bg-green-500 bg-opacity-20 border border-green-400 border-opacity-50 rounded-lg text-green-100 font-semibold backdrop-blur-sm animate-slideIn">
-                ✅ {success}
-              </div>
-            )}
+            {/* alerts */}
+            {ErrorAlert}
+            {SuccessAlert}
 
+            {/* form */}
             <form onSubmit={handleSubmit} className="space-y-2">
               <InputField
                 label="📧 Email Address"
@@ -177,6 +210,7 @@ const LoginPage = () => {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
+                inputRef={emailInputRef}
               />
 
               <InputField
@@ -186,11 +220,13 @@ const LoginPage = () => {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
+                inputRef={passwordInputRef}
               />
 
               <Button label="🚀 Login to start" type="submit" className="w-full mt-6" />
             </form>
 
+            {/* footer links */}
             <div className="mt-8 space-y-4">
               <div className="text-center">
                 <Link
@@ -212,6 +248,7 @@ const LoginPage = () => {
               </div>
             </div>
 
+            {/* back home */}
             <div className="mt-6 text-center">
               <Link
                 to="/"
@@ -222,6 +259,7 @@ const LoginPage = () => {
             </div>
           </div>
 
+          {/* tagline */}
           <div className="mt-6 text-center">
             <p className="text-white text-opacity-60 text-sm">
               🎮 Join thousands of students in the ultimate learning challenge
@@ -230,22 +268,24 @@ const LoginPage = () => {
         </div>
       </div>
 
+      {/* animations + custom scrollbar */}
       <style jsx>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) rotate(0deg); }
-          33%      { transform: translateY(-15px) rotate(120deg); }
-          66%      { transform: translateY(-8px)  rotate(240deg); }
+          33% { transform: translateY(-15px) rotate(120deg); }
+          66% { transform: translateY(-8px) rotate(240deg); }
         }
         @keyframes slideIn {
           from { opacity: 0; transform: translateY(-10px); }
-          to   { opacity: 1; transform: translateY(0);     }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-float  { animation: float 5s ease-in-out infinite; }
-        .animate-slideIn{ animation: slideIn 0.5s ease-out; }
+        .animate-float { animation: float 5s ease-in-out infinite; }
+        .animate-slideIn { animation: slideIn 0.5s ease-out; }
 
-        ::-webkit-scrollbar         { width: 8px; }
-        ::-webkit-scrollbar-track   { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb   { background: rgba(255,255,255,0.3); border-radius: 4px; }
+        /* nice scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
       `}</style>
     </div>
