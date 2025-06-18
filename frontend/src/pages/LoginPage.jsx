@@ -5,28 +5,27 @@ import { jwtDecode } from 'jwt-decode';
 const LoginPage = () => {
   const navigate = useNavigate();
 
-  /* ────────── state ────────── */
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error,   setError]   = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [isLoaded,  setIsLoaded]  = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  /* fade‑in on mount */
-  useEffect(() => { setIsLoaded(true); }, []);
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
 
-  /* ➊ generate particles just once */
   const particles = useMemo(
-    () => Array.from({ length: 15 }, () => ({
-      left      : Math.random() * 100,
-      top       : Math.random() * 100,
-      delay     : Math.random() * 3,
-      duration  : 4 + Math.random() * 2,
-    })),
+    () =>
+      Array.from({ length: 15 }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        delay: Math.random() * 3,
+        duration: 4 + Math.random() * 2,
+      })),
     []
   );
 
-  /* ────────── handlers ────────── */
   const handleChange = e =>
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -40,9 +39,9 @@ const LoginPage = () => {
       const res = await fetch(
         'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/login',
         {
-          method : 'POST',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify(formData),
+          body: JSON.stringify(formData),
         }
       );
 
@@ -53,12 +52,12 @@ const LoginPage = () => {
         return;
       }
 
-      /* store token & role */
       localStorage.setItem('token', data.token);
-      localStorage.setItem('role',  data.role);
+      localStorage.setItem('role', data.role);
 
-      /* optional decode for debugging */
-      try { jwtDecode(data.token); } catch (_) {}
+      try {
+        jwtDecode(data.token);
+      } catch (_) {}
 
       setSuccess('Login successful! Redirecting…');
 
@@ -71,7 +70,6 @@ const LoginPage = () => {
     }
   };
 
-  /* ────────── sub‑components ────────── */
   const InputField = ({ label, type, name, placeholder, value, onChange }) => (
     <div className="mb-6">
       <label className="block text-white font-semibold mb-2 text-sm">{label}</label>
@@ -118,26 +116,25 @@ const LoginPage = () => {
     </button>
   );
 
-  /* ────────── render ────────── */
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
-      {/* static background circles */}
+      {/* background circles */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-20  left-20  w-32 h-32  bg-white    rounded-full animate-pulse"></div>
-        <div className="absolute top-40  right-20 w-24 h-24  bg-yellow-200 rounded-full animate-bounce animation-delay-300"></div>
-        <div className="absolute bottom-20 left-20  w-40 h-40  bg-pink-200  rounded-full animate-ping   animation-delay-500"></div>
+        <div className="absolute top-20 left-20 w-32 h-32 bg-white rounded-full animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-yellow-200 rounded-full animate-bounce animation-delay-300"></div>
+        <div className="absolute bottom-20 left-20 w-40 h-40 bg-pink-200 rounded-full animate-ping animation-delay-500"></div>
         <div className="absolute bottom-40 right-40 w-20 h-20 bg-purple-200 rounded-full animate-pulse animation-delay-700"></div>
       </div>
 
-      {/* floating particles (now stable) */}
+      {/* particles */}
       {particles.map((p, i) => (
         <div
           key={i}
           className="absolute w-2 h-2 bg-white rounded-full opacity-40 animate-float pointer-events-none"
           style={{
-            left            : `${p.left}%`,
-            top             : `${p.top}%`,
-            animationDelay  : `${p.delay}s`,
+            left: `${p.left}%`,
+            top: `${p.top}%`,
+            animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
           }}
         />
@@ -147,12 +144,11 @@ const LoginPage = () => {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div
           className={`
-            w-full max-w-md transform transition-all duration-1000
-            ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-95'}
+            w-full max-w-md transition-all duration-1000
+            ${isLoaded ? 'opacity-100' : 'transform translate-y-10 opacity-0 scale-95'}
           `}
         >
           <div className="backdrop-blur-lg bg-white bg-opacity-20 p-8 rounded-2xl shadow-2xl border border-white border-opacity-30">
-            {/* header */}
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
                 Welcome Back!
@@ -162,7 +158,6 @@ const LoginPage = () => {
               </p>
             </div>
 
-            {/* alerts */}
             {error && (
               <div className="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-400 border-opacity-50 rounded-lg text-red-100 font-semibold backdrop-blur-sm animate-slideIn">
                 ⚠️ {error}
@@ -174,7 +169,6 @@ const LoginPage = () => {
               </div>
             )}
 
-            {/* form */}
             <form onSubmit={handleSubmit} className="space-y-2">
               <InputField
                 label="📧 Email Address"
@@ -197,7 +191,6 @@ const LoginPage = () => {
               <Button label="🚀 Login to start" type="submit" className="w-full mt-6" />
             </form>
 
-            {/* footer links */}
             <div className="mt-8 space-y-4">
               <div className="text-center">
                 <Link
@@ -219,7 +212,6 @@ const LoginPage = () => {
               </div>
             </div>
 
-            {/* back home */}
             <div className="mt-6 text-center">
               <Link
                 to="/"
@@ -230,7 +222,6 @@ const LoginPage = () => {
             </div>
           </div>
 
-          {/* tagline */}
           <div className="mt-6 text-center">
             <p className="text-white text-opacity-60 text-sm">
               🎮 Join thousands of students in the ultimate learning challenge
@@ -239,10 +230,9 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* animations + custom scrollbar */}
       <style jsx>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0)   rotate(0deg);   }
+          0%, 100% { transform: translateY(0) rotate(0deg); }
           33%      { transform: translateY(-15px) rotate(120deg); }
           66%      { transform: translateY(-8px)  rotate(240deg); }
         }
@@ -253,7 +243,6 @@ const LoginPage = () => {
         .animate-float  { animation: float 5s ease-in-out infinite; }
         .animate-slideIn{ animation: slideIn 0.5s ease-out; }
 
-        /* nice scrollbar */
         ::-webkit-scrollbar         { width: 8px; }
         ::-webkit-scrollbar-track   { background: rgba(255,255,255,0.1); border-radius: 4px; }
         ::-webkit-scrollbar-thumb   { background: rgba(255,255,255,0.3); border-radius: 4px; }
