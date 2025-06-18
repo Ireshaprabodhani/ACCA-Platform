@@ -288,7 +288,7 @@ const CaseVideoPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 text-white flex flex-col items-center p-4">
       <h1 className="text-3xl font-bold mb-6 text-center">Case Study Video</h1>
       
       <div className="w-full max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl">
