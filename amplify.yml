@@ -1,18 +1,18 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - cd frontend
-        - npm ci
-    build:
-      commands:
-        - cd frontend
-        - npm run build
-  artifacts:
-    baseDirectory: frontend/build
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - frontend/node_modules/**/*
+applications:
+  - appRoot: frontend          # <‑‑ your React code lives here
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci           # installs deps in frontend/
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: build   # output folder inside frontend/
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
