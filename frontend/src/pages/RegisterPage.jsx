@@ -108,7 +108,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await axios.post('http://localhost:5000/api/auth/register', {
+      await axios.post('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/register', {
         firstName     : form.firstName,
         lastName      : form.lastName,
         whatsappNumber: form.whatsappNumber,

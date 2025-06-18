@@ -3,7 +3,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
 const api = axios.create({
-  baseURL : "http://localhost:5000/api/admin",
+  baseURL : "https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin",
   headers : { Authorization:`Bearer ${localStorage.getItem("token")}` }
 });
 

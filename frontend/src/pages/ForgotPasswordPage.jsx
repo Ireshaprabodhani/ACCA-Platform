@@ -30,7 +30,7 @@ const ForgotPasswordPage = () => {
     setLoad(true);
     try {
       const res  = await fetch(
-        'http://localhost:5000/api/auth/forgot-password',
+        'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/forgot-password',
         { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email }) }
       );
       const data = await res.json();

@@ -35,7 +35,7 @@ export default function CaseStudyQuestionPage() {
 
     try {
       await axios.post(
-        'http://localhost:5000/api/case/submit',
+        'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/submit',
         {
           answers: answersRef.current,
           timeTaken: 20 * 60 - timeLeftRef.current,
@@ -57,7 +57,7 @@ export default function CaseStudyQuestionPage() {
       try {
         setIsLoading(true);
         const { data } = await axios.get(
-          `http://localhost:5000/api/case/questions?language=${language}`,
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/case/questions?language=${language}`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
         setQuestions(data);

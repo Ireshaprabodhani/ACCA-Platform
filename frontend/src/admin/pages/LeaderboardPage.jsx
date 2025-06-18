@@ -39,7 +39,7 @@ export default function LeaderboardPage() {
       try {
         const token = localStorage.getItem("token");
         const { data } = await axios.get(
-          "http://localhost:5000/api/admin/leaderboard",
+          "https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/leaderboard",
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setBoard(data);

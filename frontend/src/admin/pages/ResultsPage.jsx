@@ -47,7 +47,7 @@ export default function ResultsPage() {
         setBusy(true);
         setErr('');
         const data = await fetchJSON(
-          `http://localhost:5000/api/admin/${tab}-status`
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${tab}-status`
         );
 
         // Group by school
