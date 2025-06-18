@@ -23,7 +23,7 @@ const CaseVideoPage = () => {
   useEffect(() => {
     const fetchVideo = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/case/video', {
+        const response = await axios.get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/video', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         setVideoUrl(response.data.url);

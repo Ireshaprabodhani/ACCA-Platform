@@ -17,7 +17,7 @@ export default function QuizAttemptsPage() {
       if (!jwt) throw new Error('No admin token in localStorage');
 
       const res   = await fetch(
-        `http://localhost:5000/api/admin/quiz-status${query}`,
+        `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz-status${query}`,
         { headers: { Authorization: `Bearer ${jwt}` } }
       );
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);

@@ -9,7 +9,7 @@ const TYPES      = ['intro', 'case'];        // add more types here if needed
 const BLANK_FORM = { type: 'intro', url: '' };
 
 const api = axios.create({
-  baseURL : 'http://localhost:5000/api/admin',
+  baseURL : 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
   headers : { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } // admin token
 });
 

@@ -29,7 +29,7 @@ export default function QuizQuestionsPage() {
   /* ───────────── CRUD ───────────── */
   const loadRows = () =>
     axios
-      .get('http://localhost:5000/api/admin/quiz', authHeaders())
+      .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz', authHeaders())
       .then(({ data }) => {
         setRows(Array.isArray(data) ? data : data.questions || []);
         setCurrentPage({ English: 1, Sinhala: 1 });
@@ -48,8 +48,8 @@ export default function QuizQuestionsPage() {
     }
 
     const url = editId
-      ? `http://localhost:5000/api/admin/quiz/${editId}`
-      : 'http://localhost:5000/api/admin/quiz';
+      ? `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz/${editId}`
+      : 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz';
 
     const req = editId
       ? axios.put(url, form, authHeaders())
@@ -69,7 +69,7 @@ export default function QuizQuestionsPage() {
     window.confirm('Delete this question?') &&
     toast
       .promise(
-        axios.delete(`http://localhost:5000/api/admin/quiz/${id}`, authHeaders()),
+        axios.delete(`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz/${id}`, authHeaders()),
         { loading: 'Deleting…', success: 'Deleted', error: 'Error' }
       )
       .then(loadRows);

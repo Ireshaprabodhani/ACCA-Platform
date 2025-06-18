@@ -26,7 +26,7 @@ const DashboardHome = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    axios.get('http://localhost:5000/api/admin/stats', {
+    axios.get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/stats', {
       headers: {
         Authorization: `Bearer ${token}`,
       },

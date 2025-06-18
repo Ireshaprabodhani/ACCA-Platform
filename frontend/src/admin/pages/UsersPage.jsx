@@ -16,8 +16,8 @@ const UsersPage = () => {
   // Load users from backend
   const loadRows = () => {
     const url = schoolFilter
-      ? `http://localhost:5000/api/admin/users?schoolName=${encodeURIComponent(schoolFilter)}`
-      : 'http://localhost:5000/api/admin/users';
+      ? `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/users?schoolName=${encodeURIComponent(schoolFilter)}`
+      : 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/users';
 
     axios
       .get(url, { headers: tokenHeader })
@@ -31,7 +31,7 @@ const UsersPage = () => {
 
     toast
       .promise(
-        axios.delete(`http://localhost:5000/api/admin/users/${id}`, {
+        axios.delete(`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/users/${id}`, {
           headers: tokenHeader,
         }),
         { loading: 'Deleting…', success: 'Deleted', error: 'Error' }

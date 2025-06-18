@@ -36,7 +36,7 @@ export default function IntroductionVideoPage() {
     }
 
     axios
-      .get('http://localhost:5000/api/quiz/has-attempted?language=English', {
+      .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/quiz/has-attempted?language=English', {
         headers: { Authorization: `Bearer ${tok}` },
       })
       .then((r) => r.data.hasAttempted && nav('/thank-you'))
@@ -46,7 +46,7 @@ export default function IntroductionVideoPage() {
   /* 2️⃣  fetch video url (intro) */
   useEffect(() => {
     axios
-      .get('http://localhost:5000/api/video/intro', {
+      .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/video/intro', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       })
       .then((r) => setUrl(r.data.url))

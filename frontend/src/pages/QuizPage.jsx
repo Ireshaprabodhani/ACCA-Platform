@@ -35,7 +35,7 @@ export default function QuizPage() {
     (async () => {
       try {
         const { data } = await axios.get(
-          `http://localhost:5000/api/quiz/questions?language=${lang}`,
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/quiz/questions?language=${lang}`,
           { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` } }
         );
         setQuestions(data);
@@ -89,7 +89,7 @@ export default function QuizPage() {
 
     try {
       await axios.post(
-        'http://localhost:5000/api/quiz/submit',
+        'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/quiz/submit',
         { answers, timeTaken: 15*60 - seconds, language: lang },
         { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` } }
       );

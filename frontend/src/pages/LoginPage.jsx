@@ -27,7 +27,7 @@ const LoginPage = () => {
   setIsLoading(true);
 
   try {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
+    const res = await fetch('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
