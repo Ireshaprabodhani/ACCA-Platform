@@ -1,18 +1,18 @@
+// pages/ResultsPage.jsx
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
+/* ─────────── Helper to fetch JSON with JWT ─────────── */
 const fetchJSON = async (url) => {
-  // 1️⃣  prefer adminToken; fall back to user token only if allowed
   const jwt =
     localStorage.getItem('adminToken') || localStorage.getItem('token');
 
   if (!jwt) throw new Error('No token ‑ please log in');
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${jwt}` },
-  });
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
 
-  // 2️⃣  if token is invalid/expired, force logout
   if (res.status === 401) {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('token');
@@ -23,8 +23,7 @@ const fetchJSON = async (url) => {
   return res.json();
 };
 
-
-// Animation variants for fade & slide up
+/* ─────────── Animation variants ─────────── */
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -32,8 +31,8 @@ const fadeInUp = {
 };
 
 export default function ResultsPage() {
-  const [tab, setTab] = useState('quiz'); // 'quiz' | 'case'
-  const [rows, setRows] = useState([]);
+  const [tab, setTab] = useState('quiz');         // 'quiz' | 'case'
+  const [rows, setRows] = useState([]);           // [school, attempts[]][]
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [expandedRows, setExpandedRows] = useState({});
@@ -41,18 +40,23 @@ export default function ResultsPage() {
 
   const ATTEMPTS_PER_PAGE = 5;
 
+  /* ─────────── Load attempts whenever tab changes ─────────── */
   useEffect(() => {
     (async () => {
       try {
         setBusy(true);
         setErr('');
-        const data = await fetchJSON(`http://localhost:5000/api/admin/${tab}-status`);
+        const data = await fetchJSON(
+          `http://localhost:5000/api/admin/${tab}-status`
+        );
+
+        // Group by school
         const grouped = {};
         data.forEach((a) => {
           const key = a.schoolName || 'N/A';
           (grouped[key] = grouped[key] || []).push(a);
         });
-        setRows(Object.entries(grouped));
+        setRows(Object.entries(grouped)); // [school, attempts]
       } catch (e) {
         setErr(e.message);
       } finally {
@@ -61,25 +65,57 @@ export default function ResultsPage() {
     })();
   }, [tab]);
 
-  const toggleExpand = (key) => {
-    setExpandedRows((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+  /* ─────────── Export current tab’s data to Excel ─────────── */
+  const exportToExcel = () => {
+    // Flatten into simple records
+    const records = [];
+    rows.forEach(([school, attempts]) => {
+      attempts.forEach((at) => {
+        records.push({
+          School: school,
+          User: at.userName ?? 'Deleted User',
+          Email: at.email ?? 'N/A',
+          Score: at.score,
+          'Submitted At': new Date(at.submittedAt).toLocaleString(),
+          Type: tab,                           // quiz | case
+        });
+      });
+    });
+
+    if (!records.length) return alert('No data to export');
+
+    const ws = XLSX.utils.json_to_sheet(records);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      ws,
+      tab === 'quiz' ? 'QuizResults' : 'CaseResults'
+    );
+
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(
+      new Blob([buffer], { type: 'application/octet-stream' }),
+      `${tab}-results.xlsx`
+    );
   };
+
+  /* ─────────── Helpers ─────────── */
+  const toggleExpand = (key) =>
+    setExpandedRows((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const paginate = (items) => {
     const start = (currentPage - 1) * ATTEMPTS_PER_PAGE;
     return items.slice(start, start + ATTEMPTS_PER_PAGE);
   };
 
+  /* ─────────── UI ─────────── */
   return (
     <div
       className="min-h-screen p-8 bg-gray-50 text-gray-900 font-sans"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* Tabs */}
-      <div className="mb-10 flex gap-6 justify-center">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-6">
         {['quiz', 'case'].map((t) => (
           <button
             key={t}
@@ -98,6 +134,14 @@ export default function ResultsPage() {
             {t === 'quiz' ? 'Quiz Results' : 'Case‑study Results'}
           </button>
         ))}
+
+        {/* Excel Export Button */}
+        <button
+          onClick={exportToExcel}
+          className="px-8 py-3 rounded-full bg-green-600 text-white font-semibold shadow-md hover:bg-green-700 transition-colors"
+        >
+          Download Excel
+        </button>
       </div>
 
       {busy && (
@@ -106,12 +150,15 @@ export default function ResultsPage() {
         </p>
       )}
       {err && (
-        <p className="text-center text-red-600 font-semibold text-lg">⚠ {err}</p>
+        <p className="text-center text-red-600 font-semibold text-lg">
+          ⚠ {err}
+        </p>
       )}
       {!busy && !err && rows.length === 0 && (
         <p className="text-center text-gray-500 text-lg">No attempts yet.</p>
       )}
 
+      {/* Schools & Attempts */}
       {!busy &&
         rows.map(([school, allAttempts]) => {
           const pagedAttempts = paginate(allAttempts);
@@ -130,12 +177,13 @@ export default function ResultsPage() {
                 <h2 className="text-2xl font-extrabold tracking-tight text-purple-700">
                   {school} —{' '}
                   <span className="text-gray-600 font-normal">
-                    {allAttempts.length} attempt{allAttempts.length > 1 ? 's' : ''}
+                    {allAttempts.length} attempt
+                    {allAttempts.length > 1 ? 's' : ''}
                   </span>
                 </h2>
               </div>
 
-              {/* Attempts */}
+              {/* Attempts (paged) */}
               {pagedAttempts.map((at, i) => {
                 const key = `${school}-${i}`;
                 const isExpanded = expandedRows[key];
@@ -155,7 +203,9 @@ export default function ResultsPage() {
                         <h3 className="text-lg font-semibold text-purple-900 leading-tight">
                           {at.userName ?? 'Deleted User'}
                         </h3>
-                        <p className="text-sm text-gray-500 tracking-wide">{at.email ?? 'N/A'}</p>
+                        <p className="text-sm text-gray-500 tracking-wide">
+                          {at.email ?? 'N/A'}
+                        </p>
                       </div>
 
                       <div className="text-purple-900 font-mono font-bold text-xl tracking-wide">

@@ -106,12 +106,19 @@ exports.getCaseQuestions = async (req, res) => {
   }
 };
 
-
-
 exports.submitCaseAnswers = async (req, res) => {
   try {
     const userId = req.user.id;
     const { answers, timeTaken, language: requestedLanguage } = req.body;
+
+    // Convert answers to numbers to match database format
+    const numericAnswers = answers.map(answer => {
+      const num = parseInt(answer, 10);
+      return isNaN(num) ? answer : num;
+    });
+
+    console.log('Original answers:', answers);
+    console.log('Converted answers:', numericAnswers);
 
     // Prevent multiple submissions
     const existingAttempt = await CaseAttempt.findOne({ userId });
@@ -125,32 +132,43 @@ exports.submitCaseAnswers = async (req, res) => {
       (requestedLanguage || user.language || 'English')
         .trim()
         .toLowerCase()
-        .replace(/^\w/, c => c.toUpperCase()); // Capitalize first letter
+        .replace(/^\w/, c => c.toUpperCase());
 
     // Fetch 10 random questions in the specified language
     const questions = await CaseQuestion.aggregate([
-      { $match: { language } },
+      { $match: { language, answer: { $type: 'number' } } },
       { $sample: { size: 10 } },
     ]);
-
+      
     if (questions.length !== 10) {
       return res.status(400).json({ message: 'Insufficient case questions found for selected language.' });
     }
 
-    // Calculate score
+    // Calculate score with proper type comparison
     let score = 0;
-    for (let i = 0; i < Math.min(answers.length, questions.length); i++) {
-      if (questions[i]?.answer === answers[i]) score++;
+    for (let i = 0; i < Math.min(numericAnswers.length, questions.length); i++) {
+      const userAnswer = numericAnswers[i];
+      const correctAnswer = questions[i]?.answer;
+      
+      // Ensure both are numbers for comparison
+      const userNum = typeof userAnswer === 'number' ? userAnswer : parseInt(userAnswer, 10);
+      const correctNum = typeof correctAnswer === 'number' ? correctAnswer : parseInt(correctAnswer, 10);
+      
+      if (!isNaN(userNum) && !isNaN(correctNum) && userNum === correctNum) {
+        score++;
+      }
     }
+
+    console.log('Calculated score:', score);
 
     const caseAttempt = new CaseAttempt({
       userId,
       questions: questions.map(q => q._id),
-      answers,
+      answers: numericAnswers, // Store the converted answers
       score,
       submittedAt: new Date(),
       language,
-      schoolName: user.schoolName || null,
+      schoolName: user.schoolName || 'Unknown School',
       timeTaken,
     });
 

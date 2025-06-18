@@ -9,6 +9,10 @@ const quizAttemptSchema = new mongoose.Schema({
   submittedAt: Date,
   language: String,
   schoolName: String,
-});
+},
+
+{ timestamps: true } 
+ 
+);
 
 module.exports = mongoose.model('QuizAttempt', quizAttemptSchema);

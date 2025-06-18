@@ -10,9 +10,8 @@ const BLANK_FORM = {
   question: '',
   language: 'English',
   options : ['', '', '', ''],
-  correctAnswer: 0,
+  answer: 0, // Changed from correctAnswer to answer to match schema
 };
-
 
 const api = axios.create({
   baseURL : 'http://localhost:5000/api/admin',
@@ -49,8 +48,8 @@ export default function CaseQuestionsPage() {
     const invalid =
       !form.question.trim() ||
       form.options.some((o) => !o.trim()) ||
-      form.correctAnswer < 0 ||
-      form.correctAnswer > 3;
+      form.answer < 0 || // Changed from correctAnswer to answer
+      form.answer > 3;
     if (invalid) return toast.error('Fill question, 4 options, correct answer');
 
     const req = editId
@@ -154,19 +153,22 @@ export default function CaseQuestionsPage() {
                 </div>
               </div>
 
-              {/* options */}
+              {/* options - FIXED: Changed q.correctAnswer to q.answer */}
               <ul className="space-y-2 ml-6 mt-4">
                 {q.options.map((opt, i) => (
                   <li
                     key={i}
                     className={`flex gap-2 ${
-                      i === q.correctAnswer ? 'font-semibold text-blue-700' : ''
+                      i === q.answer ? 'font-semibold text-green-700 bg-green-50 px-2 py-1 rounded' : ''
                     }`}
                   >
                     <span className="w-5 font-bold">
                       {String.fromCharCode(65 + i)}.
                     </span>
                     <span className="flex-1 break-words">{opt}</span>
+                    {i === q.answer && (
+                      <span className="text-green-600 text-sm font-medium">✓ Correct</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -202,7 +204,7 @@ export default function CaseQuestionsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal - FIXED: Changed correctAnswer to answer throughout */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl p-8 space-y-6 relative">
@@ -249,8 +251,8 @@ export default function CaseQuestionsPage() {
                   <input
                     type="radio"
                     name="correct"
-                    checked={form.correctAnswer === i}
-                    onChange={() => setForm({ ...form, correctAnswer: i })}
+                    checked={form.answer === i} // Changed from correctAnswer to answer
+                    onChange={() => setForm({ ...form, answer: i })} // Changed from correctAnswer to answer
                     className="accent-blue-600 cursor-pointer"
                   />
                   <input
