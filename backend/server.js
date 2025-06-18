@@ -5,6 +5,7 @@ require('dotenv').config();
 
 
 
+
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const quizRoutes = require('./src/routes/quizRoutes');
@@ -13,6 +14,7 @@ const caseRoutes = require('./src/routes/caseRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
+
 
 connectDB();
 
@@ -31,7 +33,15 @@ app.use('/api/video', videoRoutes);
 app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
 
+const rateLimit = require('express-rate-limit');
 
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests
+  message: "Too many requests. Please try again later.",
+});
+
+app.use(limiter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

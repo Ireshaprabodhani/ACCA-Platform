@@ -3,13 +3,13 @@ const bcrypt = require('bcrypt');
 const { randomBytes } = require('node:crypto');
 
 const memberSchema = new mongoose.Schema({
-  firstName: String,
+  firstName: { type: String, required: true, index: true },
   lastName: String,
   whatsappNumber: String,
-  email: String,
+  email: { type: String, required: true, unique: true } ,
   gender: String,
-  age: Number,
-  grade: String,
+  age: { type: Number, index: true },
+  grade: { type: String, required: true },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
 },

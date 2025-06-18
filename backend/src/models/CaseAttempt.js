@@ -10,6 +10,8 @@ const caseAttemptSchema = new mongoose.Schema({
   language: String,
   schoolName: String,
   timeTaken: Number,    // time taken to complete in seconds (optional)
-});
+},
+ { timestamps: true } 
+);
 
 module.exports = mongoose.model('CaseAttempt', caseAttemptSchema);
