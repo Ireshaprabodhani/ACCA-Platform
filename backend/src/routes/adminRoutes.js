@@ -7,12 +7,19 @@ const videoCtrl = require('../controllers/videoController');
 const adminAuth = require('../middleware/adminMiddleware');
 
 // Entry Logo
-router.get('/logo',       adminAuth, adminCtrl.getEntryLogo); 
 
-/* ---- CREATE / UPDATE / DELETE ---- */
-router.post('/logo',        adminAuth, adminCtrl.uploadLogo);
-router.put('/logo/:id',     adminAuth, adminCtrl.updateLogo);
-router.delete('/logo/:id',  adminAuth, adminCtrl.deleteLogo);
+// GET logo
+router.get('/logo', adminAuth, adminCtrl.getEntryLogo);
+
+// POST logo
+router.post('/logo', adminAuth, adminCtrl.uploadLogo);
+
+// PUT logo
+router.put('/logo/:id', adminAuth, adminCtrl.updateLogo);
+
+// DELETE logo
+router.delete('/logo/:id', adminAuth, adminCtrl.deleteLogo);
+
 
 // Admin Auth
 router.post('/login', adminCtrl.login);
