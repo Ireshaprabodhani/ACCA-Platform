@@ -32,14 +32,14 @@ const EntryPage = () => {
       `}
     >
       <span className="relative z-10">{label}</span>
-      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-pink-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-500 to-cyan-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
       <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-ping"></div>
       <div className="absolute -bottom-2 -right-2 w-3 h-3 bg-pink-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-ping animation-delay-150"></div>
     </button>
   );
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-500 via-indigo-400 to-cyan-300">
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
@@ -71,21 +71,13 @@ const EntryPage = () => {
           {/* Main Title with Staggered Animation */}
           <div className="mb-8">
             <h1 className={`
-              text-6xl md:text-7xl font-extrabold mb-4 
-              bg-gradient-to-r from-white via-yellow-200 to-pink-200 bg-clip-text text-transparent
-              transform transition-all duration-1000 animation-delay-300
-              ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}
-            `}>
-              Welcome to the
+                text-4xl md:text-5xl font-extrabold mb-4 
+                text-white
+                transform transition-all duration-1000 animation-delay-300
+                ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}
+              `}>
+                Welcome to the ACCA Escape The Challenge
             </h1>
-            <h2 className={`
-              text-4xl md:text-5xl font-bold 
-              bg-gradient-to-r from-yellow-300 via-pink-300 to-purple-300 bg-clip-text text-transparent
-              transform transition-all duration-1000 animation-delay-500
-              ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
-            `}>
-              ACCA Real World Challenge
-            </h2>
           </div>
 
           {/* Subtitle with fade-in animation */}

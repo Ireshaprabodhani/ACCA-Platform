@@ -6,13 +6,21 @@ const caseCtrl = require('../controllers/caseController');
 const videoCtrl = require('../controllers/videoController');
 const adminAuth = require('../middleware/adminMiddleware');
 
+// Entry Logo
+router.get('/logo',       adminAuth, adminCtrl.getEntryLogo); 
+router.get('/logo/:id',   adminAuth, adminCtrl.updateLogo);   
+
+/* ---- CREATE / UPDATE / DELETE ---- */
+router.post('/logo',        adminAuth, adminCtrl.uploadLogo);
+router.put('/logo/:id',     adminAuth, adminCtrl.updateLogo);
+router.delete('/logo/:id',  adminAuth, adminCtrl.deleteLogo);
+
 // Admin Auth
 router.post('/login', adminCtrl.login);
 
 // Quiz Management
-/* ---- LIST + GET ONE ---- */
-router.get('/quiz',       adminAuth, quizCtrl.listQuizQuestions); //  →  /api/admin/quiz
-router.get('/quiz/:id',   adminAuth, quizCtrl.getQuizQuestion);   //  →  /api/admin/quiz/:id
+router.get('/quiz',       adminAuth, quizCtrl.listQuizQuestions); 
+router.get('/quiz/:id',   adminAuth, quizCtrl.getQuizQuestion);   
 
 /* ---- CREATE / UPDATE / DELETE ---- */
 router.post('/quiz',        adminAuth, quizCtrl.addQuizQuestion);

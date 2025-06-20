@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
-  Users, ListTodo, BookOpen, Video, BarChart2, FileBarChart2
+  Users, ListTodo, BookOpen, Video, BarChart2, FileBarChart2 ,ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -12,7 +12,8 @@ const links = [
   { to: "/admin/case-questions", label: "Case Qns", icon: <BookOpen size={20} /> },
   { to: "/admin/videos", label: "Videos", icon: <Video size={20} /> },
   { to: "/admin/results", label: "Results", icon: <FileBarChart2 size={20} /> },
-  { to: "/admin/leaderboard", label: "Leaderboard", icon: <BarChart2 size={20} /> }
+  { to: "/admin/leaderboard", label: "Leaderboard", icon: <BarChart2 size={20} /> },
+  { to: "/admin/entry-logo", label: "Entry Logo", icon: <ImageIcon size={20} /> }
 ];
 
 const Sidebar = ({ open }) => {

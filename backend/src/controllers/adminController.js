@@ -6,8 +6,86 @@ const QuizQuestion = require('../models/QuizQuestion');
 const CaseQuestion = require('../models/CaseQuestion');
 const Video = require('../models/Video');
 const Score = require('../models/Score');
+const Logo = require('../models/Logo');
+const cloudinary = require('cloudinary').v2; 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+
+// entry logo upload file
+exports.uploadLogo = async (req, res) => {
+  try {
+    const { file } = req;
+
+    if (!file) {
+      return res.status(400).json({ message: 'Logo file is required' });
+    }
+
+    // Example using Cloudinary
+    const result = await cloudinary.uploader.upload(file.path);
+
+    const newLogo = new Logo({ url: result.secure_url });
+    await newLogo.save();
+
+    res.status(201).json({ message: 'Logo uploaded successfully', logo: newLogo });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// update entry logo
+exports.updateLogo = async (req, res) => {
+  try {
+    const { file } = req;
+    if (!file) return res.status(400).json({ message: 'Logo file is required' });
+
+    const result = await cloudinary.uploader.upload(file.path);
+
+    let logo = await Logo.findOne().sort({ createdAt: -1 });
+    if (logo) {
+      logo.url = result.secure_url;
+      await logo.save();
+    } else {
+      logo = await Logo.create({ url: result.secure_url });
+    }
+
+    res.json({ message: 'Logo updated successfully', logo });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// delete entry logo
+exports.deleteLogo = async (req, res) => {
+  try {
+    const logo = await Logo.findOne().sort({ createdAt: -1 });
+    if (!logo) return res.status(404).json({ message: 'Logo not found' });
+
+    await Logo.findByIdAndDelete(logo._id);
+
+    res.json({ message: 'Logo deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// get entry logo
+exports.getEntryLogo = async (req, res) => {
+  try {
+    const logo = await Logo.findOne().sort({ createdAt: -1 });
+    if (!logo) {
+      return res.status(404).json({ message: 'No entry logo found' });
+    }
+
+    res.json({ logo });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
 
 // POST /admin/login
 exports.login = async (req, res) => {
