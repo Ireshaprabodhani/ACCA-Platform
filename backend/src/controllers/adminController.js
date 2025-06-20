@@ -29,7 +29,6 @@ exports.login = async (req, res) => {
   res.json({ token, role: 'admin' });
 };
 
-// entry logo upload file
 exports.uploadLogo = async (req, res) => {
   try {
     if (!req.file) {
@@ -38,13 +37,31 @@ exports.uploadLogo = async (req, res) => {
 
     console.log('Uploaded file:', req.file); // Debug log
 
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    // Use cloudinary for consistency or local storage
+    let imageUrl;
+    
+    if (req.file.path) {
+      // If using cloudinary (recommended)
+      const result = await cloudinary.uploader.upload(req.file.path);
+      imageUrl = result.secure_url;
+    } else {
+      // If using local storage
+      imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    }
 
-    const logo = new EntryLogo({ url: imageUrl });
-    await logo.save();
+    // Check if logo already exists and update it, or create new one
+    let logo = await Logo.findOne().sort({ createdAt: -1 });
+    
+    if (logo) {
+      logo.url = imageUrl;
+      await logo.save();
+    } else {
+      logo = new Logo({ url: imageUrl });
+      await logo.save();
+    }
 
-    res.status(201).json({ 
-      message: 'Logo uploaded successfully', 
+    res.status(201).json({
+      message: 'Logo uploaded successfully',
       logo: {
         _id: logo._id,
         url: logo.url
@@ -56,11 +73,13 @@ exports.uploadLogo = async (req, res) => {
   }
 };
 
-// update entry logo
+// Update logo (PUT)
 exports.updateLogo = async (req, res) => {
   try {
     const { file } = req;
-    if (!file) return res.status(400).json({ message: 'Logo file is required' });
+    if (!file) {
+      return res.status(400).json({ message: 'Logo file is required' });
+    }
 
     const result = await cloudinary.uploader.upload(file.path);
 
@@ -74,38 +93,42 @@ exports.updateLogo = async (req, res) => {
 
     res.json({ message: 'Logo updated successfully', logo });
   } catch (error) {
+    console.error('Update logo error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// delete entry logo
+// Delete logo (DELETE)
 exports.deleteLogo = async (req, res) => {
   try {
     const logo = await Logo.findOne().sort({ createdAt: -1 });
-    if (!logo) return res.status(404).json({ message: 'Logo not found' });
+    if (!logo) {
+      return res.status(404).json({ message: 'Logo not found' });
+    }
 
     await Logo.findByIdAndDelete(logo._id);
 
     res.json({ message: 'Logo deleted successfully' });
   } catch (error) {
+    console.error('Delete logo error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// get entry logo
+// Get logo (GET)
 exports.getEntryLogo = async (req, res) => {
   try {
     const logo = await Logo.findOne().sort({ createdAt: -1 });
     if (!logo) {
-      return res.status(404).json({ message: 'No entry logo found' });
+      return res.status(404).json({ message: 'No logo found' });
     }
 
     res.json({ logo });
   } catch (error) {
+    console.error('Get logo error:', error);
     res.status(500).json({ message: error.message });
   }
 };
-
 // get users 
 exports.getUsers = async (req, res) => {
   try {

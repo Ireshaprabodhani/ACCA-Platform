@@ -12,11 +12,14 @@ const upload = require('../middleware/upload');
 // GET logo
 router.get('/logo', adminAuth, adminCtrl.getEntryLogo);
 
+// POST logo - upload new logo
 router.post('/logo', adminAuth, upload.single('logo'), adminCtrl.uploadLogo);
-router.put('/logo/:id', adminAuth, upload.single('logo'), adminCtrl.updateLogo);
 
-// DELETE logo
-router.delete('/logo/:id', adminAuth, adminCtrl.deleteLogo);
+// PUT logo - update existing logo (remove :id since you're updating the latest one)
+router.put('/logo', adminAuth, upload.single('logo'), adminCtrl.updateLogo);
+
+// DELETE logo - delete logo (remove :id since you're deleting the latest one)
+router.delete('/logo', adminAuth, adminCtrl.deleteLogo);
 
 
 // Admin Auth
