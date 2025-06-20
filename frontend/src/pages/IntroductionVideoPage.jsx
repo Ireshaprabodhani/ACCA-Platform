@@ -6,7 +6,7 @@ import axios from 'axios';
 /* ─── config ─────────────────────────────────────────────── */
 /* Use Vite/CRA env var in prod, fall back to localhost in dev */
 const API_BASE =
-  import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/';
+  import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
 /* ─── helpers ────────────────────────────────────────────── */
 const isYouTubeUrl = (u = '') =>
