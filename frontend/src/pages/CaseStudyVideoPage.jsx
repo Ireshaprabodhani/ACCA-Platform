@@ -5,7 +5,8 @@ import axios from 'axios';
 
 /* ─── config ─────────────────────────────────────────────── */
 const API_BASE =
-  import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
+  import.meta.env.VITE_API_URL ||
+  'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
 /* ─── helpers ────────────────────────────────────────────── */
 const getYouTubeId = (raw = '') => {
@@ -13,18 +14,18 @@ const getYouTubeId = (raw = '') => {
   try {
     const url = new URL(raw);
 
-    // youtu.be/abc123
+    /* youtu.be/abc123 */
     if (url.hostname === 'youtu.be') return url.pathname.slice(1);
 
-    // youtube.com/watch?v=abc123
+    /* youtube.com/watch?v=abc123 */
     const v = url.searchParams.get('v');
     if (v) return v;
 
-    // youtube.com/embed/abc123
+    /* youtube.com/embed/abc123 */
     const m = url.pathname.match(/\/embed\/([^/?]+)/);
     if (m) return m[1];
   } catch {
-    /* ignore bad URLs */
+    /* ignore */
   }
   return '';
 };
@@ -36,16 +37,18 @@ export default function CaseVideoPage() {
   /* refs */
   const videoRef = useRef(null);
   const playerRef = useRef(null);
-  const lastTime = useRef(0);
+  const watchdog = useRef(0);
   const intervalRef = useRef(null);
+  const resumeHandlerRef = useRef(null);
 
   /* state */
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState('');
+  const [blocked, setBlocked] = useState(false); // autoplay blocked?
 
-  /* 1️⃣  fetch video URL */
+  /* 1️⃣ fetch URL */
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return nav('/login');
@@ -60,21 +63,19 @@ export default function CaseVideoPage() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('[case‑video]', err);
         if (err.response?.status === 401) nav('/login');
         else setError('Failed to load video. Please try again.');
         setLoading(false);
       });
   }, [nav]);
 
-  /* 2️⃣  YouTube setup */
+  /* 2️⃣ YouTube */
   useEffect(() => {
     if (!url || loading) return;
-
     const id = getYouTubeId(url);
-    if (!id) return; // not a YouTube link → handled by native video section
+    if (!id) return; // not YouTube
 
-    /* load IFrame API once */
+    /* load API once */
     if (!window.YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
@@ -94,23 +95,45 @@ export default function CaseVideoPage() {
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
+          mute: 0, // attempt sound‑on
         },
         events: {
-          onReady: (e) => e.target.playVideo(),
+          onReady: (e) => {
+            e.target.playVideo(); // try
+            /* detect block after 1.5 s */
+            setTimeout(() => {
+              if (
+                e.target.getPlayerState() !==
+                window.YT.PlayerState.PLAYING
+              ) {
+                setBlocked(true);
+                /* one‑time click to resume */
+                const resume = () => {
+                  e.target.playVideo();
+                  setBlocked(false);
+                  document.removeEventListener('click', resume);
+                };
+                resumeHandlerRef.current = resume;
+                document.addEventListener('click', resume);
+              }
+            }, 1500);
+          },
           onStateChange: ({ data, target }) => {
+            /* anti‑seek & auto‑resume */
             if (data === window.YT.PlayerState.PLAYING) {
               clearInterval(intervalRef.current);
               intervalRef.current = setInterval(() => {
                 const t = target.getCurrentTime();
-                if (t - lastTime.current > 1.5)
-                  target.seekTo(lastTime.current, true);
-                else lastTime.current = t;
+                if (t - watchdog.current > 1.5)
+                  target.seekTo(watchdog.current, true);
+                else watchdog.current = t;
               }, 500);
             }
             if (data === window.YT.PlayerState.PAUSED) {
               setTimeout(() => {
                 if (
-                  target.getPlayerState() === window.YT.PlayerState.PAUSED
+                  target.getPlayerState() ===
+                  window.YT.PlayerState.PAUSED
                 )
                   target.playVideo();
               }, 800);
@@ -121,7 +144,9 @@ export default function CaseVideoPage() {
             }
           },
           onError: () =>
-            setError('Error playing video. Please refresh the page.'),
+            setError(
+              'Error playing video. Please refresh the page or contact support.'
+            ),
         },
       });
     };
@@ -129,22 +154,38 @@ export default function CaseVideoPage() {
     if (window.YT && window.YT.Player) init();
     else window.onYouTubeIframeAPIReady = init;
 
-    return () => clearInterval(intervalRef.current);
+    return () => {
+      clearInterval(intervalRef.current);
+      document.removeEventListener('click', resumeHandlerRef.current);
+    };
   }, [url, loading]);
 
-  /* 3️⃣  native video anti‑seek */
+  /* 3️⃣ native video */
   useEffect(() => {
     if (!url || getYouTubeId(url) || loading) return;
-
     const v = videoRef.current;
     if (!v) return;
+
+    const playWithSound = () =>
+      v.play().catch(() => {
+        setBlocked(true);
+        /* user click resumes */
+        const resume = () => {
+          v.play().then(() => {
+            setBlocked(false);
+            document.removeEventListener('click', resume);
+          });
+        };
+        resumeHandlerRef.current = resume;
+        document.addEventListener('click', resume);
+      });
 
     const onPlay = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        if (v.currentTime - lastTime.current > 1.5)
-          v.currentTime = lastTime.current;
-        else lastTime.current = v.currentTime;
+        if (v.currentTime - watchdog.current > 1.5)
+          v.currentTime = watchdog.current;
+        else watchdog.current = v.currentTime;
       }, 500);
     };
 
@@ -162,23 +203,18 @@ export default function CaseVideoPage() {
     v.addEventListener('ended', onEnded);
     v.addEventListener('pause', onPause);
 
-    /* autoplay (muted) */
-    v.muted = true;
-    v.play()
-      .then(() => setTimeout(() => (v.muted = false), 1000))
-      .catch(() =>
-        setError('Autoplay blocked – click to start the video.')
-      );
+    playWithSound(); // initial attempt
 
     return () => {
       v.removeEventListener('play', onPlay);
       v.removeEventListener('ended', onEnded);
       v.removeEventListener('pause', onPause);
       clearInterval(intervalRef.current);
+      document.removeEventListener('click', resumeHandlerRef.current);
     };
   }, [url, loading]);
 
-  /* 4️⃣  UI guards */
+  /* 4️⃣ UI guards */
   if (loading)
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -203,11 +239,22 @@ export default function CaseVideoPage() {
       </div>
     );
 
-  /* 5️⃣  render */
+  /* 5️⃣ render */
   const isYT = Boolean(getYouTubeId(url));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 text-white flex flex-col items-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 text-white flex flex-col items-center p-4 relative justify-center">
+      {/* Autoplay‑blocked overlay */}
+      {blocked && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
+          <button
+            className="bg-green-600 hover:bg-green-700 text-lg font-bold px-6 py-4 rounded-full shadow-xl"
+          >
+            Click to start the video with sound
+          </button>
+        </div>
+      )}
+
       <h1 className="text-3xl font-bold mb-6 text-center">Case Study Video</h1>
 
       <div className="w-full max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl">
@@ -225,8 +272,6 @@ export default function CaseVideoPage() {
           <video
             ref={videoRef}
             src={url}
-            autoPlay
-            muted
             controls={false}
             disablePictureInPicture
             controlsList="nodownload noplaybackrate"
