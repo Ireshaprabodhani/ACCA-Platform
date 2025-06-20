@@ -10,7 +10,7 @@ const BLANK_FORM = { type: 'intro', url: '' };
 
 const api = axios.create({
   baseURL : 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
-  headers : { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } // admin token
+  headers : {  Authorization: `Bearer ${localStorage.getItem('token')}` } // admin token
 });
 
 export default function VideosPage () {
