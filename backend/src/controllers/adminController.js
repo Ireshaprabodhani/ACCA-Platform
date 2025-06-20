@@ -48,7 +48,6 @@ exports.uploadLogo = async (req, res) => {
   }
 };
 
-
 // update entry logo
 exports.updateLogo = async (req, res) => {
   try {
