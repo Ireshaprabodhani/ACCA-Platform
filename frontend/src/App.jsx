@@ -21,6 +21,7 @@ import ResultsPage from './admin/pages/ResultsPage';
 import AdminLoginPage from './admin/pages/AdminLoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import EntryLogoManager from './admin/pages/EnryLogo';
 import './App.css';
 
 
@@ -54,6 +55,7 @@ function App() {
           <Route path="quiz-attempts" element={<QuizAttemptsPage />} />
           <Route path="case-attempts" element={<CaseAttemptsPage />} />
           <Route path="results" element={<ResultsPage />} />
+          <Route path="entry-logo" element={<EntryLogoManager />} />
         </Route>
 
       </Routes>
