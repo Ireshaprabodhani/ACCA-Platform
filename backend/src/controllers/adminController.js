@@ -36,15 +36,23 @@ exports.uploadLogo = async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    console.log('Uploaded file:', req.file); // Debug log
+
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
 
     const logo = new EntryLogo({ url: imageUrl });
     await logo.save();
 
-    res.status(201).json({ message: 'Logo uploaded successfully', logo });
+    res.status(201).json({ 
+      message: 'Logo uploaded successfully', 
+      logo: {
+        _id: logo._id,
+        url: logo.url
+      }
+    });
   } catch (err) {
     console.error('Upload logo error:', err);
-    res.status(500).json({ message: 'Failed to upload logo' });
+    res.status(500).json({ message: 'Failed to upload logo', error: err.message });
   }
 };
 
