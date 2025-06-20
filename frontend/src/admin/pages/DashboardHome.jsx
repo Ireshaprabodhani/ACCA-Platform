@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, ListTodo, BookOpen, Video } from 'lucide-react';
+import { Users, ListTodo, BookOpen, Video, LogOut } from 'lucide-react';
 import axios from 'axios';
 
 const StatCard = ({ icon, label, value, color }) => (
@@ -34,13 +34,46 @@ const DashboardHome = () => {
     .then(({ data }) => setStats(data))
     .catch(err => {
       console.error('Failed to fetch stats:', err);
-      // optionally, set error state here
     });
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await axios.post('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/logout', {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('user');
+
+      // Redirect to external homepage
+      window.location.href = 'https://main.d1vjhvv9srhnme.amplifyapp.com/';
+    }
+  };
+
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Quick Stats</h2>
+      {/* Header with Logout */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Quick Stats</h2>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
+      </div>
+
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           icon={<Users size={20} />}
