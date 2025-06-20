@@ -1,63 +1,106 @@
-// src/pages/IntroductionVideoPage.jsx
-import React, { useRef, useState, useEffect } from 'react';
+/* src/pages/IntroductionVideoPage.jsx */
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-/* ───── helpers ─────────────────────────────── */
-const isYouTubeUrl = (u) => /youtu\.?be/.test(u);
-const getYouTubeId = (raw) => {
+/* ─── config ─────────────────────────────────────────────── */
+/* Use Vite/CRA env var in prod, fall back to localhost in dev */
+const API_BASE =
+  import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/';
+
+/* ─── helpers ────────────────────────────────────────────── */
+const isYouTubeUrl = (u = '') =>
+  /youtu\.?be/.test(u) || /youtube\.com/.test(u);
+
+const getYouTubeId = (raw = '') => {
   try {
     const url = new URL(raw);
+
+    /*  youtu.be/abc123  */
     if (url.hostname === 'youtu.be') return url.pathname.slice(1);
-    if (url.pathname.startsWith('/watch')) return url.searchParams.get('v');
-    if (url.pathname.startsWith('/embed/')) return url.pathname.split('/embed/')[1];
-  } catch { /**/ }
+
+    /*  youtube.com/watch?v=abc123  */
+    if (url.pathname.startsWith('/watch'))
+      return url.searchParams.get('v');
+
+    /*  youtube.com/embed/abc123  */
+    if (url.pathname.startsWith('/embed/'))
+      return url.pathname.split('/embed/')[1];
+  } catch {
+    /* ignore bad URLs */
+  }
   return '';
 };
+
 const loadYT = () =>
-  new Promise((res) => {
-    if (window.YT?.Player) return res(window.YT);
+  new Promise((resolve) => {
+    if (window.YT?.Player) return resolve(window.YT);
     const s = document.createElement('script');
     s.src = 'https://www.youtube.com/iframe_api';
     document.body.appendChild(s);
-    window.onYouTubeIframeAPIReady = () => res(window.YT);
+    window.onYouTubeIframeAPIReady = () => resolve(window.YT);
   });
 
-/* ───── component ───────────────────────────── */
+/* ─── component ──────────────────────────────────────────── */
 export default function IntroductionVideoPage() {
-  const [url, setUrl] = useState('');
-  const [isPlaying, setPlaying] = useState(true);
-  const [ended, setEnded] = useState(false);
   const nav = useNavigate();
-  const vidRef = useRef(null);
-  const ytRef  = useRef(null);
-  const watch  = useRef(0);
 
-  /* 1️⃣ redirect if quiz already done */
+  /*  component state  */
+  const [url, setUrl] = useState('');
+  const [playing, setPlaying] = useState(true);
+  const [ended, setEnded] = useState(false);
+  const [error, setError] = useState('');
+
+  /*  refs  */
+  const vidRef = useRef(null);
+  const ytRef = useRef(null);
+  const watchDog = useRef(0);
+
+  /* 1️⃣  Gate‑keep: already completed quiz? */
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return nav('/login');
-    axios.get('/api/quiz/has-attempted?language=English',
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    .then(({data}) => data.hasAttempted && nav('/thank-you'))
-    .catch(console.error);
+    if (!token) {
+      nav('/login');
+      return;
+    }
+
+    axios
+      .get(`${API_BASE}/api/quiz/has-attempted?language=English`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ data }) => data.hasAttempted && nav('/thank-you'))
+      .catch((err) => console.error('[has-attempted]', err));
   }, [nav]);
 
-  /* 2️⃣ fetch intro video url */
+  /* 2️⃣  Fetch intro‑video URL */
   useEffect(() => {
-    axios.get('/api/video/intro', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    })
-    .then(({data}) => setUrl(data.url || ''))
-    .catch(console.error);
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    axios
+      .get(`${API_BASE}/api/video/intro`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ data }) => {
+        if (data?.url) setUrl(data.url);
+        else setError('No introduction video configured.');
+      })
+      .catch((err) => {
+        console.error('[intro-video]', err);
+        setError('Could not load introduction video.');
+      });
   }, []);
 
-  /* 3️⃣ YouTube setup */
+  /* 3️⃣  YouTube setup */
   useEffect(() => {
     if (!isYouTubeUrl(url)) return;
+
     const id = getYouTubeId(url);
-    if (!id) return;                   // <- guard against invalid ID
+    if (!id) {
+      setError('Invalid YouTube URL.');
+      return;
+    }
+
     loadYT().then((YT) => {
       ytRef.current = new YT.Player('yt-player', {
         height: 450,
@@ -66,39 +109,84 @@ export default function IntroductionVideoPage() {
         playerVars: { autoplay: 1, playsinline: 1, controls: 0, rel: 0 },
         events: {
           onReady: (e) => e.target.playVideo(),
-          onStateChange: ({data, target}) => {
-            if (data === YT.PlayerState.ENDED) setEnded(true);
+          onStateChange: ({ data, target }) => {
             if (data === YT.PlayerState.PLAYING) {
-              const int = setInterval(() => {
+              const interval = setInterval(() => {
                 const t = target.getCurrentTime();
-                if (t - watch.current > 1.5) target.seekTo(watch.current, true);
-                else watch.current = t;
+                if (t - watchDog.current > 1.5)
+                  target.seekTo(watchDog.current, true);
+                else watchDog.current = t;
               }, 1000);
-              const clear = () => clearInterval(int);
-              window.addEventListener('beforeunload', clear, { once: true });
+
+              /* clear if paused / ended */
+              const clear = () => clearInterval(interval);
+              target.addEventListener('onStateChange', ({ data }) => {
+                if (
+                  data === YT.PlayerState.PAUSED ||
+                  data === YT.PlayerState.ENDED
+                )
+                  clear();
+              });
             }
+            if (data === YT.PlayerState.ENDED) setEnded(true);
           },
         },
       });
     });
+
     return () => ytRef.current?.destroy?.();
   }, [url]);
 
-  /* 4️⃣ native video anti‑seek */
+  /* 4️⃣  HTML‑5 anti‑seek */
   useEffect(() => {
     if (!vidRef.current || isYouTubeUrl(url)) return;
+
     const v = vidRef.current;
-    const int = setInterval(() => {
-      if (v.currentTime - watch.current > 1.5) v.currentTime = watch.current;
-      else watch.current = v.currentTime;
+    const i = setInterval(() => {
+      if (v.currentTime - watchDog.current > 1.5)
+        v.currentTime = watchDog.current;
+      else watchDog.current = v.currentTime;
     }, 1000);
-    return () => clearInterval(int);
+
+    return () => clearInterval(i);
   }, [url]);
 
-  /* ───── render ─────────────────────────────── */
-  if (!url)                   // still loading
-    return <div className="h-screen flex items-center justify-center">Loading…</div>;
+  /* 5️⃣  Controls */
+  const togglePlay = () => {
+    if (!vidRef.current || isYouTubeUrl(url)) return;
+    if (vidRef.current.paused) {
+      vidRef.current.play();
+      setPlaying(true);
+    } else {
+      vidRef.current.pause();
+      setPlaying(false);
+    }
+  };
 
+  const fullScreen = () => {
+    const v = vidRef.current;
+    if (!v || isYouTubeUrl(url)) return;
+    (v.requestFullscreen ||
+      v.webkitRequestFullscreen ||
+      v.msRequestFullscreen)?.call(v);
+  };
+
+  /* ─── render‑guards ─────────────────────────── */
+  if (error)
+    return (
+      <div className="h-screen flex items-center justify-center text-red-600">
+        {error}
+      </div>
+    );
+
+  if (!url)
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Loading…
+      </div>
+    );
+
+  /* ─── render ────────────────────────────────── */
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6">
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-4xl p-8 flex flex-col items-center">
@@ -106,43 +194,62 @@ export default function IntroductionVideoPage() {
           📽️ Introduction Video
         </h1>
 
+        {/* video frame */}
         {isYouTubeUrl(url) ? (
-          <div id="yt-player" className="rounded-xl overflow-hidden shadow-lg w-full" />
+          <div
+            id="yt-player"
+            className="rounded-xl overflow-hidden shadow-lg w-full"
+          />
         ) : (
           <video
             ref={vidRef}
             src={url}
             autoPlay
             playsInline
-            className="rounded-xl w-full max-h-[60vh] shadow-lg"
+            controls={false}
             onEnded={() => setEnded(true)}
+            onCanPlay={() => vidRef.current?.play().catch(() => {})}
+            className="rounded-xl w-full max-h-[60vh] shadow-lg"
           />
         )}
 
+        {/* custom controls for native video */}
         {!isYouTubeUrl(url) && (
           <div className="flex gap-4 mt-6">
             <button
-              onClick={() => {vidRef.current[vidRef.current.paused?'play':'pause'](); setPlaying(!vidRef.current.paused);}}
-              className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition">
-              {isPlaying ? '⏸ Pause' : '▶️ Play'}
+              onClick={togglePlay}
+              className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+            >
+              {playing ? '⏸ Pause' : '▶️ Play'}
             </button>
+
             <input
-              type="range" min="0" max="1" step="0.02" defaultValue="1"
-              onChange={(e) => (vidRef.current.volume = e.target.value)}
+              type="range"
+              min="0"
+              max="1"
+              step="0.02"
+              defaultValue="1"
+              onChange={(e) =>
+                (vidRef.current.volume = e.target.value)
+              }
               className="w-32 accent-purple-600"
             />
+
             <button
-              onClick={() => vidRef.current?.requestFullscreen?.()}
-              className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition">
+              onClick={fullScreen}
+              className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+            >
               ⛶ Full Screen
             </button>
           </div>
         )}
 
+        {/* continue after finished */}
         {ended && (
           <button
             onClick={() => nav('/language-selection')}
-            className="mt-8 px-6 py-3 bg-pink-600 text-white rounded-lg font-bold hover:bg-pink-700 transition">
+            className="mt-8 px-6 py-3 bg-pink-600 text-white rounded-lg font-bold hover:bg-pink-700 transition"
+          >
             Continue →
           </button>
         )}
