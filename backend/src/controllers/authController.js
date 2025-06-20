@@ -96,6 +96,16 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.logout = async (req, res) => {
+  try {
+    // You can optionally blacklist the token here if you implement token blacklisting
+    res.status(200).json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Logout failed' });
+  }
+};
+
 
 // forgot password
 exports.forgotPassword = async (req, res) => {
