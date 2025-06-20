@@ -1,21 +1,19 @@
 const express = require('express');
 const router = express.Router();
+
 const adminCtrl = require('../controllers/adminController');
 const quizCtrl = require('../controllers/quizController');
 const caseCtrl = require('../controllers/caseController');
 const videoCtrl = require('../controllers/videoController');
 const adminAuth = require('../middleware/adminMiddleware');
+const upload = require('../middleware/upload');
 
-// Entry Logo
 
 // GET logo
 router.get('/logo', adminAuth, adminCtrl.getEntryLogo);
 
-// POST logo
-router.post('/logo', adminAuth, adminCtrl.uploadLogo);
-
-// PUT logo
-router.put('/logo/:id', adminAuth, adminCtrl.updateLogo);
+router.post('/logo', adminAuth, upload.single('logo'), adminCtrl.uploadLogo);
+router.put('/logo/:id', adminAuth, upload.single('logo'), adminCtrl.updateLogo);
 
 // DELETE logo
 router.delete('/logo/:id', adminAuth, adminCtrl.deleteLogo);
