@@ -14,7 +14,7 @@ const EntryLogoManager = () => {
     const fetchLogo = async () => {
       try {
         const res = await axios.get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/logo', {
-          headers: { Authorization: `Bearer ${token}` },
+           Authorization: `Bearer ${localStorage.getItem('token')}`,
         });
 
         setLogoUrl(res.data.logo.url);

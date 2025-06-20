@@ -11,27 +11,43 @@ const cloudinary = require('cloudinary').v2;
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// POST /admin/login
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  const admin = await Admin.findOne({ email });
+  if (!admin) return res.status(400).json({ message: 'Admin not found' });
+
+  const isMatch = await bcrypt.compare(password, admin.password);
+  if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+  const token = jwt.sign(
+    { id: admin._id, role: 'admin' },   
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' }
+  );
+
+  res.json({ token, role: 'admin' });
+};
 
 // entry logo upload file
 exports.uploadLogo = async (req, res) => {
   try {
-    const { file } = req;
-
-    if (!file) {
-      return res.status(400).json({ message: 'Logo file is required' });
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    // Example using Cloudinary
-    const result = await cloudinary.uploader.upload(file.path);
+    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
 
-    const newLogo = new Logo({ url: result.secure_url });
-    await newLogo.save();
+    const logo = new EntryLogo({ url: imageUrl });
+    await logo.save();
 
-    res.status(201).json({ message: 'Logo uploaded successfully', logo: newLogo });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(201).json({ message: 'Logo uploaded successfully', logo });
+  } catch (err) {
+    console.error('Upload logo error:', err);
+    res.status(500).json({ message: 'Failed to upload logo' });
   }
 };
+
 
 // update entry logo
 exports.updateLogo = async (req, res) => {
@@ -81,28 +97,6 @@ exports.getEntryLogo = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
-
-
-
-
-
-// POST /admin/login
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  const admin = await Admin.findOne({ email });
-  if (!admin) return res.status(400).json({ message: 'Admin not found' });
-
-  const isMatch = await bcrypt.compare(password, admin.password);
-  if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
-
-  const token = jwt.sign(
-    { id: admin._id, role: 'admin' },   
-    process.env.JWT_SECRET,
-    { expiresIn: '1d' }
-  );
-
-  res.json({ token, role: 'admin' });
 };
 
 // get users 
