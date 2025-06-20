@@ -8,7 +8,6 @@ const adminAuth = require('../middleware/adminMiddleware');
 
 // Entry Logo
 router.get('/logo',       adminAuth, adminCtrl.getEntryLogo); 
-router.get('/logo/:id',   adminAuth, adminCtrl.updateLogo);   
 
 /* ---- CREATE / UPDATE / DELETE ---- */
 router.post('/logo',        adminAuth, adminCtrl.uploadLogo);
