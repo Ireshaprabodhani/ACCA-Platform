@@ -1,180 +1,136 @@
-import React, { useState, useEffect, useRef } from 'react';
+// src/admin/pages/EntryLogoPage.jsx
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
+import { X } from 'lucide-react';
 
-const API_BASE = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin';
+const api = axios.create({
+  baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
+  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+});
 
-export default function EntryLogoManager() {
+export default function EntryLogoPage() {
   const [logoUrl, setLogoUrl] = useState('');
-  const [logoId, setLogoId]   = useState('');
-  const [file, setFile]       = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-  const fileInputRef          = useRef(null);   // to open file dialog on “Edit”
+  const [file, setFile] = useState(null);
+  const [open, setOpen] = useState(false);
 
-  /* ------------ auth helper ------------------ */
-  const getAuth = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('No auth token – please log in again.');
-      return null;
-    }
-    return { headers: { Authorization: `Bearer ${token}` } };
-  };
-
-  /* ------------ initial fetch ---------------- */
+  // Load logo on mount
   useEffect(() => {
-    const fetchLogo = async () => {
-      const auth = getAuth();
-      if (!auth) return;
+    const load = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/logo`, auth);
-        if (data.logo) {
-          setLogoUrl(data.logo.url);
-          setLogoId(data.logo._id);
-        }
+        const { data } = await api.get('/logo');
+        setLogoUrl(data.logo?.url || '');
       } catch (err) {
-        if (err.response?.status !== 404) {
-          console.error(err);
-          setError(err.response?.data?.message || err.message);
-        }
+        if (err.response?.status !== 404) toast.error('Failed to load logo');
       }
     };
-    fetchLogo();
+    load();
   }, []);
 
-  /* ------------ file select ------------------- */
-  const handleFileSelect = (e) => {
-    setFile(e.target.files[0]);
-    setError('');
-  };
+  const onFileChange = (e) => setFile(e.target.files[0]);
 
-  /* ------------ upload OR update -------------- */
-  const saveLogo = async () => {
-    if (!file) return alert('Choose an image first.');
-    const auth = getAuth();
-    if (!auth) return;
+  const save = async () => {
+    if (!file) return toast.error('Please choose a logo image');
 
-    const fd = new FormData();
-    fd.append('logo', file);
+    const formData = new FormData();
+    formData.append('logo', file);
 
-    setLoading(true);
-    setError('');
-    try {
-      let res;
-      if (logoId) {
-        /* replace existing */
-        res = await axios.put(`${API_BASE}/logo/${logoId}`, fd, auth);
-        alert('Logo updated.');
-      } else {
-        /* first-time upload */
-        res = await axios.post(`${API_BASE}/logo`, fd, auth);
-        alert('Logo uploaded.');
-      }
+    const method = logoUrl ? 'put' : 'post';
+    toast.promise(
+      api[method]('/logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
+      { loading: 'Saving…', success: 'Saved', error: 'Error' }
+    ).then(res => {
       setLogoUrl(res.data.logo.url);
-      setLogoId(res.data.logo._id);
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || err.message);
-    } finally {
-      setLoading(false);
+      setOpen(false);
       setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    });
   };
 
-  /* ------------ delete ------------------------ */
-  const deleteLogo = async () => {
-    if (!logoId) return;
-    if (!window.confirm('Delete the current logo?')) return;
-
-    const auth = getAuth();
-    if (!auth) return;
-
-    setLoading(true);
-    setError('');
-    try {
-      await axios.delete(`${API_BASE}/logo/${logoId}`, auth);
-      setLogoUrl('');
-      setLogoId('');
-      alert('Logo deleted.');
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || err.message);
-    } finally {
-      setLoading(false);
-    }
+  const del = async () => {
+    if (!window.confirm('Delete the logo?')) return;
+    toast.promise(
+      api.delete('/logo'),
+      { loading: 'Deleting…', success: 'Deleted', error: 'Error' }
+    ).then(() => setLogoUrl(''));
   };
 
-  /* ------------ JSX -------------------------- */
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white rounded shadow mt-8">
-      <h2 className="text-2xl font-bold mb-4">Entry Logo Manager</h2>
+    <div className="max-w-3xl mx-auto p-6">
+      <Toaster position="top-center" />
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Entry Logo</h2>
 
-      {logoUrl ? (
-        <div className="mb-4">
-          <p className="mb-2 font-semibold">Current Logo:</p>
-          <img
-            src={logoUrl}
-            alt="Entry logo"
-            className="max-w-full h-auto rounded shadow"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              setError('Image not found on server.');
-            }}
-          />
-        </div>
-      ) : (
-        <p className="mb-4 italic text-gray-600">No logo uploaded.</p>
-      )}
-
-      {/* hidden file input, opened by “Edit” button */}
-      <input
-        type="file"
-        accept="image/*"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        hidden
-      />
-
-      {/* action buttons */}
-      <div className="flex gap-3">
-        {/* EDIT / UPLOAD */}
         <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={loading}
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+          onClick={() => setOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          {logoId ? 'Edit Logo' : 'Upload Logo'}
+          {logoUrl ? 'Edit' : 'Upload'}
         </button>
+      </div>
 
-        {/* SAVE — appears only after a file is chosen */}
-        {file && (
-          <button
-            onClick={saveLogo}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Saving…' : 'Save'}
-          </button>
-        )}
-
-        {/* DELETE */}
-        {logoId && (
-          <button
-            onClick={deleteLogo}
-            disabled={loading}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? 'Deleting…' : 'Delete'}
-          </button>
+      <div className="bg-white p-6 rounded shadow">
+        {logoUrl ? (
+          <div className="space-y-4">
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="max-w-xs h-auto rounded border"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                toast.error('Image not found');
+              }}
+            />
+            <div>
+              <button
+                onClick={() => setOpen(true)}
+                className="mr-4 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              >
+                Edit
+              </button>
+              <button
+                onClick={del}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-600 italic">No logo uploaded yet.</p>
         )}
       </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-semibold">Upload Logo</h3>
+              <button onClick={() => setOpen(false)}><X size={20} /></button>
+            </div>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={onFileChange}
+              className="w-full border rounded px-2 py-1"
+            />
+
+            <div className="flex justify-end gap-3 pt-3">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-4 py-2 bg-gray-300 rounded"
+              >Cancel</button>
+              <button
+                onClick={save}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
