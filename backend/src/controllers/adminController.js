@@ -28,91 +28,81 @@ exports.login = async (req, res) => {
   res.json({ token, role: 'admin' });
 };
 
+// helper to build public URL
+const buildUrl = (req, filename) =>
+  `${req.protocol}://${req.get('host')}/uploads/${filename}`;
+
+/* ---------- POST /logo --------------------------------------------------- */
 exports.uploadLogo = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    // build a public URL: http://localhost:5000/uploads/<filename>
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const logo = await Logo.create({ url: buildUrl(req, req.file.filename) });
 
-    // if a logo already exists, delete the old file first
-    let logo = await Logo.findOne().sort({ createdAt: -1 });
-    if (logo) {
-      const oldFilename = path.basename(logo.url);  // grab “logo-123.png”
-      await fs.unlink(path.join(__dirname, '..', '..', 'uploads', oldFilename))
-              .catch(() => {}); // ignore “file not found” on first upload
-      logo.url = imageUrl;
-      await logo.save();
-    } else {
-      logo = await Logo.create({ url: imageUrl });
-    }
-
-    res.status(201).json({ message: 'Logo uploaded successfully', logo });
+    res.status(201).json({ message: 'Logo uploaded', logo });
   } catch (err) {
-    console.error('Upload logo error:', err);
+    console.error('uploadLogo:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// PUT  /api/admin/logo
-exports.updateLogo = async (req, res) => {
-  try {
-    /* 1.  Make sure a file was sent */
-    if (!req.file) {
-      return res.status(400).json({ message: 'Logo file is required' });
-    }
-
-    /* 2.  Find the most-recent logo record */
-    let logo = await Logo.findOne().sort({ createdAt: -1 });
-    if (!logo) {
-      return res.status(404).json({ message: 'No logo to update. Upload one first.' });
-    }
-
-    /* 3.  Delete the previous file from disk (ignore “file not found”) */
-    const oldFilename = path.basename(logo.url);
-    await fs.unlink(path.join(__dirname, '..', '..', 'uploads', oldFilename))
-             .catch(() => { /* swallow ENOENT */ });
-
-    /* 4.  Build the new public URL */
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-
-    /* 5.  Save and respond */
-    logo.url = imageUrl;
-    await logo.save();
-
-    res.json({ message: 'Logo updated successfully', logo });
-  } catch (err) {
-    console.error('Update logo error:', err);
-    res.status(500).json({ message: err.message });
-  }
-};
-          // same logic
-
-exports.deleteLogo = async (req, res) => {
+/* ---------- GET /logo ---------------------------------------------------- */
+exports.getLatestLogo = async (req, res) => {
   try {
     const logo = await Logo.findOne().sort({ createdAt: -1 });
+    if (!logo) return res.status(404).json({ message: 'No logo found' });
+    res.json({ logo });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ---------- GET /logo/:id ----------------------------------------------- */
+exports.getLogoById = async (req, res) => {
+  try {
+    const logo = await Logo.findById(req.params.id);
+    if (!logo) return res.status(404).json({ message: 'Logo not found' });
+    res.json({ logo });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ---------- PUT /logo/:id ----------------------------------------------- */
+exports.updateLogoById = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Logo file required' });
+
+    const logo = await Logo.findById(req.params.id);
     if (!logo) return res.status(404).json({ message: 'Logo not found' });
 
-    // remove file from disk
-    const filename = path.basename(logo.url);
-    await fs.unlink(path.join(__dirname, '..', '..', 'uploads', filename))
-            .catch(() => {});
-    await Logo.findByIdAndDelete(logo._id);
+    // delete old file
+    const oldName = path.basename(logo.url);
+    await fs.unlink(path.join(__dirname, '..', '..', 'uploads', oldName)).catch(() => {});
 
-    res.json({ message: 'Logo deleted successfully' });
+    // save new
+    logo.url = buildUrl(req, req.file.filename);
+    await logo.save();
+
+    res.json({ message: 'Logo updated', logo });
   } catch (err) {
-    console.error('Delete logo error:', err);
+    console.error('updateLogoById:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-exports.getEntryLogo = async (req, res) => {
+/* ---------- DELETE /logo/:id -------------------------------------------- */
+exports.deleteLogoById = async (req, res) => {
   try {
-    const logo = await Logo.findOne().sort({ createdAt: -1 });
-    // Return 200 even if nothing yet, so the front-end can decide what to show
-    res.json({ logo: logo || null });
+    const logo = await Logo.findById(req.params.id);
+    if (!logo) return res.status(404).json({ message: 'Logo not found' });
+
+    const filename = path.basename(logo.url);
+    await fs.unlink(path.join(__dirname, '..', '..', 'uploads', filename)).catch(() => {});
+    await Logo.findByIdAndDelete(logo._id);
+
+    res.json({ message: 'Logo deleted' });
   } catch (err) {
-    console.error('Get logo error:', err);
     res.status(500).json({ message: err.message });
   }
 };
