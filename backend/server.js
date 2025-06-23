@@ -4,6 +4,11 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+
+const app = express();
+/* ——— static first ——— */
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
@@ -14,7 +19,7 @@ const adminRoutes = require('./src/routes/adminRoutes');
 
 connectDB();
 
-const app = express();
+
 
 // UPDATED: Use the correct current frontend URL
 const allowedOrigins = [
@@ -63,7 +68,6 @@ app.use(rateLimit({
   message: 'Too many requests—please retry later.'
 }));
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
