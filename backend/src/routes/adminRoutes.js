@@ -9,20 +9,6 @@ const adminAuth = require('../middleware/adminMiddleware');
 const upload = require('../middleware/upload');
 
 
-// create
-router.post('/logo',         adminAuth, upload.single('logo'), adminCtrl.uploadLogo);
-
-// read
-router.get('/logo',          adminAuth, adminCtrl.getLatestLogo);
-router.get('/logo/:id',      adminAuth, adminCtrl.getLogoById);
-
-// update
-router.put('/logo/:id',      adminAuth, upload.single('logo'), adminCtrl.updateLogoById);
-
-// delete
-router.delete('/logo/:id',   adminAuth, adminCtrl.deleteLogoById);
-
-
 // Admin Auth
 router.post('/login', adminCtrl.login);
 
