@@ -7,7 +7,6 @@ const CaseQuestion = require('../models/CaseQuestion');
 const Video = require('../models/Video');
 const Score = require('../models/Score');
 const Logo = require('../models/Logo');
-const cloudinary = require('cloudinary').v2; 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -31,104 +30,61 @@ exports.login = async (req, res) => {
 
 exports.uploadLogo = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    console.log('Uploaded file:', req.file); // Debug log
+    // build a public URL: http://localhost:5000/uploads/<filename>
+    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
 
-    // Use cloudinary for consistency or local storage
-    let imageUrl;
-    
-    if (req.file.path) {
-      // If using cloudinary (recommended)
-      const result = await cloudinary.uploader.upload(req.file.path);
-      imageUrl = result.secure_url;
-    } else {
-      // If using local storage
-      imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    }
-
-    // Check if logo already exists and update it, or create new one
+    // if a logo already exists, delete the old file first
     let logo = await Logo.findOne().sort({ createdAt: -1 });
-    
     if (logo) {
+      const oldFilename = path.basename(logo.url);  // grab “logo-123.png”
+      await fs.unlink(path.join(__dirname, '..', '..', 'uploads', oldFilename))
+              .catch(() => {}); // ignore “file not found” on first upload
       logo.url = imageUrl;
       await logo.save();
     } else {
-      logo = new Logo({ url: imageUrl });
-      await logo.save();
+      logo = await Logo.create({ url: imageUrl });
     }
 
-    res.status(201).json({
-      message: 'Logo uploaded successfully',
-      logo: {
-        _id: logo._id,
-        url: logo.url
-      }
-    });
+    res.status(201).json({ message: 'Logo uploaded successfully', logo });
   } catch (err) {
     console.error('Upload logo error:', err);
-    res.status(500).json({ message: 'Failed to upload logo', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Update logo (PUT)
-exports.updateLogo = async (req, res) => {
-  try {
-    const { file } = req;
-    if (!file) {
-      return res.status(400).json({ message: 'Logo file is required' });
-    }
+exports.updateLogo = exports.uploadLogo;          // same logic
 
-    const result = await cloudinary.uploader.upload(file.path);
-
-    let logo = await Logo.findOne().sort({ createdAt: -1 });
-    if (logo) {
-      logo.url = result.secure_url;
-      await logo.save();
-    } else {
-      logo = await Logo.create({ url: result.secure_url });
-    }
-
-    res.json({ message: 'Logo updated successfully', logo });
-  } catch (error) {
-    console.error('Update logo error:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Delete logo (DELETE)
 exports.deleteLogo = async (req, res) => {
   try {
     const logo = await Logo.findOne().sort({ createdAt: -1 });
-    if (!logo) {
-      return res.status(404).json({ message: 'Logo not found' });
-    }
+    if (!logo) return res.status(404).json({ message: 'Logo not found' });
 
+    // remove file from disk
+    const filename = path.basename(logo.url);
+    await fs.unlink(path.join(__dirname, '..', '..', 'uploads', filename))
+            .catch(() => {});
     await Logo.findByIdAndDelete(logo._id);
 
     res.json({ message: 'Logo deleted successfully' });
-  } catch (error) {
-    console.error('Delete logo error:', error);
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error('Delete logo error:', err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Get logo (GET)
 exports.getEntryLogo = async (req, res) => {
   try {
     const logo = await Logo.findOne().sort({ createdAt: -1 });
-    if (!logo) {
-      return res.status(404).json({ message: 'No logo found' });
-    }
-
-    res.json({ logo });
-  } catch (error) {
-    console.error('Get logo error:', error);
-    res.status(500).json({ message: error.message });
+    // Return 200 even if nothing yet, so the front-end can decide what to show
+    res.json({ logo: logo || null });
+  } catch (err) {
+    console.error('Get logo error:', err);
+    res.status(500).json({ message: err.message });
   }
 };
+
 // get users 
 exports.getUsers = async (req, res) => {
   try {
