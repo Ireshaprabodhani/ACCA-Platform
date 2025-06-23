@@ -3,35 +3,38 @@ import axios from 'axios';
 
 const EntryLogoManager = () => {
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoId, setLogoId] = useState('');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const API_BASE = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin';
 
-  /* ------------------------------------------------
-     Helper – return { headers:{…} } or null on error
-     ------------------------------------------------ */
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       setError('No authentication token found. Please login again.');
       return null;
     }
-    return { headers: { Authorization: `Bearer ${token}` } };
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
   };
 
-  /* ------------------------------------------------
-     Fetch current logo once
-     ------------------------------------------------ */
   useEffect(() => {
     const fetchLogo = async () => {
       const auth = getAuthHeaders();
       if (!auth) return;
+
       try {
         setError('');
         const res = await axios.get(`${API_BASE}/logo`, auth);
-        setLogoUrl(res.data.logo?.url || '');
+        if (res.data.logo) {
+          setLogoUrl(res.data.logo.url);
+          setLogoId(res.data.logo._id);
+        }
       } catch (err) {
         console.error('Fetch logo error:', err);
         if (err.response?.status === 401) {
@@ -40,25 +43,20 @@ const EntryLogoManager = () => {
           setError(`Failed to fetch logo: ${err.response?.data?.message || err.message}`);
         }
         setLogoUrl('');
+        setLogoId('');
       }
     };
+
     fetchLogo();
   }, []);
 
-  /* ------------------------------------------------
-     File input change
-     ------------------------------------------------ */
   const onFileChange = (e) => {
     setFile(e.target.files[0]);
     setError('');
   };
 
-  /* ------------------------------------------------
-     Upload (POST) or update (PUT)
-     ------------------------------------------------ */
   const uploadOrUpdateLogo = async () => {
     if (!file) return alert('Please select a file.');
-
     const auth = getAuthHeaders();
     if (!auth) return;
 
@@ -69,19 +67,30 @@ const EntryLogoManager = () => {
     setError('');
 
     try {
-      const method = logoUrl ? 'put' : 'post';         // decide by URL
-      const res = await axios[method](
-        `${API_BASE}/logo`,
-        formData,
-        {
+      let res;
+
+      if (logoId) {
+        // Update existing logo
+        res = await axios.put(`${API_BASE}/logo/${logoId}`, formData, {
           headers: {
             ...auth.headers,
             'Content-Type': 'multipart/form-data',
           },
-        }
-      );
+        });
+        alert('Logo updated successfully!');
+      } else {
+        // Upload new logo
+        res = await axios.post(`${API_BASE}/logo`, formData, {
+          headers: {
+            ...auth.headers,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        alert('Logo uploaded successfully!');
+      }
+
       setLogoUrl(res.data.logo.url);
-      alert(`Logo ${logoUrl ? 'updated' : 'uploaded'} successfully!`);
+      setLogoId(res.data.logo._id);
     } catch (err) {
       console.error('Upload/update error:', err);
       if (err.response?.status === 401) {
@@ -92,17 +101,13 @@ const EntryLogoManager = () => {
     } finally {
       setLoading(false);
       setFile(null);
-      // reset the file input
       const input = document.querySelector('input[type="file"]');
       if (input) input.value = '';
     }
   };
 
-  /* ------------------------------------------------
-     Delete logo
-     ------------------------------------------------ */
   const deleteLogo = async () => {
-    if (!logoUrl) return;
+    if (!logoId) return;
     if (!window.confirm('Are you sure you want to delete the logo?')) return;
 
     const auth = getAuthHeaders();
@@ -112,8 +117,9 @@ const EntryLogoManager = () => {
     setError('');
 
     try {
-      await axios.delete(`${API_BASE}/logo`, auth);
+      await axios.delete(`${API_BASE}/logo/${logoId}`, auth);
       setLogoUrl('');
+      setLogoId('');
       alert('Logo deleted successfully!');
     } catch (err) {
       console.error('Delete logo error:', err);
@@ -127,9 +133,6 @@ const EntryLogoManager = () => {
     }
   };
 
-  /* ------------------------------------------------
-     JSX
-     ------------------------------------------------ */
   return (
     <div className="max-w-xl mx-auto p-6 bg-white rounded shadow mt-8">
       <h2 className="text-2xl font-bold mb-4">Entry Logo Manager</h2>
@@ -171,10 +174,10 @@ const EntryLogoManager = () => {
           disabled={loading || !file}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Processing…' : (logoUrl ? 'Update Logo' : 'Upload Logo')}
+          {loading ? 'Processing…' : logoId ? 'Update Logo' : 'Upload Logo'}
         </button>
 
-        {logoUrl && (
+        {logoId && (
           <button
             onClick={deleteLogo}
             disabled={loading}
