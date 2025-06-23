@@ -17,6 +17,7 @@ export default function EntryLogoPage() {
   const [logoId, setLogoId]   = useState('');
   const [file,    setFile]    = useState(null);
   const [open,    setOpen]    = useState(false);
+  const [broken,  setBroken]  = useState(false);   // true if src 404s
   const fileInput              = useRef(null);
 
   /* --------------------------------------------------
@@ -25,10 +26,11 @@ export default function EntryLogoPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await api.get('/logo');         // GET latest
+        const { data } = await api.get('/logo');
         if (data.logo) {
           setLogoUrl(data.logo.url);
           setLogoId(data.logo._id);
+          setBroken(false);
         }
       } catch (err) {
         if (err.response?.status !== 404)
@@ -39,32 +41,39 @@ export default function EntryLogoPage() {
   }, []);
 
   /* --------------------------------------------------
-     handlers
+     helpers
   -------------------------------------------------- */
   const choose = () => fileInput.current?.click();
   const onFile = (e) => setFile(e.target.files[0]);
 
+  /* --------------------------------------------------
+     save (upload or replace)
+  -------------------------------------------------- */
   const save = async () => {
     if (!file) return toast.error('Pick an image first');
 
-    const fd = new FormData();
+    const fd   = new FormData();
     fd.append('logo', file);
 
-    const method = logoId ? 'put' : 'post';
     const url    = logoId ? `/logo/${logoId}` : '/logo';
+    const method = logoId ? 'put'             : 'post';
 
     toast.promise(
-      api[method](url, fd, { headers: {} }),           // axios sets content‑type
+      api[method](url, fd, { headers: {} }),
       { loading: 'Saving…', success: 'Saved', error: 'Error' }
     ).then((res) => {
       setLogoUrl(res.data.logo.url);
       setLogoId(res.data.logo._id);
+      setBroken(false);
       setFile(null);
       if (fileInput.current) fileInput.current.value = '';
       setOpen(false);
     });
   };
 
+  /* --------------------------------------------------
+     delete
+  -------------------------------------------------- */
   const del = () =>
     window.confirm('Delete the logo?') &&
     toast.promise(
@@ -73,11 +82,14 @@ export default function EntryLogoPage() {
     ).then(() => {
       setLogoUrl('');
       setLogoId('');
+      setBroken(false);
     });
 
   /* --------------------------------------------------
      UI
   -------------------------------------------------- */
+  const headerBtnLabel = logoUrl && !broken ? 'Edit / Replace' : 'Upload';
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       <Toaster position="top-center" />
@@ -89,21 +101,21 @@ export default function EntryLogoPage() {
           onClick={() => setOpen(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          {logoUrl ? 'Edit / Replace' : 'Upload'}
+          {headerBtnLabel}
         </button>
       </div>
 
       {/* preview card */}
       <div className="bg-white p-6 rounded shadow">
-        {logoUrl ? (
+        {logoUrl && !broken ? (
           <>
             <img
               src={logoUrl}
               alt="Logo"
               className="max-w-xs h-auto rounded border mb-4"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                toast.error('Image not on server');
+              onError={() => {
+                setBroken(true);
+                toast.error('Image not found on server — upload it again');
               }}
             />
             <button
@@ -114,7 +126,14 @@ export default function EntryLogoPage() {
             </button>
           </>
         ) : (
-          <p className="text-gray-600 italic">No logo uploaded.</p>
+          <p className="text-gray-600 italic">No logo available. Upload one below.</p>
+        )}
+
+        {broken && (
+          <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded text-yellow-800">
+            Broken link — the file is missing on the server.<br />
+            Click <span onClick={choose} className="underline cursor-pointer text-blue-600">here</span> or the button above to upload the image again.
+          </div>
         )}
       </div>
 
