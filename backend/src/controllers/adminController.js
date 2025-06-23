@@ -57,7 +57,6 @@ exports.getLatestLogo = async (req, res) => {
   }
 };
 
-/* ---------- GET /logo/:id ----------------------------------------------- */
 exports.getLogoById = async (req, res) => {
   try {
     const logo = await Logo.findById(req.params.id);
@@ -68,7 +67,6 @@ exports.getLogoById = async (req, res) => {
   }
 };
 
-/* ---------- PUT /logo/:id ----------------------------------------------- */
 exports.updateLogoById = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Logo file required' });

@@ -4,66 +4,54 @@ import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { X } from 'lucide-react';
 
+/* --------------------------------------------------
+   Axios instance – token already stored in LS
+-------------------------------------------------- */
 const api = axios.create({
   baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
 });
 
 export default function EntryLogoPage() {
-  /* --------------------------------------------------
-     state
-  -------------------------------------------------- */
+  /* state */
   const [logoUrl, setLogoUrl] = useState('');
-  const [logoId, setLogoId]   = useState('');
   const [file,    setFile]    = useState(null);
   const [open,    setOpen]    = useState(false);
-  const [broken,  setBroken]  = useState(false);   // true if src 404s
-  const fileInput              = useRef(null);
+  const [broken,  setBroken]  = useState(false);           // preview failed
+  const fileInput            = useRef(null);
 
-  /* --------------------------------------------------
-     fetch latest logo on mount
-  -------------------------------------------------- */
+  /* load current logo once */
   useEffect(() => {
-    const load = async () => {
+    (async () => {
       try {
-        const { data } = await api.get('/logo');
+        const { data } = await api.get('/logo');      // GET /logo (latest)
         if (data.logo) {
           setLogoUrl(data.logo.url);
-          setLogoId(data.logo._id);
           setBroken(false);
         }
       } catch (err) {
         if (err.response?.status !== 404)
           toast.error(err.response?.data?.message || 'Load error');
       }
-    };
-    load();
+    })();
   }, []);
 
-  /* --------------------------------------------------
-     helpers
-  -------------------------------------------------- */
-  const choose = () => fileInput.current?.click();
-  const onFile = (e) => setFile(e.target.files[0]);
+  /* helpers */
+  const choose  = () => fileInput.current?.click();
+  const onFile  = (e) => setFile(e.target.files[0]);
 
-  /* --------------------------------------------------
-     save (upload or replace)
-  -------------------------------------------------- */
+  /* upload OR replace – always PUT /logo (backend handles create/replace) */
   const save = async () => {
-    if (!file) return toast.error('Pick an image first');
+    if (!file) return toast.error('Choose an image first');
 
-    const fd   = new FormData();
+    const fd = new FormData();
     fd.append('logo', file);
 
-    const url    = logoId ? `/logo/${logoId}` : '/logo';
-    const method = logoId ? 'put'             : 'post';
-
     toast.promise(
-      api[method](url, fd, { headers: {} }),
+      api.put('/logo', fd),
       { loading: 'Saving…', success: 'Saved', error: 'Error' }
-    ).then((res) => {
+    ).then(res => {
       setLogoUrl(res.data.logo.url);
-      setLogoId(res.data.logo._id);
       setBroken(false);
       setFile(null);
       if (fileInput.current) fileInput.current.value = '';
@@ -71,24 +59,19 @@ export default function EntryLogoPage() {
     });
   };
 
-  /* --------------------------------------------------
-     delete
-  -------------------------------------------------- */
+  /* delete */
   const del = () =>
     window.confirm('Delete the logo?') &&
     toast.promise(
-      api.delete(`/logo/${logoId}`),
+      api.delete('/logo'),
       { loading: 'Deleting…', success: 'Deleted', error: 'Error' }
     ).then(() => {
       setLogoUrl('');
-      setLogoId('');
       setBroken(false);
     });
 
-  /* --------------------------------------------------
-     UI
-  -------------------------------------------------- */
-  const headerBtnLabel = logoUrl && !broken ? 'Edit / Replace' : 'Upload';
+  /* UI */
+  const headerLabel = logoUrl && !broken ? 'Edit / Replace' : 'Upload';
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -100,12 +83,10 @@ export default function EntryLogoPage() {
         <button
           onClick={() => setOpen(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          {headerBtnLabel}
-        </button>
+        >{headerLabel}</button>
       </div>
 
-      {/* preview card */}
+      {/* preview */}
       <div className="bg-white p-6 rounded shadow">
         {logoUrl && !broken ? (
           <>
@@ -115,15 +96,13 @@ export default function EntryLogoPage() {
               className="max-w-xs h-auto rounded border mb-4"
               onError={() => {
                 setBroken(true);
-                toast.error('Image not found on server — upload it again');
+                toast.error('Image missing on server — upload again');
               }}
             />
             <button
               onClick={del}
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Delete Logo
-            </button>
+            >Delete Logo</button>
           </>
         ) : (
           <p className="text-gray-600 italic">No logo available. Upload one below.</p>
@@ -131,8 +110,8 @@ export default function EntryLogoPage() {
 
         {broken && (
           <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded text-yellow-800">
-            Broken link — the file is missing on the server.<br />
-            Click <span onClick={choose} className="underline cursor-pointer text-blue-600">here</span> or the button above to upload the image again.
+            Broken link — file not found.<br />
+            Click <span onClick={choose} className="underline cursor-pointer text-blue-600">here</span> or the button above to upload it again.
           </div>
         )}
       </div>
@@ -153,18 +132,11 @@ export default function EntryLogoPage() {
               onChange={onFile}
               className="w-full border rounded px-2 py-1"
             />
-
             {file && <p className="text-sm text-gray-600 break-all">{file.name}</p>}
 
             <div className="flex justify-end gap-3 pt-3">
-              <button
-                onClick={() => setOpen(false)}
-                className="px-4 py-2 bg-gray-300 rounded"
-              >Cancel</button>
-              <button
-                onClick={save}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
-              >Save</button>
+              <button onClick={() => setOpen(false)} className="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+              <button onClick={save} className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
             </div>
           </div>
         </div>
