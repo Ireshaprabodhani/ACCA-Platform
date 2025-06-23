@@ -1,138 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-const EntryLogoManager = () => {
+const API_BASE = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin';
+
+export default function EntryLogoManager() {
   const [logoUrl, setLogoUrl] = useState('');
-  const [logoId, setLogoId] = useState('');
-  const [file, setFile] = useState(null);
+  const [logoId, setLogoId]   = useState('');
+  const [file, setFile]       = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
+  const fileInputRef          = useRef(null);   // to open file dialog on “Edit”
 
-  const API_BASE = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin';
-
-  const getAuthHeaders = () => {
+  /* ------------ auth helper ------------------ */
+  const getAuth = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      setError('No authentication token found. Please login again.');
+      setError('No auth token – please log in again.');
       return null;
     }
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
+    return { headers: { Authorization: `Bearer ${token}` } };
   };
 
+  /* ------------ initial fetch ---------------- */
   useEffect(() => {
     const fetchLogo = async () => {
-      const auth = getAuthHeaders();
+      const auth = getAuth();
       if (!auth) return;
-
       try {
-        setError('');
-        const res = await axios.get(`${API_BASE}/logo`, auth);
-        if (res.data.logo) {
-          setLogoUrl(res.data.logo.url);
-          setLogoId(res.data.logo._id);
+        const { data } = await axios.get(`${API_BASE}/logo`, auth);
+        if (data.logo) {
+          setLogoUrl(data.logo.url);
+          setLogoId(data.logo._id);
         }
       } catch (err) {
-        console.error('Fetch logo error:', err);
-        if (err.response?.status === 401) {
-          setError('Unauthorized. Please log in again.');
-        } else if (err.response?.status !== 404) {
-          setError(`Failed to fetch logo: ${err.response?.data?.message || err.message}`);
+        if (err.response?.status !== 404) {
+          console.error(err);
+          setError(err.response?.data?.message || err.message);
         }
-        setLogoUrl('');
-        setLogoId('');
       }
     };
-
     fetchLogo();
   }, []);
 
-  const onFileChange = (e) => {
+  /* ------------ file select ------------------- */
+  const handleFileSelect = (e) => {
     setFile(e.target.files[0]);
     setError('');
   };
 
-  const uploadOrUpdateLogo = async () => {
-    if (!file) return alert('Please select a file.');
-    const auth = getAuthHeaders();
+  /* ------------ upload OR update -------------- */
+  const saveLogo = async () => {
+    if (!file) return alert('Choose an image first.');
+    const auth = getAuth();
     if (!auth) return;
 
-    const formData = new FormData();
-    formData.append('logo', file);
+    const fd = new FormData();
+    fd.append('logo', file);
 
     setLoading(true);
     setError('');
-
     try {
       let res;
-
       if (logoId) {
-        // Update existing logo
-        res = await axios.put(`${API_BASE}/logo/${logoId}`, formData, {
-          headers: {
-            ...auth.headers,
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        alert('Logo updated successfully!');
+        /* replace existing */
+        res = await axios.put(`${API_BASE}/logo/${logoId}`, fd, auth);
+        alert('Logo updated.');
       } else {
-        // Upload new logo
-        res = await axios.post(`${API_BASE}/logo`, formData, {
-          headers: {
-            ...auth.headers,
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        alert('Logo uploaded successfully!');
+        /* first-time upload */
+        res = await axios.post(`${API_BASE}/logo`, fd, auth);
+        alert('Logo uploaded.');
       }
-
       setLogoUrl(res.data.logo.url);
       setLogoId(res.data.logo._id);
     } catch (err) {
-      console.error('Upload/update error:', err);
-      if (err.response?.status === 401) {
-        setError('Unauthorized. Please log in again.');
-      } else {
-        setError(`Operation failed: ${err.response?.data?.message || err.message}`);
-      }
+      console.error(err);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
       setFile(null);
-      const input = document.querySelector('input[type="file"]');
-      if (input) input.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
+  /* ------------ delete ------------------------ */
   const deleteLogo = async () => {
     if (!logoId) return;
-    if (!window.confirm('Are you sure you want to delete the logo?')) return;
+    if (!window.confirm('Delete the current logo?')) return;
 
-    const auth = getAuthHeaders();
+    const auth = getAuth();
     if (!auth) return;
 
     setLoading(true);
     setError('');
-
     try {
       await axios.delete(`${API_BASE}/logo/${logoId}`, auth);
       setLogoUrl('');
       setLogoId('');
-      alert('Logo deleted successfully!');
+      alert('Logo deleted.');
     } catch (err) {
-      console.error('Delete logo error:', err);
-      if (err.response?.status === 401) {
-        setError('Unauthorized. Please log in again.');
-      } else {
-        setError(`Delete failed: ${err.response?.data?.message || err.message}`);
-      }
+      console.error(err);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  /* ------------ JSX -------------------------- */
   return (
     <div className="max-w-xl mx-auto p-6 bg-white rounded shadow mt-8">
       <h2 className="text-2xl font-bold mb-4">Entry Logo Manager</h2>
@@ -145,50 +118,63 @@ const EntryLogoManager = () => {
 
       {logoUrl ? (
         <div className="mb-4">
-          <p className="mb-2 font-semibold">Current Logo Preview:</p>
+          <p className="mb-2 font-semibold">Current Logo:</p>
           <img
             src={logoUrl}
-            alt="Entry Logo"
+            alt="Entry logo"
             className="max-w-full h-auto rounded shadow"
             onError={(e) => {
-              console.error('Logo image failed to load:', logoUrl);
               e.target.style.display = 'none';
+              setError('Image not found on server.');
             }}
           />
         </div>
       ) : (
-        <p className="mb-4 italic text-gray-600">No logo uploaded yet.</p>
+        <p className="mb-4 italic text-gray-600">No logo uploaded.</p>
       )}
 
+      {/* hidden file input, opened by “Edit” button */}
       <input
         type="file"
         accept="image/*"
-        onChange={onFileChange}
-        disabled={loading}
-        className="mb-4 w-full p-2 border border-gray-300 rounded"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        hidden
       />
 
+      {/* action buttons */}
       <div className="flex gap-3">
+        {/* EDIT / UPLOAD */}
         <button
-          onClick={uploadOrUpdateLogo}
-          disabled={loading || !file}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading}
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
         >
-          {loading ? 'Processing…' : logoId ? 'Update Logo' : 'Upload Logo'}
+          {logoId ? 'Edit Logo' : 'Upload Logo'}
         </button>
 
+        {/* SAVE — appears only after a file is chosen */}
+        {file && (
+          <button
+            onClick={saveLogo}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Saving…' : 'Save'}
+          </button>
+        )}
+
+        {/* DELETE */}
         {logoId && (
           <button
             onClick={deleteLogo}
             disabled={loading}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
           >
-            {loading ? 'Processing…' : 'Delete Logo'}
+            {loading ? 'Deleting…' : 'Delete'}
           </button>
         )}
       </div>
     </div>
   );
-};
-
-export default EntryLogoManager;
+}
