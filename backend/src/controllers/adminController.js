@@ -54,7 +54,39 @@ exports.uploadLogo = async (req, res) => {
   }
 };
 
-exports.updateLogo = exports.uploadLogo;          // same logic
+// PUT  /api/admin/logo
+exports.updateLogo = async (req, res) => {
+  try {
+    /* 1.  Make sure a file was sent */
+    if (!req.file) {
+      return res.status(400).json({ message: 'Logo file is required' });
+    }
+
+    /* 2.  Find the most-recent logo record */
+    let logo = await Logo.findOne().sort({ createdAt: -1 });
+    if (!logo) {
+      return res.status(404).json({ message: 'No logo to update. Upload one first.' });
+    }
+
+    /* 3.  Delete the previous file from disk (ignore “file not found”) */
+    const oldFilename = path.basename(logo.url);
+    await fs.unlink(path.join(__dirname, '..', '..', 'uploads', oldFilename))
+             .catch(() => { /* swallow ENOENT */ });
+
+    /* 4.  Build the new public URL */
+    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
+    /* 5.  Save and respond */
+    logo.url = imageUrl;
+    await logo.save();
+
+    res.json({ message: 'Logo updated successfully', logo });
+  } catch (err) {
+    console.error('Update logo error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+          // same logic
 
 exports.deleteLogo = async (req, res) => {
   try {
