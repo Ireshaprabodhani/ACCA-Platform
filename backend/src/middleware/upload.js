@@ -1,42 +1,29 @@
-const multer = require('multer');
+// src/middleware/upload.js
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// make sure the folder exists at boot
+const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// Configure storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Save files to uploads folder
-  },
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
-    // Generate unique filename: logo-timestamp-randomnumber.ext
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'logo-' + uniqueSuffix + path.extname(file.originalname));
-  }
+    // logo-1666598263440.png
+    const ext = path.extname(file.originalname);          // .png  / .jpg
+    cb(null, `logo-${Date.now()}${ext}`);
+  },
 });
 
-// File filter to only allow images
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
+  // only allow png / jpeg / svg
+  if (/image\/(png|jpeg|jpg|svg\+xml)/i.test(file.mimetype)) return cb(null, true);
+  cb(new Error('Only image files are allowed'));
 };
 
-// Configure multer
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 1 // Only 1 file at a time
-  },
-  fileFilter: fileFilter
+module.exports = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 },  // 2 MB
+  fileFilter,
 });
-
-module.exports = upload;
