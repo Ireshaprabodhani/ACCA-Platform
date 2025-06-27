@@ -41,13 +41,14 @@ const LanguageSelectionPage = () => {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="bg-white bg-opacity-90 backdrop-blur-xl rounded-3xl p-10 shadow-2xl flex flex-col items-center w-full max-w-xl"
+        className="bg-white bg-opacity-90 backdrop-blur-xl rounded-3xl p-10 shadow-2xl flex flex-col items-center justify-center
+ w-full max-w-xl"
       >
         <motion.h1
           initial={{ y: -30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-600 text-center mb-8"
+          className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-[#616a7c] text-center mb-8"
         >
           🌐 Choose Your Language
         </motion.h1>
