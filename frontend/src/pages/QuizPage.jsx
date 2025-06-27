@@ -108,7 +108,7 @@ export default function QuizPage() {
   if (attempted) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6
-                      bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
+                      bg-[#616a7c]">
         <div className="max-w-md bg-white bg-opacity-95 shadow-xl p-6 text-center rounded-xl">
           <h2 className="text-2xl font-extrabold mb-4 text-purple-700">
             You’ve already taken this quiz
