@@ -6,8 +6,6 @@ const quizCtrl = require('../controllers/quizController');
 const caseCtrl = require('../controllers/caseController');
 const videoCtrl = require('../controllers/videoController');
 const adminAuth = require('../middleware/adminMiddleware');
-const upload = require('../middleware/upload');
-
 
 // Admin Auth
 router.post('/login', adminCtrl.login);
