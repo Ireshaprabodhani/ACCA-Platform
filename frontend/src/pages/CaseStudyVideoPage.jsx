@@ -243,7 +243,7 @@ export default function CaseVideoPage() {
   const isYT = Boolean(getYouTubeId(url));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 text-white flex flex-col items-center p-4 relative justify-center">
+    <div className="min-h-screen bg-[#616a7c] text-white flex flex-col items-center p-4 relative justify-center">
       {/* Autoplay‑blocked overlay */}
       {blocked && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
