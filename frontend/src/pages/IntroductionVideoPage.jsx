@@ -188,7 +188,7 @@ export default function IntroductionVideoPage() {
 
   /* ─── render ────────────────────────────────── */
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#616a7c] p-6">
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-4xl p-8 flex flex-col items-center">
         <h1 className="text-4xl font-extrabold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           📽️ Introduction Video
