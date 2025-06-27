@@ -132,7 +132,7 @@ export default function RegisterPage() {
 
   /* ----- UI ----- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400
+    <div className="min-h-screen bg-[#616a7c]
                     flex items-center justify-center p-6">
       <form onSubmit={handleSubmit}
             className="bg-white bg-opacity-95 backdrop-blur-sm p-8 rounded-2xl shadow-2xl

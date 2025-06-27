@@ -39,7 +39,7 @@ const EntryPage = () => {
   );
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-500 via-indigo-400 to-cyan-300">
+    <div className="min-h-screen relative overflow-hidden bg-[#616a7c]">
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
