@@ -128,7 +128,7 @@ export default function QuizPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6
-                    justify-center">
+                    justify-center bg-[#616a7c]">
       {/* background music */}
       <audio ref={audioRef} src={quizBg} loop />
 
