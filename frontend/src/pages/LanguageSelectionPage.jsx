@@ -33,7 +33,7 @@ const LanguageSelectionPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#616a7c] p-6">
       {/* 🎵 Background Music */}
       <audio ref={audioRef} src={music} preload="auto" />
 
