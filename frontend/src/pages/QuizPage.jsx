@@ -127,8 +127,8 @@ export default function QuizPage() {
   const allAnswered     = answers.every(a => a !== null);
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-6
-                    bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6
+                    justify-center">
       {/* background music */}
       <audio ref={audioRef} src={quizBg} loop />
 
