@@ -13,7 +13,7 @@ const UsersPage = () => {
   const [schoolFilter, setSchoolFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 10;
+  const usersPerPage = 15;
 
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
@@ -23,7 +23,11 @@ const UsersPage = () => {
         headers: tokenHeader,
         params: schoolFilter ? { schoolName: schoolFilter } : {},
       })
-      .then((res) => setRows(res.data))
+      .then((res) => {
+        // Sort newest to oldest by createdAt
+        const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setRows(sorted);
+      })
       .catch(() => toast.error('Failed to load users'));
   };
 
