@@ -5,13 +5,15 @@ import toast, { Toaster } from 'react-hot-toast';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import AddUserModal from '../components/AddUserModal'; // ← import modal
+import AddUserModal from '../components/AddUserModal';
 
 const UsersPage = () => {
   const [rows, setRows] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [schoolFilter, setSchoolFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 1;
 
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
@@ -26,7 +28,7 @@ const UsersPage = () => {
   };
 
   const deleteUser = (id, name) => {
-    if (!window.confirm(`Delete user “${name}” ?`)) return;
+    if (!window.confirm(`Delete user \u201c${name}\u201d ?`)) return;
 
     toast
       .promise(
@@ -44,6 +46,10 @@ const UsersPage = () => {
       Name: `${user.firstName} ${user.lastName}`,
       Email: user.email,
       School: user.schoolName,
+      WhatsApp: user.whatsappNumber,
+      Grade: user.grade,
+      Gender: user.gender,
+      Age: user.age,
       Registered: new Date(user.createdAt).toLocaleDateString(),
       LastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '—',
       Members: user.members?.length || 0,
@@ -61,6 +67,11 @@ const UsersPage = () => {
   useEffect(loadRows, [schoolFilter]);
 
   const toggle = (id) => setExpanded((cur) => (cur === id ? null : id));
+
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = rows.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(rows.length / usersPerPage);
 
   return (
     <div className="p-6">
@@ -102,26 +113,32 @@ const UsersPage = () => {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-center">Email</th>
-              <th className="px-3 py-2 text-center">School</th>
-              <th className="px-3 py-2 text-center">Registered</th>
-              <th className="px-3 py-2 text-center">Last Login</th>
-              <th className="px-3 py-2 text-center">Members</th>
-              <th className="px-3 py-2 text-center">Actions</th>
+              <th className="px-3 py-2">Name</th>
+              <th className="px-3 py-2">Email</th>
+              <th className="px-3 py-2">School</th>
+              <th className="px-3 py-2">WhatsApp</th>
+              <th className="px-3 py-2">Grade</th>
+              <th className="px-3 py-2">Gender</th>
+              <th className="px-3 py-2">Age</th>
+              <th className="px-3 py-2">Registered</th>
+              <th className="px-3 py-2">Last Login</th>
+              <th className="px-3 py-2">Members</th>
+              <th className="px-3 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((u) => (
+            {currentUsers.map((u) => (
               <React.Fragment key={u._id}>
                 <tr className="border-t">
                   <td className="px-3 py-2">{u.firstName} {u.lastName}</td>
-                  <td className="px-3 py-2 text-center">{u.email}</td>
-                  <td className="px-3 py-2 text-center">{u.schoolName}</td>
-                  <td className="px-3 py-2 text-center">{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td className="px-3 py-2 text-center">
-                    {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}
-                  </td>
+                  <td className="px-3 py-2">{u.email}</td>
+                  <td className="px-3 py-2">{u.schoolName}</td>
+                  <td className="px-3 py-2">{u.whatsappNumber}</td>
+                  <td className="px-3 py-2">{u.grade}</td>
+                  <td className="px-3 py-2">{u.gender}</td>
+                  <td className="px-3 py-2">{u.age}</td>
+                  <td className="px-3 py-2">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}</td>
                   <td className="px-3 py-2 text-center">
                     <button
                       onClick={() => toggle(u._id)}
@@ -139,10 +156,9 @@ const UsersPage = () => {
                     </button>
                   </td>
                 </tr>
-
                 {expanded === u._id && (
                   <tr className="bg-blue-50">
-                    <td colSpan={7} className="px-4 py-3">
+                    <td colSpan={11} className="px-4 py-3">
                       {u.members && u.members.length ? (
                         <div className="grid sm:grid-cols-3 gap-3">
                           {u.members.map((m, idx) => (
@@ -163,6 +179,25 @@ const UsersPage = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-center items-center mt-4 gap-2">
+        <button
+          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span className="font-medium">Page {currentPage} of {totalPages}</span>
+        <button
+          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Next
+        </button>
       </div>
 
       {showAddModal && (
