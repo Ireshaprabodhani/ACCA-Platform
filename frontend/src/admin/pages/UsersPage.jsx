@@ -28,7 +28,7 @@ const UsersPage = () => {
   };
 
   const deleteUser = (id, name) => {
-    if (!window.confirm(`Delete user \u201c${name}\u201d ?`)) return;
+    if (!window.confirm(`Delete user “${name}” ?`)) return;
 
     toast
       .promise(
@@ -72,6 +72,12 @@ const UsersPage = () => {
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = rows.slice(indexOfFirstUser, indexOfLastUser);
   const totalPages = Math.ceil(rows.length / usersPerPage);
+
+  const formatDateTime = (datetime) => {
+    if (!datetime) return '—';
+    const date = new Date(datetime);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  };
 
   return (
     <div className="p-6">
@@ -137,8 +143,8 @@ const UsersPage = () => {
                   <td className="px-3 py-2">{u.grade}</td>
                   <td className="px-3 py-2">{u.gender}</td>
                   <td className="px-3 py-2">{u.age}</td>
-                  <td className="px-3 py-2">{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td className="px-3 py-2">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}</td>
+                  <td className="px-3 py-2">{formatDateTime(u.createdAt)}</td>
+                  <td className="px-3 py-2">{formatDateTime(u.lastLoginAt)}</td>
                   <td className="px-3 py-2 text-center">
                     <button
                       onClick={() => toggle(u._id)}
