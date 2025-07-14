@@ -13,7 +13,7 @@ const UsersPage = () => {
   const [schoolFilter, setSchoolFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 1;
+  const usersPerPage = 10;
 
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
