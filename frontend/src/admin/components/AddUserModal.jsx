@@ -21,7 +21,7 @@ const AddUserModal = ({ onClose, onUserAdded }) => {
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleAddMember = () => {
-    setMembers([...members, { firstName: '', lastName: '', email: '', grade: '', gender: '', age: '' }]);
+    setMembers([...members, { firstName: '', lastName: '', email: '', whatsappNumber: '', grade: '', gender: '', age: '' }]);
   };
 
   const handleMemberChange = (index, e) => {
@@ -71,7 +71,9 @@ const AddUserModal = ({ onClose, onUserAdded }) => {
             {members.map((m, i) => (
               <div key={i} className="grid grid-cols-3 gap-2 mb-2">
                 <input name="firstName" placeholder="First Name" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
+                <input name="lastName" placeholder="Last Name" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
                 <input name="email" placeholder="Email" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
+                <input name="whatsappNumber" placeholder="WhatsApp Number" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
                 <input name="grade" placeholder="Grade" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
                 <input name="gender" placeholder="Gender" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
                 <input name="age" type="number" placeholder="Age" onChange={(e) => handleMemberChange(i, e)} className="border p-2 rounded" />
