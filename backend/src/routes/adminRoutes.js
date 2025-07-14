@@ -36,6 +36,7 @@ router.delete ('/video/:type',  adminAuth, videoCtrl.deleteVideo);
 
 
 // User Tracking
+router.post('/users', adminAuth, adminCtrl.addUserWithMembers);
 router.get('/users', adminAuth, adminCtrl.getUsers);
 router.delete('/users/:id', adminAuth, adminCtrl.deleteUser);  
 
