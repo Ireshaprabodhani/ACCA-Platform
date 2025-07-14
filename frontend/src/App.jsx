@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import EntryPage from './pages/EntryPage';
 import AuthPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import IntroductionVideoPage from './pages/IntroductionVideoPage';
 import LanguageSelectionPage from './pages/LanguageSelectionPage';
 import QuizPage from './pages/QuizPage';
@@ -33,7 +32,7 @@ function App() {
       <Routes>
         <Route path="/" element={<EntryPage />} />
         <Route path="/login" element={<AuthPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        {/* <Route path="/register" element={<RegisterPage />} /> */}
         <Route path="/introduction-video" element={<IntroductionVideoPage />} />
         <Route path="/language-selection" element={<LanguageSelectionPage />} />
         <Route path="/quiz" element={<QuizPage />} />

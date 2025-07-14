@@ -186,7 +186,7 @@ const LoginPage = () => {
               <Button label="🚀 Login to start" type="submit" className="w-full mt-6" />
             </form>
 
-            <div className="mt-8 space-y-4 text-center">
+            {/* <div className="mt-8 space-y-4 text-center">
               <Link
                 to="/forgot-password"
                 className="text-yellow-200 hover:text-yellow-100 font-semibold hover:underline transition-colors duration-300"
@@ -210,7 +210,7 @@ const LoginPage = () => {
               >
                 ← Back to Home
               </Link>
-            </div>
+            </div> */}
 
             <p className="mt-6 text-center text-white text-opacity-60 text-sm">
               🎮 Join thousands of students in the ultimate learning challenge
