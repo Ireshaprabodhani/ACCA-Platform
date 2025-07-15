@@ -53,8 +53,12 @@ export default function CaseQuestionsPage() {
     if (invalid) return toast.error('Fill question, 4 options, correct answer');
 
     const req = editId
-      ? api.put(`/case/${editId}`, form)
-      : api.post('/case', form);
+  ? api.put(`/case/${editId}`, form)
+  : api.post('/case', {
+      ...form,
+      correctAnswer: form.answer,  // ✅ Add this
+    });
+
 
     toast
       .promise(req, { loading: 'Saving…', success: 'Saved', error: 'Error' })

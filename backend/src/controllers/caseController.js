@@ -5,11 +5,17 @@ const Video = require('../models/Video');
 
 
 exports.addCaseQuestion = async (req, res) => {
-  const { question, options, correctAnswer, language } = req.body;
-  const newquestion = new CaseQuestion({ question, options, correctAnswer, language });
-  await newquestion.save();
-  res.json({ message: 'Case question added', newquestion });
+  try {
+    const { question, options, correctAnswer, language } = req.body;
+    const newquestion = new CaseQuestion({ question, options, correctAnswer, language });
+    await newquestion.save();
+    res.json({ message: 'Case question added', newquestion });
+  } catch (error) {
+    console.error('Error adding case question:', error.message);
+    res.status(400).json({ message: error.message });
+  }
 };
+
 
 
 exports.updateCaseQuestion = async (req, res) => {
