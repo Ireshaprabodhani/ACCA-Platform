@@ -1,5 +1,5 @@
 /* src/pages/CaseVideoPage.jsx */
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import HeygenChatEmbed from '../components/HeygenChatEmbed';
@@ -30,6 +30,9 @@ const getYouTubeId = (raw = '') => {
   }
   return '';
 };
+
+// New helper to detect Heygen iframe URL
+const isHeygenIframe = (url) => url.includes('labs.heygen.com/guest/streaming-embed');
 
 /* ─── component ──────────────────────────────────────────── */
 export default function CaseVideoPage() {
@@ -163,7 +166,8 @@ export default function CaseVideoPage() {
 
   /* 3️⃣ native video */
   useEffect(() => {
-    if (!url || getYouTubeId(url) || loading) return;
+    // Only run if not YouTube and not Heygen iframe and not loading
+    if (!url || getYouTubeId(url) || isHeygenIframe(url) || loading) return;
     const v = videoRef.current;
     if (!v) return;
 
@@ -242,6 +246,7 @@ export default function CaseVideoPage() {
 
   /* 5️⃣ render */
   const isYT = Boolean(getYouTubeId(url));
+  const isHeygen = isHeygenIframe(url);
 
   return (
     <div className="min-h-screen bg-[#616a7c] text-white flex flex-col items-center p-4 relative justify-center">
@@ -269,6 +274,20 @@ export default function CaseVideoPage() {
               className="absolute top-0 left-0 w-full h-full"
             />
           </div>
+        ) : isHeygen ? (
+          <div
+            className="relative w-full"
+            style={{ paddingBottom: '56.25%' }}
+          >
+            <iframe
+              src={url}
+              title="Heygen Avatar Video"
+              className="absolute top-0 left-0 w-full h-full"
+              allow="microphone; autoplay"
+              allowFullScreen
+              frameBorder="0"
+            />
+          </div>
         ) : (
           <video
             ref={videoRef}
@@ -283,30 +302,29 @@ export default function CaseVideoPage() {
       </div>
 
       <div className="mt-8 text-center">
-          {ended ? (
-      <>
-        <div className="space-y-4 text-center">
-          <p className="text-green-400 text-lg font-semibold">
-            ✅ Video completed successfully!
-          </p>
-          <p className="text-white">You can now interact with our AI Avatar below:</p>
-        </div>
+        {ended ? (
+          <>
+            <div className="space-y-4 text-center">
+              <p className="text-green-400 text-lg font-semibold">
+                ✅ Video completed successfully!
+              </p>
+              <p className="text-white">You can now interact with our AI Avatar below:</p>
+            </div>
 
-        <div className="mt-8 w-full flex justify-center">
-          <HeygenChatEmbed />
-        </div>
+            <div className="mt-8 w-full flex justify-center">
+              <HeygenChatEmbed />
+            </div>
 
-        <div className="mt-6">
-          <button
-            onClick={() => nav('/case-questions')}
-            className="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-full text-lg font-bold transition-transform duration-200 hover:scale-105"
-          >
-            Continue to Questions →
-          </button>
-        </div>
-      </>
-    ) : (
-
+            <div className="mt-6">
+              <button
+                onClick={() => nav('/case-questions')}
+                className="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-full text-lg font-bold transition-transform duration-200 hover:scale-105"
+              >
+                Continue to Questions →
+              </button>
+            </div>
+          </>
+        ) : (
           <div className="space-y-2">
             <p className="text-yellow-200 text-lg">
               📺 Please watch the entire video to continue
