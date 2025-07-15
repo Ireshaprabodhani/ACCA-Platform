@@ -152,8 +152,8 @@ exports.submitCaseAnswers = async (req, res) => {
       const correctAnswer = questions[i]?.answer;
       
       // Ensure both are numbers for comparison
-      const userNum = typeof userAnswer === 'number' ? userAnswer : parseInt(userAnswer, 10);
-      const correctNum = typeof correctAnswer === 'number' ? correctAnswer : parseInt(correctAnswer, 10);
+      const userNum = typeof userAnswer === 'number' ? userAnswer : parseInt(userAnswer, 15);
+      const correctNum = typeof correctAnswer === 'number' ? correctAnswer : parseInt(correctAnswer, 15);
       
       if (!isNaN(userNum) && !isNaN(correctNum) && userNum === correctNum) {
         score++;
