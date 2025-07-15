@@ -22,7 +22,6 @@ const HeygenChatEmbed = () => {
         else if (e.data.action === 'hide') setIsExpanded(false);
       }
     };
-
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
