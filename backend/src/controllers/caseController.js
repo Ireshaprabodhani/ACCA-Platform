@@ -92,10 +92,10 @@ exports.getCaseQuestions = async (req, res) => {
 
     const questions = await CaseQuestion.aggregate([
       { $match: { language } },
-      { $sample: { size: 10 } }
+      { $sample: { size: 15 } }
     ]);
 
-    if (questions.length !== 10) {
+    if (questions.length !== 15) {
       return res.status(500).json({ message: 'Not enough case study questions available.' });
     }
 
@@ -113,7 +113,7 @@ exports.submitCaseAnswers = async (req, res) => {
 
     // Convert answers to numbers to match database format
     const numericAnswers = answers.map(answer => {
-      const num = parseInt(answer, 10);
+      const num = parseInt(answer, 15);
       return isNaN(num) ? answer : num;
     });
 
@@ -137,10 +137,10 @@ exports.submitCaseAnswers = async (req, res) => {
     // Fetch 10 random questions in the specified language
     const questions = await CaseQuestion.aggregate([
       { $match: { language, answer: { $type: 'number' } } },
-      { $sample: { size: 10 } },
+      { $sample: { size: 15 } },
     ]);
       
-    if (questions.length !== 10) {
+    if (questions.length !== 15) {
       return res.status(400).json({ message: 'Insufficient case questions found for selected language.' });
     }
 
