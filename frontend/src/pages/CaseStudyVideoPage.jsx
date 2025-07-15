@@ -1,4 +1,3 @@
-/* src/pages/CaseVideoPage.jsx */
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -10,27 +9,16 @@ const API_BASE =
   'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
 /* ─── helpers ────────────────────────────────────────────── */
-
-
-
 const getYouTubeId = (raw = '') => {
   if (!raw) return '';
   try {
     const url = new URL(raw);
-
-    /* youtu.be/abc123 */
     if (url.hostname === 'youtu.be') return url.pathname.slice(1);
-
-    /* youtube.com/watch?v=abc123 */
     const v = url.searchParams.get('v');
     if (v) return v;
-
-    /* youtube.com/embed/abc123 */
     const m = url.pathname.match(/\/embed\/([^/?]+)/);
     if (m) return m[1];
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return '';
 };
 
@@ -38,24 +26,20 @@ const getYouTubeId = (raw = '') => {
 export default function CaseVideoPage() {
   const nav = useNavigate();
 
-  /* refs */
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const watchdog = useRef(0);
   const intervalRef = useRef(null);
   const resumeHandlerRef = useRef(null);
 
-  /* state */
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState('');
-  const [blocked, setBlocked] = useState(false); 
+  const [blocked, setBlocked] = useState(false);
 
-  /* Detect if URL is Heygen iframe (simplistic check) */
   const isHeygen = url.includes('labs.heygen.com');
 
-  /* 1️⃣ fetch URL */
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return nav('/login');
@@ -76,14 +60,12 @@ export default function CaseVideoPage() {
       });
   }, [nav]);
 
-  /* 2️⃣ YouTube */
   useEffect(() => {
-    if (!url || loading || isHeygen) return; // skip if Heygen iframe
+    if (!url || loading || isHeygen) return;
 
     const id = getYouTubeId(url);
-    if (!id) return; // not YouTube
+    if (!id) return;
 
-    /* load API once */
     if (!window.YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
@@ -103,19 +85,14 @@ export default function CaseVideoPage() {
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
-          mute: 0, // attempt sound‑on
+          mute: 0,
         },
         events: {
           onReady: (e) => {
-            e.target.playVideo(); // try
-            /* detect block after 1.5 s */
+            e.target.playVideo();
             setTimeout(() => {
-              if (
-                e.target.getPlayerState() !==
-                window.YT.PlayerState.PLAYING
-              ) {
+              if (e.target.getPlayerState() !== window.YT.PlayerState.PLAYING) {
                 setBlocked(true);
-                /* one‑time click to resume */
                 const resume = () => {
                   e.target.playVideo();
                   setBlocked(false);
@@ -127,7 +104,6 @@ export default function CaseVideoPage() {
             }, 1500);
           },
           onStateChange: ({ data, target }) => {
-            /* anti‑seek & auto‑resume */
             if (data === window.YT.PlayerState.PLAYING) {
               clearInterval(intervalRef.current);
               intervalRef.current = setInterval(() => {
@@ -139,10 +115,7 @@ export default function CaseVideoPage() {
             }
             if (data === window.YT.PlayerState.PAUSED) {
               setTimeout(() => {
-                if (
-                  target.getPlayerState() ===
-                  window.YT.PlayerState.PAUSED
-                )
+                if (target.getPlayerState() === window.YT.PlayerState.PAUSED)
                   target.playVideo();
               }, 800);
             }
@@ -168,7 +141,6 @@ export default function CaseVideoPage() {
     };
   }, [url, loading, isHeygen]);
 
-  /* 3️⃣ native video */
   useEffect(() => {
     if (!url || getYouTubeId(url) || loading || isHeygen) return;
 
@@ -178,7 +150,6 @@ export default function CaseVideoPage() {
     const playWithSound = () =>
       v.play().catch(() => {
         setBlocked(true);
-        /* user click resumes */
         const resume = () => {
           v.play().then(() => {
             setBlocked(false);
@@ -212,7 +183,7 @@ export default function CaseVideoPage() {
     v.addEventListener('ended', onEnded);
     v.addEventListener('pause', onPause);
 
-    playWithSound(); // initial attempt
+    playWithSound();
 
     return () => {
       v.removeEventListener('play', onPlay);
@@ -223,22 +194,15 @@ export default function CaseVideoPage() {
     };
   }, [url, loading, isHeygen]);
 
-  /* 4️⃣ Heygen iframe video timer */
   useEffect(() => {
     if (!isHeygen) return;
-
-    setEnded(false); // reset on new URL
-
-    const HEYGEN_VIDEO_DURATION = 13 * 60 * 1000; // 13 minutes in ms
-
+    setEnded(false);
     const timer = setTimeout(() => {
       setEnded(true);
-    }, HEYGEN_VIDEO_DURATION);
-
+    }, 13 * 60 * 1000); // 13 minutes
     return () => clearTimeout(timer);
   }, [isHeygen]);
 
-  /* 5️⃣ UI guards */
   if (loading)
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -263,12 +227,10 @@ export default function CaseVideoPage() {
       </div>
     );
 
-  /* 6️⃣ render */
   const isYT = Boolean(getYouTubeId(url));
 
   return (
     <div className="min-h-screen bg-[#616a7c] text-white flex flex-col items-center p-4 relative justify-center">
-      {/* Autoplay‑blocked overlay */}
       {blocked && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
           <button
@@ -292,9 +254,11 @@ export default function CaseVideoPage() {
             <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
           </div>
         ) : isHeygen ? (
-          <div className="w-full flex justify-center">
-            <HeygenChatEmbed iframeUrl={url} />
-          </div>
+          !ended && (
+            <div className="w-full flex justify-center">
+              <HeygenChatEmbed iframeUrl={url} />
+            </div>
+          )
         ) : (
           <video
             ref={videoRef}
@@ -311,22 +275,15 @@ export default function CaseVideoPage() {
       <div className="mt-8 text-center">
         {ended ? (
           <>
-            <div className="space-y-4 text-center">
-              <p className="text-green-400 text-lg font-semibold">
-                ✅ Video completed successfully!
-              </p>
-              <p className="text-white">You can now interact with our AI Avatar below:</p>
-            </div>
+            {isHeygen && (
+              <div className="mt-8 w-full flex justify-center">
+                <HeygenChatEmbed iframeUrl={url} />
+              </div>
+            )}
 
-            <div className="mt-8 w-full flex justify-center">
-              <HeygenChatEmbed />
-              <button
-                className="mt-4 bg-green-600 px-6 py-3 rounded text-white font-semibold"
-                onClick={() => setEnded(true)}
-              >
-                I have finished watching
-              </button>
-            </div>
+            <p className="text-green-400 text-lg font-semibold mt-4">
+              ✅ Video completed successfully!
+            </p>
 
             <div className="mt-6">
               <button
@@ -338,10 +295,13 @@ export default function CaseVideoPage() {
             </div>
           </>
         ) : (
-          
           <div className="space-y-2">
-            <p className="text-yellow-200 text-lg">📺 Please watch the entire video to continue</p>
-            <p className="text-gray-200 text-sm">⚠️ Skipping is disabled • Video must be watched completely</p>
+            <p className="text-yellow-200 text-lg">
+              📺 Please watch the entire video to continue
+            </p>
+            <p className="text-gray-200 text-sm">
+              ⚠️ Skipping is disabled • Video must be watched completely
+            </p>
           </div>
         )}
       </div>
