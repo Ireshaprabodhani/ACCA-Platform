@@ -319,7 +319,13 @@ export default function CaseVideoPage() {
             </div>
 
             <div className="mt-8 w-full flex justify-center">
-              <HeygenChatEmbed onEnded={() => setEnded(true)} />
+              <HeygenChatEmbed />
+              <button
+                className="mt-4 bg-green-600 px-6 py-3 rounded text-white font-semibold"
+                onClick={() => setEnded(true)}
+              >
+                I have finished watching
+              </button>
             </div>
 
             <div className="mt-6">
