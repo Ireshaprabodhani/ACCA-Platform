@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import HeygenChatEmbed from '../components/HeygenChatEmbed';
 
 /* ─── config ─────────────────────────────────────────────── */
 const API_BASE =
@@ -282,19 +283,30 @@ export default function CaseVideoPage() {
       </div>
 
       <div className="mt-8 text-center">
-        {ended ? (
-          <div className="space-y-4">
-            <p className="text-green-400 text-lg font-semibold">
-              ✅ Video completed successfully!
-            </p>
-            <button
-              onClick={() => nav('/case-questions')}
-              className="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-full text-lg font-bold transition-transform duration-200 hover:scale-105"
-            >
-              Continue to Questions →
-            </button>
-          </div>
+              {ended ? (
+          <>
+            <div className="space-y-4 text-center">
+              <p className="text-green-400 text-lg font-semibold">
+                ✅ Video completed successfully!
+              </p>
+              <p className="text-white">You can now interact with our AI Avatar below:</p>
+            </div>
+
+            <div className="mt-8 w-full flex justify-center">
+              <HeygenChatEmbed />
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={() => nav('/case-questions')}
+                className="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-full text-lg font-bold transition-transform duration-200 hover:scale-105"
+              >
+                Continue to Questions →
+              </button>
+            </div>
+          </>
         ) : (
+
           <div className="space-y-2">
             <p className="text-yellow-200 text-lg">
               📺 Please watch the entire video to continue
