@@ -64,7 +64,6 @@ export default function CaseStudyQuestionPage() {
           `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/questions?language=${language}`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
-        console.log('Received questions:', data); 
         setQuestions(data);
         setAnswers(Array(data.length).fill(null));
         setIndex(0);
