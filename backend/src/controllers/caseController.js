@@ -6,7 +6,7 @@ const Video = require('../models/Video');
 
 exports.addCaseQuestion = async (req, res) => {
   const { question, options, correctAnswer, language } = req.body;
-  const newquestion = new CaseQuestion({ question, options, correctAnswer, language });
+  const newquestion = new CaseQuestion({ question, options, answer: correctAnswer, language });
   await newquestion.save();
   res.json({ message: 'Case question added', newquestion });
 };
