@@ -15,7 +15,9 @@ const BLANK_FORM = {
 
 const api = axios.create({
   baseURL : 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
-  headers : { Authorization: `Bearer ${localStorage.getItem('token')}` },
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  },
 });
 
 export default function CaseQuestionsPage() {
