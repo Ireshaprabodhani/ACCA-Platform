@@ -15,12 +15,19 @@ exports.setVideo = async (req, res) => {
   res.json({ message:'Video saved', video });
 };
 
-exports.getVideo = async (req, res) => {
-  const { type } = req.params;
-  const video = await Video.findOne({ type });
-  if (!video) return res.status(404).json({ error:'Video not found' });
-  res.json(video);
+exports.getCaseVideo = async (req, res) => {
+  try {
+    const caseVideo = await Video.findOne({ type: 'case' }); // ✅ changed from 'heygen'
+    if (!caseVideo || !caseVideo.url) {
+      return res.status(404).json({ error: 'Case video not found' });
+    }
+
+    res.json({ url: caseVideo.url });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch case video', details: err.message });
+  }
 };
+
 
 exports.deleteVideo = async (req, res) => {
   const { type } = req.params;
