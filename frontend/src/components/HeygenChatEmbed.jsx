@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE =
   import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
-const HeygenChatEmbed = () => {
+const HeygenChatEmbed = ({ onEnded }) => {
   const [iframeUrl, setIframeUrl] = useState('');
   const [clientWidth, setClientWidth] = useState(window.innerWidth);
   const [isVisible, setIsVisible] = useState(true);
@@ -39,11 +39,16 @@ const HeygenChatEmbed = () => {
         if (e.data.action === 'init') setIsVisible(true);
         else if (e.data.action === 'show') setIsExpanded(true);
         else if (e.data.action === 'hide') setIsExpanded(false);
+
+        // Detect video ended event (example: assuming Heygen sends action 'ended')
+        if (e.data.action === 'ended' && typeof onEnded === 'function') {
+          onEnded();
+        }
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [onEnded]);
 
   if (!iframeUrl) return null;
 
