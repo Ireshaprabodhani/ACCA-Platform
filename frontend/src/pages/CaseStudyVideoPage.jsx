@@ -31,9 +31,6 @@ const getYouTubeId = (raw = '') => {
   return '';
 };
 
-// New helper to detect Heygen iframe URL
-const isHeygenIframe = (url) => url.includes('labs.heygen.com/guest/streaming-embed');
-
 /* ─── component ──────────────────────────────────────────── */
 export default function CaseVideoPage() {
   const nav = useNavigate();
@@ -51,6 +48,9 @@ export default function CaseVideoPage() {
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false); // autoplay blocked?
+
+  /* Detect if URL is Heygen iframe (simplistic check) */
+  const isHeygen = url.includes('labs.heygen.com');
 
   /* 1️⃣ fetch URL */
   useEffect(() => {
@@ -75,7 +75,8 @@ export default function CaseVideoPage() {
 
   /* 2️⃣ YouTube */
   useEffect(() => {
-    if (!url || loading) return;
+    if (!url || loading || isHeygen) return; // skip if Heygen iframe
+
     const id = getYouTubeId(url);
     if (!id) return; // not YouTube
 
@@ -162,12 +163,12 @@ export default function CaseVideoPage() {
       clearInterval(intervalRef.current);
       document.removeEventListener('click', resumeHandlerRef.current);
     };
-  }, [url, loading]);
+  }, [url, loading, isHeygen]);
 
   /* 3️⃣ native video */
   useEffect(() => {
-    // Only run if not YouTube and not Heygen iframe and not loading
-    if (!url || getYouTubeId(url) || isHeygenIframe(url) || loading) return;
+    if (!url || getYouTubeId(url) || loading || isHeygen) return;
+
     const v = videoRef.current;
     if (!v) return;
 
@@ -217,9 +218,24 @@ export default function CaseVideoPage() {
       clearInterval(intervalRef.current);
       document.removeEventListener('click', resumeHandlerRef.current);
     };
-  }, [url, loading]);
+  }, [url, loading, isHeygen]);
 
-  /* 4️⃣ UI guards */
+  /* 4️⃣ Heygen iframe video timer */
+  useEffect(() => {
+    if (!isHeygen) return;
+
+    setEnded(false); // reset on new URL
+
+    const HEYGEN_VIDEO_DURATION = 13 * 60 * 1000; // 13 minutes in ms
+
+    const timer = setTimeout(() => {
+      setEnded(true);
+    }, HEYGEN_VIDEO_DURATION);
+
+    return () => clearTimeout(timer);
+  }, [isHeygen]);
+
+  /* 5️⃣ UI guards */
   if (loading)
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -244,9 +260,8 @@ export default function CaseVideoPage() {
       </div>
     );
 
-  /* 5️⃣ render */
+  /* 6️⃣ render */
   const isYT = Boolean(getYouTubeId(url));
-  const isHeygen = isHeygenIframe(url);
 
   return (
     <div className="min-h-screen bg-[#616a7c] text-white flex flex-col items-center p-4 relative justify-center">
@@ -255,6 +270,11 @@ export default function CaseVideoPage() {
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
           <button
             className="bg-green-600 hover:bg-green-700 text-lg font-bold px-6 py-4 rounded-full shadow-xl"
+            onClick={() => {
+              if (isYT && playerRef.current) playerRef.current.playVideo();
+              else if (videoRef.current) videoRef.current.play();
+              setBlocked(false);
+            }}
           >
             Click to start the video with sound
           </button>
@@ -265,28 +285,12 @@ export default function CaseVideoPage() {
 
       <div className="w-full max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl">
         {isYT ? (
-          <div
-            className="relative w-full"
-            style={{ paddingBottom: '56.25%' }}
-          >
-            <div
-              id="yt-player"
-              className="absolute top-0 left-0 w-full h-full"
-            />
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
           </div>
         ) : isHeygen ? (
-          <div
-            className="relative w-full"
-            style={{ paddingBottom: '56.25%' }}
-          >
-            <iframe
-              src={url}
-              title="Heygen Avatar Video"
-              className="absolute top-0 left-0 w-full h-full"
-              allow="microphone; autoplay"
-              allowFullScreen
-              frameBorder="0"
-            />
+          <div className="w-full flex justify-center">
+            <HeygenChatEmbed iframeUrl={url} />
           </div>
         ) : (
           <video
@@ -326,12 +330,8 @@ export default function CaseVideoPage() {
           </>
         ) : (
           <div className="space-y-2">
-            <p className="text-yellow-200 text-lg">
-              📺 Please watch the entire video to continue
-            </p>
-            <p className="text-gray-200 text-sm">
-              ⚠️ Skipping is disabled • Video must be watched completely
-            </p>
+            <p className="text-yellow-200 text-lg">📺 Please watch the entire video to continue</p>
+            <p className="text-gray-200 text-sm">⚠️ Skipping is disabled • Video must be watched completely</p>
           </div>
         )}
       </div>
