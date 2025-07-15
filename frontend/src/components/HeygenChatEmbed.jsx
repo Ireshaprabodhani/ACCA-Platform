@@ -34,6 +34,7 @@ const HeygenChatEmbed = () => {
 
   useEffect(() => {
     const handleMessage = (e) => {
+      if (typeof e.origin !== 'string') return;
       if (e.origin.includes('heygen.com') && e.data?.type === 'streaming-embed') {
         if (e.data.action === 'init') setIsVisible(true);
         else if (e.data.action === 'show') setIsExpanded(true);
@@ -48,7 +49,9 @@ const HeygenChatEmbed = () => {
 
   return (
     <div
-      className={`chat-embed ${isVisible ? 'visible' : 'hidden'} ${isExpanded ? 'expanded' : ''}`}
+      className={`chat-embed ${isVisible ? 'visible' : 'hidden'} ${
+        isExpanded ? 'expanded' : ''
+      }`}
       style={{
         margin: '0 auto',
         ...(isExpanded
@@ -58,15 +61,17 @@ const HeygenChatEmbed = () => {
           : { height: '180px', width: '180px' }),
       }}
     >
-      <div className="chat-container">
+      <div className="chat-container" style={{ width: '100%', height: '100%' }}>
         <iframe
           src={iframeUrl}
-          title="Streaming Embed"
+          title="Heygen AI Avatar"
           className="chat-iframe"
-          allow="microphone"
-          allowFullScreen={false}
+          allow="microphone; autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowFullScreen
+          style={{ width: '100%', height: '100%', border: 'none' }}
           role="dialog"
-        ></iframe>
+          loading="lazy"
+        />
       </div>
     </div>
   );
