@@ -74,12 +74,12 @@ exports.getCaseQuestions = async (req, res) => {
   try {
     const user = req.user;
 
-    // Prevent multiple attempts
+    // 1. Prevent multiple attempts by same user
     const existingAttempt = await CaseAttempt.findOne({ userId: user.id });
     if (existingAttempt)
       return res.status(403).json({ message: 'Case study already attempted' });
 
-    // ✅ Fix: Use req.query.language instead of req.body.language
+    // 2. Normalize language (from query or user)
     const language =
       (req.query.language || user.language || 'English')
         .trim()
@@ -90,9 +90,10 @@ exports.getCaseQuestions = async (req, res) => {
       return res.status(400).json({ message: 'Invalid language selected' });
     }
 
+    // 3. Get 15 random questions from pool
     const questions = await CaseQuestion.aggregate([
       { $match: { language } },
-      { $sample: { size: 15 } }
+      { $sample: { size: 15 } },
     ]);
 
     if (questions.length !== 15) {
