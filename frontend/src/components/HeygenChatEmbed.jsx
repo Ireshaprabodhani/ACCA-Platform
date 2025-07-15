@@ -1,12 +1,30 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const API_BASE =
+  import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
 const HeygenChatEmbed = () => {
-  const streamingLink = 'https://labs.heygen.com/guest/streaming-embed?share=eyJxdWFsaXR5IjoiaGlnaCIsImF2YXRhck5hbWUiOiJhMDBkZmZkNDk2MjI0Yzk1OGI1MWFkYzI3NGY4NzhjMyIsInByZXZpZXdJbWciOiJodHRwczovL2ZpbGVzMi5oZXlnZW4uYWkvYXZhdGFyL3YzL2EwMGRmZmQ0OTYyMjRjOTU4YjUxYWRjMjc0Zjg3OGMzL2Z1bGwvMi4yL3ByZXZpZXdfdGFyZ2V0LndlYnAiLCJuZWVkUmVtb3ZlQmFja2dyb3VuZCI6ZmFsc2UsImtub3dsZWRnZUJhc2VJZCI6ImZkYjY2Mzc0MzMwMzQ5M2Q4MzZmZDg1ZDVhMDVhYThmIiwidXNlcm5hbWUiOiJkZmUzMmU4ZThkMmY0MDRjOTc0OTNiZmQ5MjhhMzBiYyJ9&inIFrame=1';
-  const host = 'https://labs.heygen.com';
-
+  const [iframeUrl, setIframeUrl] = useState('');
+  const [clientWidth, setClientWidth] = useState(window.innerWidth);
   const [isVisible, setIsVisible] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
-  const [clientWidth, setClientWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    axios
+      .get(`${API_BASE}/api/case/video`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ data }) => {
+        if (data?.url) setIframeUrl(data.url);
+      })
+      .catch((err) => {
+        console.error('Failed to load Heygen iframe:', err);
+      });
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setClientWidth(window.innerWidth);
@@ -16,7 +34,7 @@ const HeygenChatEmbed = () => {
 
   useEffect(() => {
     const handleMessage = (e) => {
-      if (e.origin === host && e.data?.type === 'streaming-embed') {
+      if (e.origin.includes('heygen.com') && e.data?.type === 'streaming-embed') {
         if (e.data.action === 'init') setIsVisible(true);
         else if (e.data.action === 'show') setIsExpanded(true);
         else if (e.data.action === 'hide') setIsExpanded(false);
@@ -25,6 +43,8 @@ const HeygenChatEmbed = () => {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  if (!iframeUrl) return null;
 
   return (
     <div
@@ -40,7 +60,7 @@ const HeygenChatEmbed = () => {
     >
       <div className="chat-container">
         <iframe
-          src={streamingLink}
+          src={iframeUrl}
           title="Streaming Embed"
           className="chat-iframe"
           allow="microphone"
