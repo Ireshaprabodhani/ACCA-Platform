@@ -14,7 +14,7 @@ const BLANK_FORM = {
 };
 
 const api = axios.create({
-  baseURL: 'https://yourdomain.com/api/admin',
+  baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
   headers: {
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   },
