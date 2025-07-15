@@ -10,6 +10,9 @@ const API_BASE =
   'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
 /* ─── helpers ────────────────────────────────────────────── */
+
+
+
 const getYouTubeId = (raw = '') => {
   if (!raw) return '';
   try {
@@ -47,7 +50,7 @@ export default function CaseVideoPage() {
   const [loading, setLoading] = useState(true);
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState('');
-  const [blocked, setBlocked] = useState(false); // autoplay blocked?
+  const [blocked, setBlocked] = useState(false); 
 
   /* Detect if URL is Heygen iframe (simplistic check) */
   const isHeygen = url.includes('labs.heygen.com');
@@ -316,7 +319,7 @@ export default function CaseVideoPage() {
             </div>
 
             <div className="mt-8 w-full flex justify-center">
-              <HeygenChatEmbed />
+              <HeygenChatEmbed onEnded={() => setEnded(true)} />
             </div>
 
             <div className="mt-6">
@@ -329,6 +332,7 @@ export default function CaseVideoPage() {
             </div>
           </>
         ) : (
+          
           <div className="space-y-2">
             <p className="text-yellow-200 text-lg">📺 Please watch the entire video to continue</p>
             <p className="text-gray-200 text-sm">⚠️ Skipping is disabled • Video must be watched completely</p>
