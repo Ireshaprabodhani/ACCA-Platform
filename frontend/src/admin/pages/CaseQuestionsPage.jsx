@@ -10,13 +10,16 @@ const BLANK_FORM = {
   question: '',
   language: 'English',
   options : ['', '', '', ''],
-  answer: 0, // Changed from correctAnswer to answer to match schema
+  correctAnswer: 0, // Changed from correctAnswer to answer to match schema
 };
 
 const api = axios.create({
-  baseURL : 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
-  headers : { Authorization: `Bearer ${localStorage.getItem('token')}` },
+  baseURL: 'https://yourdomain.com/api/admin',
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  },
 });
+
 
 export default function CaseQuestionsPage() {
   /* data */
