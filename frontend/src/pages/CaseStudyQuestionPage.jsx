@@ -9,7 +9,7 @@ export default function CaseStudyQuestionPage() {
   const [answers,   setAnswers]   = useState([]);
   const [index,     setIndex]     = useState(0);
   const [language,  setLanguage]  = useState('English');
-  const [timeLeft,  setTimeLeft]  = useState(10 * 60);
+  const [timeLeft,  setTimeLeft]  = useState(20 * 60);
   const [sending,   setSending]   = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error,     setError]     = useState('');
