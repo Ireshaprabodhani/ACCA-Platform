@@ -4,35 +4,33 @@ import toast, { Toaster } from 'react-hot-toast';
 import { PlusCircle, X } from 'lucide-react';
 
 /* ────────── constants ────────── */
-const PER_PAGE   = 10;
-const LANGS      = ['English', 'Sinhala'];
+const PER_PAGE = 10;
+const LANGS = ['English', 'Sinhala'];
 const BLANK_FORM = {
   question: '',
   language: 'English',
-  options : ['', '', '', ''],
-  correctAnswer: 0, // Changed from correctAnswer to answer to match schema
+  options: ['', '', '', ''],
+  answer: 0, // frontend uses 'answer' internally
 };
 
-await api.get('/case', {
-  params: { page: p, limit: PER_PAGE, language: lang },
+const api = axios.create({
+  baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
   headers: {
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   },
 });
 
-
-
 export default function CaseQuestionsPage() {
   /* data */
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage]   = useState(1);
-  const [langTab, setLang]= useState('English');
+  const [page, setPage] = useState(1);
+  const [langTab, setLang] = useState('English');
 
   /* ui */
   const [modalOpen, setModal] = useState(false);
-  const [editId, setEditId]   = useState(null);
-  const [form, setForm]       = useState(BLANK_FORM);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(BLANK_FORM);
 
   /* ────────── CRUD + fetch ────────── */
   const loadRows = async (p = page, lang = langTab) => {
@@ -40,7 +38,14 @@ export default function CaseQuestionsPage() {
       const { data } = await api.get('/case', {
         params: { page: p, limit: PER_PAGE, language: lang },
       });
-      setRows(data.questions || []);
+
+      // Map each question's correctAnswer to answer for frontend use
+      const mappedQuestions = (data.questions || []).map((q) => ({
+        ...q,
+        answer: q.correctAnswer,
+      }));
+
+      setRows(mappedQuestions);
       setTotal(data.total || 0);
       setPage(data.page || 1);
     } catch {
@@ -52,17 +57,22 @@ export default function CaseQuestionsPage() {
     const invalid =
       !form.question.trim() ||
       form.options.some((o) => !o.trim()) ||
-      form.answer < 0 || // Changed from correctAnswer to answer
+      form.answer < 0 ||
       form.answer > 3;
     if (invalid) return toast.error('Fill question, 4 options, correct answer');
 
     const req = editId
-  ? api.put(`/case/${editId}`, form)
-  : api.post('/case', {
-      ...form,
-      correctAnswer: form.answer,  // ✅ Add this
-    });
-
+      ? api.put(`/case/${editId}`, {
+          ...form,
+          correctAnswer: form.answer, // send as correctAnswer to backend
+          // Remove 'answer' so backend doesn't get confused (optional)
+          answer: undefined,
+        })
+      : api.post('/case', {
+          ...form,
+          correctAnswer: form.answer,
+          answer: undefined,
+        });
 
     toast
       .promise(req, { loading: 'Saving…', success: 'Saved', error: 'Error' })
@@ -84,7 +94,9 @@ export default function CaseQuestionsPage() {
       .then(() => loadRows(page, langTab));
 
   /* lifecycle */
-  useEffect(() => { loadRows(1, langTab); }, [langTab]);  // eslint-disable-line
+  useEffect(() => {
+    loadRows(1, langTab);
+  }, [langTab]); // eslint-disable-line
 
   /* pagination helpers */
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -101,7 +113,10 @@ export default function CaseQuestionsPage() {
           {LANGS.map((l) => (
             <button
               key={l}
-              onClick={() => { setLang(l); setPage(1); }}
+              onClick={() => {
+                setLang(l);
+                setPage(1);
+              }}
               className={`px-5 py-2 rounded-lg font-medium transition
                 ${
                   langTab === l
@@ -144,7 +159,8 @@ export default function CaseQuestionsPage() {
                 <div className="flex-shrink-0 flex gap-4 text-sm font-medium mt-2 sm:mt-0">
                   <button
                     onClick={() => {
-                      setForm({ ...q });
+                      // Map backend correctAnswer to frontend answer
+                      setForm({ ...q, answer: q.correctAnswer });
                       setEditId(q._id);
                       setModal(true);
                     }}
@@ -161,20 +177,20 @@ export default function CaseQuestionsPage() {
                 </div>
               </div>
 
-              {/* options - FIXED: Changed q.correctAnswer to q.answer */}
+              {/* options */}
               <ul className="space-y-2 ml-6 mt-4">
                 {q.options.map((opt, i) => (
                   <li
                     key={i}
                     className={`flex gap-2 ${
-                      i === q.answer ? 'font-semibold text-green-700 bg-green-50 px-2 py-1 rounded' : ''
+                      i === q.correctAnswer
+                        ? 'font-semibold text-green-700 bg-green-50 px-2 py-1 rounded'
+                        : ''
                     }`}
                   >
-                    <span className="w-5 font-bold">
-                      {String.fromCharCode(65 + i)}.
-                    </span>
+                    <span className="w-5 font-bold">{String.fromCharCode(65 + i)}.</span>
                     <span className="flex-1 break-words">{opt}</span>
-                    {i === q.answer && (
+                    {i === q.correctAnswer && (
                       <span className="text-green-600 text-sm font-medium">✓ Correct</span>
                     )}
                   </li>
@@ -183,9 +199,7 @@ export default function CaseQuestionsPage() {
             </div>
           ))
         ) : (
-          <p className="text-center py-10 text-gray-500 italic">
-            No case questions found.
-          </p>
+          <p className="text-center py-10 text-gray-500 italic">No case questions found.</p>
         )}
       </div>
 
@@ -212,14 +226,12 @@ export default function CaseQuestionsPage() {
         </div>
       )}
 
-      {/* Modal - FIXED: Changed correctAnswer to answer throughout */}
+      {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl p-8 space-y-6 relative">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-semibold">
-                {editId ? 'Edit' : 'Add'} Question
-              </h3>
+              <h3 className="text-2xl font-semibold">{editId ? 'Edit' : 'Add'} Question</h3>
               <button
                 onClick={() => setModal(false)}
                 className="text-gray-500 hover:text-gray-700 transition"
@@ -251,16 +263,14 @@ export default function CaseQuestionsPage() {
             </label>
 
             <fieldset className="space-y-3">
-              <legend className="text-sm font-medium mb-1">
-                Options (select correct answer)
-              </legend>
+              <legend className="text-sm font-medium mb-1">Options (select correct answer)</legend>
               {form.options.map((opt, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <input
                     type="radio"
                     name="correct"
-                    checked={form.answer === i} // Changed from correctAnswer to answer
-                    onChange={() => setForm({ ...form, answer: i })} // Changed from correctAnswer to answer
+                    checked={form.answer === i}
+                    onChange={() => setForm({ ...form, answer: i })}
                     className="accent-blue-600 cursor-pointer"
                   />
                   <input
