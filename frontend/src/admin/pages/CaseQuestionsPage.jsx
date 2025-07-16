@@ -13,12 +13,13 @@ const BLANK_FORM = {
   correctAnswer: 0, // Changed from correctAnswer to answer to match schema
 };
 
-const api = axios.create({
-  baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
+await api.get('/case', {
+  params: { page: p, limit: PER_PAGE, language: lang },
   headers: {
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   },
 });
+
 
 
 export default function CaseQuestionsPage() {
