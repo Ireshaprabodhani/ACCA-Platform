@@ -7,6 +7,8 @@ const caseCtrl = require('../controllers/caseController');
 const videoCtrl = require('../controllers/videoController');
 const adminAuth = require('../middleware/adminMiddleware');
 
+
+
 // Admin Auth
 router.post('/login', adminCtrl.login);
 
@@ -31,7 +33,7 @@ router.delete('/case/:id', adminAuth, caseCtrl.deleteCaseQuestion);
 
 // Video Management
 router.post   ('/video',        adminAuth, videoCtrl.setVideo);
-router.get    ('/video/:type',  adminAuth, videoCtrl.getVideo);
+router.get    ('/video/:type',  adminAuth, videoCtrl.getCaseVideo);
 router.delete ('/video/:type',  adminAuth, videoCtrl.deleteVideo);
 
 
