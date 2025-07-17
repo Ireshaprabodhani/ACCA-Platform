@@ -46,3 +46,22 @@ exports.getIntroVideo = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+exports.getVideoByType = async (req, res) => {
+  const { type } = req.params;
+  if (!['intro', 'case'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid video type' });
+  }
+
+  try {
+    const video = await Video.findOne({ type });
+    if (!video || !video.url) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    res.json({ type, url: video.url });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch video', details: err.message });
+  }
+};

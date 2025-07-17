@@ -33,7 +33,7 @@ router.delete('/case/:id', adminAuth, caseCtrl.deleteCaseQuestion);
 
 // Video Management
 router.post   ('/video',        adminAuth, videoCtrl.setVideo);
-router.get    ('/video/:type',  adminAuth, videoCtrl.getCaseVideo);
+router.get    ('/video/:type',  adminAuth, videoCtrl.getVideoByType);
 router.delete ('/video/:type',  adminAuth, videoCtrl.deleteVideo);
 
 
