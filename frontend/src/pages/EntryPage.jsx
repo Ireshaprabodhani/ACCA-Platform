@@ -39,7 +39,7 @@ const EntryPage = () => {
         <img
           src={Logo}
           alt="ACCA Logo"
-          className="mx-auto h-12 md:h-16 mb-6"
+          className="mx-auto w-40 h-40 md:w-52 md:h-52 object-contain mb-8"
         />
 
         {/* Heading */}
