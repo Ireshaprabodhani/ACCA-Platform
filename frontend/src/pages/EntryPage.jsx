@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Logo from '../assets/Logo-ACCA.png'
 
 const EntryPage = () => {
   const navigate = useNavigate();
@@ -28,12 +29,19 @@ const EntryPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white text-black flex items-center justify-center relative">
+    <div className="min-h-screen bg-white text-black flex items-center justify-center px-4 py-10">
       <div className={`
-        text-center px-6 max-w-3xl w-full
+        text-center max-w-3xl w-full
         transform transition-all duration-1000
         ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}
       `}>
+        {/* ACCA Logo */}
+        <img
+          src={Logo}
+          alt="ACCA Logo"
+          className="mx-auto h-12 md:h-16 mb-6"
+        />
+
         {/* Heading */}
         <h2 className="text-xl font-semibold mb-2">Welcome to the</h2>
         <h1 className="text-3xl md:text-5xl font-extrabold mb-4">
