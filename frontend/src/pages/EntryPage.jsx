@@ -4,20 +4,9 @@ import { useNavigate } from 'react-router-dom';
 const EntryPage = () => {
   const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = useState(false);
-  const [particles, setParticles] = useState([]);
 
   useEffect(() => {
     setIsLoaded(true);
-    
-    // Generate floating particles
-    const newParticles = Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 2,
-      duration: 3 + Math.random() * 2,
-    }));
-    setParticles(newParticles);
   }, []);
 
   const Button = ({ label, onClick, className }) => (
@@ -39,137 +28,72 @@ const EntryPage = () => {
   );
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#616a7c]">
-      {/* Animated Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-yellow-200 rounded-full animate-bounce animation-delay-300"></div>
-        <div className="absolute bottom-20 left-20 w-40 h-40 bg-pink-200 rounded-full animate-ping animation-delay-500"></div>
-        <div className="absolute bottom-40 right-40 w-20 h-20 bg-purple-200 rounded-full animate-pulse animation-delay-700"></div>
-      </div>
+    <div className="min-h-screen bg-white text-black flex items-center justify-center relative">
+      <div className={`
+        text-center px-6 max-w-3xl w-full
+        transform transition-all duration-1000
+        ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}
+      `}>
+        {/* Heading */}
+        <h2 className="text-xl font-semibold mb-2">Welcome to the</h2>
+        <h1 className="text-3xl md:text-5xl font-extrabold mb-4">
+          ACCA Escape The Challenge
+        </h1>
 
-      {/* Floating Particles */}
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="absolute w-2 h-2 bg-white rounded-full opacity-60 animate-float"
-          style={{
-            left: `${particle.left}%`,
-            top: `${particle.top}%`,
-            animationDelay: `${particle.delay}s`,
-            animationDuration: `${particle.duration}s`,
-          }}
-        ></div>
-      ))}
+        {/* Subtitle */}
+        <p className="text-base md:text-lg text-gray-700 mb-8 leading-relaxed">
+          Experience the power of learning, competition, and real-world skills.
+          <br />
+          <span className="font-bold text-black">Challenge yourself. Master the future.</span>
+        </p>
 
-      {/* Main Content */}
-      <div className="min-h-screen flex items-center justify-center text-white relative z-10">
-        <div className={`
-          text-center px-6 max-w-4xl transform transition-all duration-1000
-          ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}
-        `}>
-          {/* Main Title with Staggered Animation */}
-          <div className="mb-8">
-            <h1 className={`
-                text-4xl md:text-5xl font-extrabold mb-4 
-                text-white
-                transform transition-all duration-1000 animation-delay-300
-                ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}
-              `}>
-                Welcome to the ACCA Escape The Challenge
-            </h1>
-          </div>
+        {/* Features */}
+        <div className="flex flex-wrap justify-center gap-3 mb-10">
+          {[
+            '🎯 Smart Challenges',
+            '🏆 Real Competition',
+            '📚 Skill Building',
+            '⚡ Instant Results'
+          ].map((feature, index) => (
+            <span
+              key={index}
+              className="bg-[#f8f4f4] text-sm font-medium text-gray-800 px-4 py-2 rounded-full border border-gray-200 shadow-sm"
+            >
+              {feature}
+            </span>
+          ))}
+        </div>
 
-          {/* Subtitle with fade-in animation */}
-          <p className={`
-            text-xl md:text-2xl mb-12 font-medium leading-relaxed
-            transform transition-all duration-1000 animation-delay-700
-            ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}
-          `}>
-            Experience the power of learning, competition, and real-world skills.
-            <br />
-            <span className="text-yellow-200 font-semibold">Challenge yourself. Master the future.</span>
-          </p>
-
-          {/* Animated Features */}
-          <div className={`
-            flex flex-wrap justify-center gap-4 mb-12 transform transition-all duration-1000 animation-delay-900
-            ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}
-          `}>
-            {['🎯 Smart Challenges', '🏆 Real Competition', '📚 Skill Building', '⚡ Instant Results'].map((feature, index) => (
-              <div
-                key={index}
-                className={`
-                  bg-white bg-opacity-20 backdrop-blur-sm px-4 py-2 rounded-full
-                  text-sm font-semibold hover:bg-opacity-30 transition-all duration-300
-                  hover:scale-105 cursor-default animate-slideIn
-                `}
-                style={{ animationDelay: `${1000 + index * 200}ms` }}
-              >
-                {feature}
-              </div>
-            ))}
-          </div>
-
-          {/* Call to Action Button */}
-          <div className={`
-            transform transition-all duration-1000 animation-delay-1100
-            ${isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-6 opacity-0 scale-95'}
-          `}>
-            <Button 
-              label="🚀 Get in the Game" 
-              onClick={() => navigate('/login')}
-              className="mb-6"
-            />
-            <p className="text-sm opacity-80 font-medium">
-              Join thousands of students already playing!
-            </p>
-          </div>
+        {/* Get in the Game Button */}
+        <div>
+          <Button
+            label="🚀 Get in the Game"
+            onClick={() => navigate('/login')}
+            className="mb-4"
+          />
+          <p className="text-sm text-gray-600">Join thousands of students already playing!</p>
         </div>
       </div>
 
-      {/* Custom CSS for animations */}
+      {/* Custom CSS */}
       <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-20px) rotate(120deg); }
-          66% { transform: translateY(-10px) rotate(240deg); }
-        }
-        
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
+        @keyframes ping {
+          0% {
+            transform: scale(1);
             opacity: 1;
-            transform: translateX(0);
+          }
+          75%, 100% {
+            transform: scale(2);
+            opacity: 0;
           }
         }
 
-        .animate-float {
-          animation: float 4s ease-in-out infinite;
-        }
-
-        .animate-slideIn {
-          animation: slideIn 0.6s ease-out forwards;
-          opacity: 0;
+        .animate-ping {
+          animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
 
         .animation-delay-150 {
           animation-delay: 150ms;
-        }
-        
-        .animation-delay-300 {
-          animation-delay: 300ms;
-        }
-        
-        .animation-delay-500 {
-          animation-delay: 500ms;
-        }
-        
-        .animation-delay-700 {
-          animation-delay: 700ms;
         }
       `}</style>
     </div>
