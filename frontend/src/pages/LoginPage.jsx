@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import InputField from '../components/InputField';
-import RedBackground from '../assets/background.jpg';
+import RedBackground from '../assets/red-bg.png';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -25,84 +25,68 @@ const LoginPage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
 
-  const handleSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      setError('');
-      setSuccess('');
-      setIsLoading(true);
-
-      try {
-        const res = await fetch(
-          'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/login',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-          }
-        );
-
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.message || 'Login failed');
-          setIsLoading(false);
-          return;
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/auth/login',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
         }
-
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('role', data.role);
-
-        try {
-          jwtDecode(data.token);
-        } catch (_) {}
-
-        setSuccess('Login successful! Redirecting…');
-
-        setTimeout(() => {
-          navigate(data.role === 'admin' ? '/admin' : '/introduction-video');
-        }, 800);
-      } catch {
-        setError('Network error. Please try again.');
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Login failed');
         setIsLoading(false);
+        return;
       }
-    },
-    [formData, navigate]
-  );
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      try { jwtDecode(data.token); } catch {}
+      setSuccess('Login successful! Redirecting…');
+      setTimeout(() => {
+        navigate(data.role === 'admin' ? '/admin' : '/introduction-video');
+      }, 800);
+    } catch {
+      setError('Network error. Please try again.');
+      setIsLoading(false);
+    }
+  }, [formData, navigate]);
 
-  const Button = useCallback(
-    ({ label, type, className }) => (
-      <button
-        type={type}
-        disabled={isLoading}
-        className={`relative overflow-hidden px-6 py-3 rounded-lg font-bold text-lg
-          text-white shadow-xl transition-all duration-300
-          hover:scale-105 hover:shadow-2xl active:scale-95 group
-          disabled:opacity-70 disabled:cursor-not-allowed ${className}`}
-        style={{
-          background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
-        }}
-      >
-        <span className="relative z-10 flex items-center justify-center">
-          {isLoading ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-              Logging in...
-            </>
-          ) : (
-            label
-          )}
-        </span>
-      </button>
-    ),
-    [isLoading]
-  );
+  const Button = useCallback(({ label, type, className }) => (
+    <button
+      type={type}
+      disabled={isLoading}
+      className={`relative overflow-hidden px-6 py-3 rounded-lg font-bold text-lg
+        text-white shadow-xl transition-all duration-300
+        hover:scale-105 hover:shadow-2xl active:scale-95 group
+        disabled:opacity-70 disabled:cursor-not-allowed ${className}`}
+      style={{
+        background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+      }}
+    >
+      <span className="relative z-10 flex items-center justify-center">
+        {isLoading ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+            Logging in...
+          </>
+        ) : (
+          label
+        )}
+      </span>
+    </button>
+  ), [isLoading]);
 
   return (
     <div
       className="min-h-screen relative overflow-hidden bg-black bg-cover bg-center"
-      style={{
-        backgroundImage: `url(${RedBackground})`,
-      }}
+      style={{ backgroundImage: `url(${RedBackground})` }}
     >
       <div className="min-h-screen flex items-center justify-center px-4">
         <div
@@ -110,7 +94,7 @@ const LoginPage = () => {
             isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-95'
           }`}
         >
-          <div className="bg-[#400000cc] p-8 rounded-2xl shadow-2xl border border-red-500/30 backdrop-blur-sm">
+          <div className="bg-[#000000b3] p-8 rounded-2xl shadow-2xl border border-red-500/30 backdrop-blur-sm">
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-red-400 to-yellow-200 bg-clip-text text-transparent">
                 Welcome Back!
@@ -131,10 +115,12 @@ const LoginPage = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-2">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <InputField
                 ref={emailInputRef}
                 label="📧 Email Address"
+                labelClass="text-white"       // 👈 make labels white
+                inputClass="bg-black bg-opacity-60 text-white placeholder-gray-300" // styled input
                 type="email"
                 name="email"
                 placeholder="Enter your email"
@@ -145,6 +131,8 @@ const LoginPage = () => {
               <InputField
                 ref={passwordInputRef}
                 label="🔒 Password"
+                labelClass="text-white"
+                inputClass="bg-black bg-opacity-60 text-white placeholder-gray-300"
                 type="password"
                 name="password"
                 placeholder="Enter your password"
