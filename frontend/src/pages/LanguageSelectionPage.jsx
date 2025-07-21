@@ -1,19 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import music from '/1.mp3'
+import music from '/1.mp3';
+import RedBackground from '../assets/background.jpg';
 
 const LanguageSelectionPage = () => {
   const navigate = useNavigate();
   const audioRef = useRef(null);
 
   const handleSelectLanguage = (lang) => {
-    // Stop music before navigation
     audioRef.current?.pause();
     navigate(`/quiz?language=${lang}`);
   };
 
-  // Autoplay background music
   useEffect(() => {
     const audio = audioRef.current;
     const playMusic = () => {
@@ -21,19 +20,19 @@ const LanguageSelectionPage = () => {
         audio.volume = 0.5;
         audio.loop = true;
         audio.play().catch((e) => {
-          // Some browsers block autoplay until interaction
           console.warn("Autoplay blocked:", e);
         });
       }
     };
-
     playMusic();
-
-    return () => audio?.pause(); // Cleanup on unmount
+    return () => audio?.pause();
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#616a7c] p-6">
+    <div
+      className="min-h-screen flex items-center justify-center p-6 bg-cover bg-center"
+      style={{ backgroundImage: `url(${RedBackground})` }}
+    >
       {/* 🎵 Background Music */}
       <audio ref={audioRef} src={music} preload="auto" />
 
@@ -41,13 +40,13 @@ const LanguageSelectionPage = () => {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="bg-white bg-opacity-90 backdrop-blur-xl rounded-3xl p-10 shadow-2xl flex flex-col items-center w-full max-w-xl"
+        className="bg-[#000000b3] backdrop-blur-lg rounded-3xl p-10 shadow-2xl flex flex-col items-center w-full max-w-xl"
       >
         <motion.h1
           initial={{ y: -30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-600 text-center mb-8"
+          className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-yellow-400 to-pink-500 text-center mb-8"
         >
           🌐 Choose Your Language
         </motion.h1>
@@ -62,7 +61,7 @@ const LanguageSelectionPage = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleSelectLanguage('Sinhala')}
-            className="bg-yellow-300 text-purple-800 px-8 py-4 rounded-2xl shadow-md text-2xl font-bold hover:bg-yellow-400 transition"
+            className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-black px-8 py-4 rounded-2xl shadow-lg text-2xl font-bold hover:brightness-110 transition"
           >
             Sinhala
           </motion.button>
@@ -71,7 +70,7 @@ const LanguageSelectionPage = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleSelectLanguage('English')}
-            className="bg-blue-400 text-white px-8 py-4 rounded-2xl shadow-md text-2xl font-bold hover:bg-blue-500 transition"
+            className="bg-gradient-to-br from-red-500 to-pink-600 text-white px-8 py-4 rounded-2xl shadow-lg text-2xl font-bold hover:brightness-110 transition"
           >
             English
           </motion.button>
@@ -81,7 +80,7 @@ const LanguageSelectionPage = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.4 }}
-          className="mt-8 text-lg italic text-purple-900/70 text-center"
+          className="mt-8 text-lg italic text-white/80 text-center"
         >
           Pick your preferred language to begin your fun quiz!
         </motion.p>
