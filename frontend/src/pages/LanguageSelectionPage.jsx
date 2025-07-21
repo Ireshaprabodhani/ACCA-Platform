@@ -40,7 +40,7 @@ const LanguageSelectionPage = () => {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="bg-[#000000b3] backdrop-blur-lg rounded-3xl px-12 py-10 shadow-2xl flex flex-col items-center w-full max-w-3xl min-h-[550px]"
+          className="bg-[#000000b3] backdrop-blur-lg rounded-3xl px-12 py-10 shadow-2xl flex flex-col items-center justify-center w-full max-w-3xl min-h-[550px]"
               >
         <motion.h1
           initial={{ y: -30, opacity: 0 }}
