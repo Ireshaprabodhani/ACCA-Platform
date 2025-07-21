@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import RedBackground from '../assets/background.jpg';
 
 /* ─── config ─────────────────────────────────────────────── */
 /* Use Vite/CRA env var in prod, fall back to localhost in dev */
@@ -188,7 +189,7 @@ export default function IntroductionVideoPage() {
 
   /* ─── render ────────────────────────────────── */
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#616a7c] p-6">
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundImage: `url(${RedBackground})` }}>
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-4xl p-8 flex flex-col items-center">
         <h1 className="text-4xl font-extrabold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           📽️ Introduction Video
