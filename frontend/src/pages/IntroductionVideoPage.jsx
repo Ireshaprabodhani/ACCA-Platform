@@ -249,10 +249,15 @@ export default function IntroductionVideoPage() {
         {ended && (
           <button
             onClick={() => nav('/language-selection')}
-            className="mt-8 px-6 py-3 bg-pink-600 text-white rounded-lg font-bold hover:bg-pink-700 transition"
+            style={{
+              background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+              color: 'white',
+            }}
+            className="mt-8 px-6 py-3 rounded-lg font-bold hover:brightness-110 transition"
           >
             Continue →
-          </button>
+        </button>
+
         )}
       </div>
     </div>
