@@ -96,7 +96,7 @@ const LoginPage = () => {
         >
           <div className="bg-[#000000b3] p-8 rounded-2xl shadow-2xl border border-red-500/30 backdrop-blur-sm">
             <div className="text-center mb-8">
-              <h2 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-red-400 to-yellow-200 bg-clip-text text-transparent">
+              <h2 className="text-4xl font-bold text-white mb-2 text-4xl font-extrabold mb-6 text-white text-transparent text-transparent">
                 Welcome Back!
               </h2>
               <p className="text-white text-opacity-80 font-medium">
