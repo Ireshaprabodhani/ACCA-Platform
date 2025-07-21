@@ -46,7 +46,7 @@ const EntryPage = () => {
         <img
           src={Logo}
           alt="ACCA Logo"
-          className="mx-auto w-48 h-48 md:w-60 md:h-60 object-contain mb-8"
+          className="mx-auto w-52 h-52 md:w-64 md:h-64 object-contain"
         />
 
         {/* Heading */}
