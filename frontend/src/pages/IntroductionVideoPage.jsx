@@ -191,7 +191,7 @@ export default function IntroductionVideoPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundImage: `url(${RedBackground})` }}>
       <div className="bg-[#000000b3] backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-4xl p-8 flex flex-col items-center">
-        <h1 className="text-4xl font-extrabold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-extrabold mb-6 text-white text-transparent">
           📽️ Introduction Video
         </h1>
 
