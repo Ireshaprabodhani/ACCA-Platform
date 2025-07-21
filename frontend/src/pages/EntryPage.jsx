@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../assets/Logo-ACCA.png';
+import Logo from '../assets/Logo.png';
 import BackgroundImage from '../assets/background.jpg'; 
 
 const EntryPage = () => {
