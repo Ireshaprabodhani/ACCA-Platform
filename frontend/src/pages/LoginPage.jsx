@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import InputField from '../components/InputField';
-import RedBackground from '../assets/red-bg.png';
+import RedBackground from '../assets/background.jpg';
 
 const LoginPage = () => {
   const navigate = useNavigate();
