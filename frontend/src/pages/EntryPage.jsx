@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../assets/Logo.png';
-import BackgroundImage from '../assets/background.jpg'; 
 
 const EntryPage = () => {
   const navigate = useNavigate();
@@ -16,27 +15,23 @@ const EntryPage = () => {
       onClick={onClick}
       className={`
         relative overflow-hidden px-8 py-4 rounded-full font-bold text-lg
-        bg-white text-purple-700 shadow-xl transform transition-all duration-300
-        hover:scale-110 hover:shadow-2xl hover:bg-yellow-100
+        text-white shadow-xl transform transition-all duration-300
+        hover:scale-110 hover:shadow-2xl
         active:scale-95 group
         ${className}
       `}
+      style={{
+        background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+      }}
     >
       <span className="relative z-10">{label}</span>
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-500 to-cyan-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
       <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-ping"></div>
       <div className="absolute -bottom-2 -right-2 w-3 h-3 bg-pink-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-ping animation-delay-150"></div>
     </button>
   );
 
   return (
-    <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 py-10 relative"
-      style={{ backgroundImage: `url(${BackgroundImage})` }}
-    >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black opacity-60 z-0"></div>
-
+    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-10 relative">
       <div className={`
         text-center max-w-3xl w-full text-white relative z-10
         transform transition-all duration-1000
