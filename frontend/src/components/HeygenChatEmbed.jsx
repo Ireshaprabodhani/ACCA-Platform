@@ -73,7 +73,7 @@ const HeygenChatEmbed = ({ onEnded }) => {
           className="chat-iframe"
           allow="microphone; autoplay; fullscreen; encrypted-media; picture-in-picture"
           allowFullScreen
-          style={{ width: '100%', height: '100%', border: 'none' }}
+          style={{ width: '100%', height: '100%', border: 'none',borderRadius: '0px' }}
           role="dialog"
           loading="lazy"
         />

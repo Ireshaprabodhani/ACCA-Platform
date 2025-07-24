@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import HeygenChatEmbed from '../components/HeygenChatEmbed';
+import RedBackground from '../assets/background.jpg';
 
-/* ─── config ─────────────────────────────────────────────── */
+
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
-/* ─── helpers ────────────────────────────────────────────── */
+
 const getYouTubeId = (raw = '') => {
   if (!raw) return '';
   try {
@@ -213,7 +214,7 @@ export default function CaseVideoPage() {
 
   if (error)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4" >
         <div className="bg-red-600/20 border border-red-600 rounded-lg p-6 max-w-md text-center space-y-4">
           <h2 className="text-xl font-bold">Error</h2>
           <p>{error}</p>
@@ -230,81 +231,85 @@ export default function CaseVideoPage() {
   const isYT = Boolean(getYouTubeId(url));
 
   return (
-    <div className="min-h-screen bg-[#616a7c] text-white flex flex-col items-center p-4 relative justify-center">
-      {blocked && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
-          <button
-            className="bg-green-600 hover:bg-green-700 text-lg font-bold px-6 py-4 rounded-full shadow-xl"
-            onClick={() => {
-              if (isYT && playerRef.current) playerRef.current.playVideo();
-              else if (videoRef.current) videoRef.current.play();
-              setBlocked(false);
-            }}
-          >
-            Click to start the video with sound
-          </button>
+  <div
+    className="min-h-screen text-white flex flex-col items-center justify-center px-4 py-10 relative"
+    style={{ backgroundImage: `url(${RedBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+  >
+    {blocked && (
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
+        <button
+          className="bg-green-600 hover:bg-green-700 text-lg font-bold px-6 py-4 rounded-full shadow-xl"
+          onClick={() => {
+            if (isYT && playerRef.current) playerRef.current.playVideo();
+            else if (videoRef.current) videoRef.current.play();
+            setBlocked(false);
+          }}
+        >
+          Click to start the video with sound
+        </button>
+      </div>
+    )}
+
+    <h1 className="text-4xl font-bold mb-8 text-center drop-shadow-lg">Case Study Video</h1>
+
+    <div className="w-full max-w-5xl bg-black/80 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700">
+      {isYT ? (
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
         </div>
-      )}
-
-      <h1 className="text-3xl font-bold mb-6 text-center">Case Study Video</h1>
-
-      <div className="w-full max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl">
-        {isYT ? (
-          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-            <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
+      ) : isHeygen ? (
+        !ended && (
+          <div className="w-full p-0 m-0 overflow-visible relative">
+            <HeygenChatEmbed iframeUrl={url} />
           </div>
-        ) : isHeygen ? (
-          !ended && (
-            <div className="w-full flex justify-center">
+        )
+      ) : (
+        <video
+          ref={videoRef}
+          src={url}
+          controls={false}
+          disablePictureInPicture
+          controlsList="nodownload noplaybackrate"
+          className="w-full h-auto pointer-events-none"
+          style={{ minHeight: '400px' }}
+        />
+      )}
+    </div>
+
+    <div className="mt-10 text-center">
+      {ended ? (
+        <>
+          {isHeygen && (
+            <div className="mt-10 w-full flex justify-center">
               <HeygenChatEmbed iframeUrl={url} />
             </div>
-          )
-        ) : (
-          <video
-            ref={videoRef}
-            src={url}
-            controls={false}
-            disablePictureInPicture
-            controlsList="nodownload noplaybackrate"
-            className="w-full h-auto pointer-events-none"
-            style={{ minHeight: '400px' }}
-          />
-        )}
-      </div>
+          )}
 
-      <div className="mt-8 text-center">
-        {ended ? (
-          <>
-            {isHeygen && (
-              <div className="mt-8 w-full flex justify-center">
-                <HeygenChatEmbed iframeUrl={url} />
-              </div>
-            )}
+          <p className="text-green-400 text-xl font-semibold mt-6">
+            ✅ Video completed successfully!
+          </p>
 
-            <p className="text-green-400 text-lg font-semibold mt-4">
-              ✅ Video completed successfully!
-            </p>
-
-            <div className="mt-6">
-              <button
-                onClick={() => nav('/case-questions')}
-                className="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-full text-lg font-bold transition-transform duration-200 hover:scale-105"
-              >
-                Continue to Questions →
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-yellow-200 text-lg">
-              📺 Please watch the entire video to continue
-            </p>
-            <p className="text-gray-200 text-sm">
-              ⚠️ Skipping is disabled • Video must be watched completely
-            </p>
+          <div className="mt-8">
+            <button
+              onClick={() => nav('/case-questions')}
+              className="bg-green-500 hover:bg-green-600 px-10 py-4 rounded-full text-lg font-bold shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-105 transition-transform"
+            >
+              Continue to Questions →
+            </button>
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <div className="space-y-3 mt-6">
+          <p className="text-yellow-200 text-lg">
+            📺 Please watch the entire video to continue
+          </p>
+          <p className="text-gray-300 text-sm">
+            ⚠️ Skipping is disabled • Video must be watched completely
+          </p>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
+
 }
