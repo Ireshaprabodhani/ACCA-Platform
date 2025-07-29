@@ -10,21 +10,24 @@ const PdfAdminDashboard = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Base API URL
+  const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin';
+
   // Fetch all PDFs
   useEffect(() => {
     fetchPdfs();
   }, []);
 
- const fetchPdfs = async () => {
-  try {
-    const response = await axios.get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs');
-    // Ensure response.data is an array
-    setPdfs(Array.isArray(response.data) ? response.data : []);
-  } catch (error) {
-    console.error('Error fetching PDFs:', error);
-    setPdfs([]); // Fallback to empty array
-  }
-};
+  const fetchPdfs = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pdf`);
+      setPdfs(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching PDFs:', error);
+      alert('Failed to fetch PDFs. Please check console for details.');
+      setPdfs([]);
+    }
+  };
 
   // Handle file selection
   const handleFileChange = (e) => {
@@ -33,14 +36,20 @@ const PdfAdminDashboard = () => {
 
   // Upload new PDF
   const handleUpload = async () => {
-    if (!newFile) return;
+    if (!newFile) {
+      alert('Please select a PDF file first');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('pdf', newFile);
 
     try {
       setIsUploading(true);
-      const response = await axios.post('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs/upload', formData, {
+      const response = await axios.post(`${API_BASE_URL}/pdf`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
@@ -48,12 +57,13 @@ const PdfAdminDashboard = () => {
           setUploadProgress(percentCompleted);
         },
       });
+      
       setPdfs([...pdfs, response.data]);
       setNewFile(null);
       alert('PDF uploaded successfully!');
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload PDF');
+      alert(`Failed to upload PDF: ${error.response?.data?.message || error.message}`);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -63,44 +73,44 @@ const PdfAdminDashboard = () => {
   // Open edit modal
   const openEditModal = (pdf) => {
     setSelectedPdf(pdf);
-    setEditTitle(pdf.title);
+    setEditTitle(pdf.title || '');
     setIsEditModalOpen(true);
   };
 
   // Update PDF title
-const handleUpdate = async () => {
-  try {
-    await axios.put(`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs/${selectedPdf._id}`, { title: editTitle });
-    
-    // Safely update state
-    setPdfs(prevPdfs => {
-      // Ensure prevPdfs is array before mapping
-      return Array.isArray(prevPdfs) 
-        ? prevPdfs.map(pdf => 
-            pdf._id === selectedPdf._id ? { ...pdf, title: editTitle } : pdf
-          )
-        : []; // Fallback to empty array
-    });
-    
-    setIsEditModalOpen(false);
-    alert('PDF updated successfully!');
-  } catch (error) {
-    console.error('Update error:', error);
-    alert('Failed to update PDF');
-  }
-};
+  const handleUpdate = async () => {
+    if (!selectedPdf) return;
 
-// Delete PDF
-const handleDelete = async (id) => {
     try {
-        await axios.delete(`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs/${id}`);
-        setPdfs(pdfs.filter(pdf => pdf._id !== id));
-        alert('PDF deleted successfully!');
+      await axios.put(`${API_BASE_URL}/pdf/${selectedPdf._id}`, { 
+        title: editTitle 
+      });
+      
+      setPdfs(pdfs.map(pdf => 
+        pdf._id === selectedPdf._id ? { ...pdf, title: editTitle } : pdf
+      ));
+      
+      setIsEditModalOpen(false);
+      alert('PDF updated successfully!');
     } catch (error) {
-        console.error('Delete error:', error);
-        alert('Failed to delete PDF');
+      console.error('Update error:', error);
+      alert(`Failed to update PDF: ${error.response?.data?.message || error.message}`);
     }
-};
+  };
+
+  // Delete PDF
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this PDF?')) return;
+    
+    try {
+      await axios.delete(`${API_BASE_URL}/pdf/${id}`);
+      setPdfs(pdfs.filter(pdf => pdf._id !== id));
+      alert('PDF deleted successfully!');
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert(`Failed to delete PDF: ${error.response?.data?.message || error.message}`);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -122,6 +132,11 @@ const handleDelete = async (id) => {
                 file:bg-blue-50 file:text-blue-700
                 hover:file:bg-blue-100"
             />
+            {newFile && (
+              <p className="mt-2 text-sm text-gray-600">
+                Selected: {newFile.name} ({(newFile.size / 1024).toFixed(2)} KB)
+              </p>
+            )}
           </div>
           <button
             onClick={handleUpload}
@@ -135,57 +150,67 @@ const handleDelete = async (id) => {
 
       {/* PDF List */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {pdfs.map((pdf) => (
-                <tr key={pdf._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{pdf.title}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{pdf.filename}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {(pdf.size / 1024).toFixed(2)} KB
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(pdf.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-2">
-                      <a
-                        href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/pdfs/${pdf._id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View
-                      </a>
-                      <button
-                        onClick={() => openEditModal(pdf)}
-                        className="text-yellow-600 hover:text-yellow-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(pdf._id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+        {pdfs.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            No PDFs found. Upload a PDF to get started.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {pdfs.map((pdf) => (
+                  <tr key={pdf._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {pdf.title || 'Untitled'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {pdf.originalName || pdf.filename}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(pdf.size / 1024).toFixed(2)} KB
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(pdf.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex space-x-2">
+                        <a
+                          href={`${API_BASE_URL.replace('/admin', '')}/pdf/download/${pdf._id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          View
+                        </a>
+                        <button
+                          onClick={() => openEditModal(pdf)}
+                          className="text-yellow-600 hover:text-yellow-900"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(pdf._id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
@@ -200,6 +225,7 @@ const handleDelete = async (id) => {
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter PDF title"
               />
             </div>
             <div className="flex justify-end space-x-3">
