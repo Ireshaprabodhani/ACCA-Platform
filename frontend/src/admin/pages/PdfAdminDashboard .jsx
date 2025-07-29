@@ -11,7 +11,7 @@ const PdfAdminDashboard = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
 
  // Base API URL - Note the /pdfs (plural) to match your backend
-  const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs';
+  const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf';
 
   // Fetch all PDFs
   useEffect(() => {
