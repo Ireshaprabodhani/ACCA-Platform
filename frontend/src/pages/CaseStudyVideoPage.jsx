@@ -252,16 +252,18 @@ export default function CaseVideoPage() {
 
     <h1 className="text-4xl font-bold mb-8 text-center drop-shadow-lg">Case Study Video</h1>
 
-    <div className="w-full max-w-5xl bg-black/80 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700">
+    <div className="w-full max-w-5xl bg-black/80 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700 mx-auto">
       {isYT ? (
-        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+        <div className="w-full p-4 md:p-6 flex justify-center items-center" style={{ paddingBottom: '56.25%' }}>
           <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
         </div>
       ) : isHeygen ? (
         !ended && (
-          <div className="w-full p-0 m-0 overflow-visible relative">
-            <HeygenChatEmbed iframeUrl={url} />
-          </div>
+            <div className="w-full p-4 md:p-6 flex justify-center items-center">
+              <div className="w-full max-w-4xl aspect-video"> {/* Adjust max-w as needed */}
+                <HeygenChatEmbed iframeUrl={url} />
+              </div>
+            </div>
         )
       ) : (
         <video

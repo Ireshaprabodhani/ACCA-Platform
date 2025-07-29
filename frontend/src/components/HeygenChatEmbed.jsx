@@ -40,7 +40,6 @@ const HeygenChatEmbed = ({ onEnded }) => {
         else if (e.data.action === 'show') setIsExpanded(true);
         else if (e.data.action === 'hide') setIsExpanded(false);
 
-        // Detect video ended event (example: assuming Heygen sends action 'ended')
         if (e.data.action === 'ended' && typeof onEnded === 'function') {
           onEnded();
         }
@@ -53,31 +52,24 @@ const HeygenChatEmbed = ({ onEnded }) => {
   if (!iframeUrl) return null;
 
   return (
-    <div
-      className={`chat-embed ${isVisible ? 'visible' : 'hidden'} ${
-        isExpanded ? 'expanded' : ''
-      }`}
-      style={{
-        margin: '0 auto',
-        ...(isExpanded
-          ? clientWidth < 540
-            ? { height: 'calc(100vh - 120px)', width: 'calc(100% - 20px)' }
-            : { height: '600px', width: 'calc(600px * 16 / 9)' }
-          : { height: '180px', width: '180px' }),
-      }}
-    >
-      <div className="chat-container" style={{ width: '100%', height: '100%' }}>
-        <iframe
-          src={iframeUrl}
-          title="Heygen AI Avatar"
-          className="chat-iframe"
-          allow="microphone; autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowFullScreen
-          style={{ width: '100%', height: '100%', border: 'none',borderRadius: '0px' }}
-          role="dialog"
-          loading="lazy"
-        />
-      </div>
+    <div className={`
+      mx-auto relative
+      ${isExpanded ? 
+        (clientWidth < 540 ? 
+          'w-full h-[calc(100vh-100px)] min-h-[600px] px-2' : 
+          'w-full max-w-[calc(700px*16/9)] h-[700px] px-4'
+        ) : 
+        'w-[200px] h-[200px]'
+      }
+    `}>
+      <iframe
+        src={iframeUrl}
+        title="Heygen AI Avatar"
+        className="w-full h-full border-none rounded-none"
+        allow="microphone; autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allowFullScreen
+        loading="lazy"
+      />
     </div>
   );
 };
