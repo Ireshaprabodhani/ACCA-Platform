@@ -17,7 +17,7 @@ const PdfAdminDashboard = () => {
 
  const fetchPdfs = async () => {
   try {
-    const response = await axios.get('/api/admin/pdfs');
+    const response = await axios.get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs');
     // Ensure response.data is an array
     setPdfs(Array.isArray(response.data) ? response.data : []);
   } catch (error) {
@@ -40,7 +40,7 @@ const PdfAdminDashboard = () => {
 
     try {
       setIsUploading(true);
-      const response = await axios.post('/api/admin/pdfs/upload', formData, {
+      const response = await axios.post('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs/upload', formData, {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
@@ -70,7 +70,7 @@ const PdfAdminDashboard = () => {
   // Update PDF title
 const handleUpdate = async () => {
   try {
-    await axios.put(`/api/admin/pdfs/${selectedPdf._id}`, { title: editTitle });
+    await axios.put(`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs/${selectedPdf._id}`, { title: editTitle });
     
     // Safely update state
     setPdfs(prevPdfs => {
@@ -93,7 +93,7 @@ const handleUpdate = async () => {
 // Delete PDF
 const handleDelete = async (id) => {
     try {
-        await axios.delete(`/api/admin/pdfs/${id}`);
+        await axios.delete(`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs/${id}`);
         setPdfs(pdfs.filter(pdf => pdf._id !== id));
         alert('PDF deleted successfully!');
     } catch (error) {
@@ -160,7 +160,7 @@ const handleDelete = async (id) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex space-x-2">
                       <a
-                        href={`/api/pdfs/${pdf._id}`}
+                        href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/pdfs/${pdf._id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-900"
