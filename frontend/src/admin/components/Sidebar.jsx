@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
-  Users, ListTodo, BookOpen, Video, BarChart2, FileBarChart2 ,ImageIcon
+  Users, ListTodo, BookOpen, Video, BarChart2, FileBarChart2, ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,9 +22,9 @@ const Sidebar = ({ open }) => {
       initial={{ width: 64 }}
       animate={{ width: open ? 224 : 64 }}
       transition={{ type: "spring", stiffness: 210, damping: 22 }}
-      className="bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 min-h-screen text-white shadow-xl"
+      className="bg-gradient-to-b from-purple-50 to-pink-50 min-h-screen text-purple-900 shadow-xl border-r border-purple-100"
     >
-      <div className="py-6 px-4 text-center font-bold text-white text-lg tracking-wide">
+      <div className="py-6 px-4 text-center font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 text-lg tracking-wide">
         ACCA
       </div>
 
@@ -37,8 +37,8 @@ const Sidebar = ({ open }) => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 group ${
                 isActive
-                  ? "bg-white/20 text-white font-semibold"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
+                  ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 font-semibold border-l-4 border-purple-500"
+                  : "text-purple-700 hover:bg-purple-50 hover:text-purple-900"
               }`
             }
           >
