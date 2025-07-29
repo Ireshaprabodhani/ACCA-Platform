@@ -4,11 +4,11 @@ const { randomBytes } = require('node:crypto');
 
 const memberSchema = new mongoose.Schema({
   firstName: { type: String, required: true, index: true },
-  lastName: String,
-  whatsappNumber: String,
+  lastName: {type :String , required: true },
+  whatsappNumber: {type :String , required: true },
   email: { type: String, required: true, unique: true } ,
-  gender: String,
-  age: { type: Number, index: true },
+  gender: {type :String , required: true },
+  age: { type: Number, index: true,required: true },
   grade: { type: String, required: true },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
@@ -21,14 +21,14 @@ const memberSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
-  lastName: String,
-  whatsappNumber: String,
+  lastName: {type :String , required: true },
+  whatsappNumber: {type :String , required: true },
   email: { type: String, required: true, unique: true },
-  gender: String,
-  age: Number,
+  gender: {type :String , required: true },
+  age: {type : Number , required: true},
   password: { type: String, required: true },
-  grade: String,
-  schoolName: String,
+  grade: { type: String, required: true },
+  schoolName: { type: String, required: true },
   members: [memberSchema],
   
 },
