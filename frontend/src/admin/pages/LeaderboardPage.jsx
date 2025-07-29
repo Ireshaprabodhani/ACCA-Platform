@@ -1,37 +1,65 @@
 // pages/LeaderboardPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Loader2, Download } from "lucide-react";
+import { Trophy, Loader2, Download, Award } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 /* ----------------------- UI Components ----------------------- */
 const Card = ({ className = "", children }) => (
   <div
-    className={`rounded-2xl bg-white/10 backdrop-blur-md shadow-2xl border border-white/20 ${className}`}
+    className={`rounded-2xl bg-white shadow-lg border border-gray-200 ${className}`}
   >
     {children}
   </div>
 );
 
 const CardContent = ({ className = "", children }) => (
-  <div className={`p-8 ${className}`}>{children}</div>
+  <div className={`p-6 ${className}`}>{children}</div>
 );
 
-const Badge = ({ children, className = "" }) => (
-  <span
-    className={`inline-block rounded-full bg-white/20 text-white px-3 py-1 text-sm font-semibold shadow-md ${className}`}
-  >
-    {children}
-  </span>
-);
+const Badge = ({ children, className = "", variant = "default" }) => {
+  const variants = {
+    default: "bg-blue-100 text-blue-800",
+    quiz: "bg-purple-100 text-purple-800",
+    case: "bg-green-100 text-green-800",
+    total: "bg-yellow-100 text-yellow-800"
+  };
+  
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-medium ${variants[variant]} ${className}`}
+    >
+      {children}
+    </span>
+  );
+};
 
 /* -------------------- Main Component ----------------------- */
 export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [leaderboard, setBoard] = useState([]);
   const [error, setError] = useState(null);
+
+  /* ─────────── Process leaderboard data with tiebreakers ─────────── */
+  const processedLeaderboard = useMemo(() => {
+    if (!leaderboard.length) return [];
+    
+    // Sort by total marks (descending)
+    const sorted = [...leaderboard].sort((a, b) => b.totalMarks - a.totalMarks);
+    
+    // Assign ranks with proper tie handling
+    let currentRank = 1;
+    return sorted.map((item, index) => {
+      // If not first item and same marks as previous, same rank
+      if (index > 0 && item.totalMarks === sorted[index - 1].totalMarks) {
+        return { ...item, rank: currentRank };
+      }
+      currentRank = index + 1;
+      return { ...item, rank: currentRank };
+    });
+  }, [leaderboard]);
 
   /* ─────────── Fetch leaderboard once ─────────── */
   useEffect(() => {
@@ -54,13 +82,13 @@ export default function LeaderboardPage() {
 
   /* ─────────── Build an Excel workbook & download ─────────── */
   const exportToExcel = () => {
-    if (!leaderboard.length) {
+    if (!processedLeaderboard.length) {
       alert("No data to export");
       return;
     }
 
-    const rows = leaderboard.map((item, idx) => ({
-      Rank: idx + 1,
+    const rows = processedLeaderboard.map((item) => ({
+      Rank: item.rank,
       Name: item.userName,
       Email: item.email,
       School: item.schoolName,
@@ -80,27 +108,28 @@ export default function LeaderboardPage() {
     );
   };
 
-  const rankBadge = (idx) => {
+  const rankBadge = (rank) => {
     const styles = [
-      "bg-yellow-400 text-black shadow-lg",
-      "bg-gray-400 text-black shadow-lg",
-      "bg-orange-500 text-white shadow-lg",
+      "bg-yellow-400 text-white shadow-md", // 1st place
+      "bg-gray-300 text-gray-800 shadow-md", // 2nd place
+      "bg-amber-500 text-white shadow-md",   // 3rd place
+      "bg-blue-50 text-blue-800"             // other ranks
     ];
-    return idx < 3 ? (
+    
+    const style = rank <= 3 ? styles[rank - 1] : styles[3];
+    
+    return (
       <span
-        className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold ${styles[idx]}`}
+        className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold ${style}`}
       >
-        {idx + 1}
+        {rank}
       </span>
-    ) : (
-      <span className="font-semibold text-white">{idx + 1}</span>
     );
   };
 
   const columnHead = [
     { label: "Rank", align: "left" },
-    { label: "Name", align: "left" },
-    { label: "Email", align: "left" },
+    { label: "Participant", align: "left" },
     { label: "School", align: "left" },
     { label: "Quiz", align: "center" },
     { label: "Case", align: "center" },
@@ -111,25 +140,25 @@ export default function LeaderboardPage() {
   if (loading)
     return (
       <div className="flex justify-center items-center h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-white" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
 
   if (error)
     return (
-      <p className="text-center mt-10 text-red-300 font-medium">{error}</p>
+      <p className="text-center mt-10 text-red-500 font-medium">{error}</p>
     );
 
   /* ─────────── UI ─────────── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 py-10 px-4 text-white">
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
       <Card className="max-w-6xl mx-auto">
         <CardContent>
           {/* header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div className="flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-yellow-300 shrink-0" />
-              <h2 className="text-3xl font-extrabold tracking-tight text-white drop-shadow">
+              <Trophy className="w-8 h-8 text-yellow-500" />
+              <h2 className="text-2xl font-bold text-gray-800">
                 Competition Leaderboard
               </h2>
             </div>
@@ -137,20 +166,23 @@ export default function LeaderboardPage() {
             {/* Download Excel button */}
             <button
               onClick={exportToExcel}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-green-500 hover:bg-green-600 text-white font-semibold shadow-md transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-colors"
             >
-              <Download size={18} /> Download Excel
+              <Download size={16} /> Export to Excel
             </button>
           </div>
 
           {/* ---------- table wrapper ---------- */}
-          <div className="overflow-x-auto rounded-lg shadow-inner border border-white/10">
-            <table className="w-full whitespace-nowrap text-white">
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full whitespace-nowrap">
               {/* ----- head ----- */}
-              <thead className="text-sm bg-white/10 text-white uppercase">
+              <thead className="bg-gray-100 text-gray-700">
                 <tr>
                   {columnHead.map(({ label, align }) => (
-                    <th key={label} className={`px-6 py-4 text-${align}`}>
+                    <th 
+                      key={label} 
+                      className={`px-6 py-3 text-${align} text-sm font-semibold text-gray-700 uppercase tracking-wider`}
+                    >
                       {label}
                     </th>
                   ))}
@@ -158,39 +190,60 @@ export default function LeaderboardPage() {
               </thead>
 
               {/* ----- body ----- */}
-              <tbody className="divide-y divide-white/10">
+              <tbody className="divide-y divide-gray-200">
                 <AnimatePresence>
-                  {leaderboard.map((item, idx) => (
+                  {processedLeaderboard.map((item) => (
                     <motion.tr
-                      key={item.userId || idx}
+                      key={item.userId || item.rank}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.25, delay: idx * 0.03 }}
-                      className="hover:bg-white/10 transition-colors"
+                      transition={{ duration: 0.25, delay: item.rank * 0.03 }}
+                      className="hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-medium">
-                        {rankBadge(idx)}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {rankBadge(item.rank)}
+                          {item.rank <= 3 && (
+                            <Award className="w-4 h-4" />
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4">{item.userName}</td>
-                      <td className="px-6 py-4 underline underline-offset-2">
-                        {item.email}
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{item.userName}</div>
+                        <div className="text-sm text-gray-500">{item.email}</div>
                       </td>
-                      <td className="px-6 py-4">{item.schoolName}</td>
+                      <td className="px-6 py-4 text-gray-700">{item.schoolName}</td>
                       <td className="px-6 py-4 text-center">
-                        <Badge>{item.quizMarks}</Badge>
+                        <Badge variant="quiz">{item.quizMarks}</Badge>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <Badge>{item.caseMarks}</Badge>
+                        <Badge variant="case">{item.caseMarks}</Badge>
                       </td>
-                      <td className="px-6 py-4 text-center font-bold text-lg">
-                        {item.totalMarks}
+                      <td className="px-6 py-4 text-center">
+                        <Badge variant="total">{item.totalMarks}</Badge>
                       </td>
                     </motion.tr>
                   ))}
                 </AnimatePresence>
               </tbody>
             </table>
+          </div>
+
+          {/* Legend */}
+          <div className="mt-6 flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
+              <span className="text-gray-600">1st Place</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-gray-300"></span>
+              <span className="text-gray-600">2nd Place</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+              <span className="text-gray-600">3rd Place</span>
+            </div>
           </div>
         </CardContent>
       </Card>
