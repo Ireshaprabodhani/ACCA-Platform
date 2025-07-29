@@ -10,8 +10,8 @@ const PdfAdminDashboard = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Base API URL
-  const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin';
+ // Base API URL - Note the /pdfs (plural) to match your backend
+  const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdfs';
 
   // Fetch all PDFs
   useEffect(() => {
@@ -20,7 +20,7 @@ const PdfAdminDashboard = () => {
 
   const fetchPdfs = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/pdf`);
+      const response = await axios.get(API_BASE_URL);
       setPdfs(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching PDFs:', error);
@@ -34,7 +34,7 @@ const PdfAdminDashboard = () => {
     setNewFile(e.target.files[0]);
   };
 
-  // Upload new PDF
+  // Upload new PDF - using /upload endpoint
   const handleUpload = async () => {
     if (!newFile) {
       alert('Please select a PDF file first');
@@ -46,7 +46,7 @@ const PdfAdminDashboard = () => {
 
     try {
       setIsUploading(true);
-      const response = await axios.post(`${API_BASE_URL}/pdf`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
@@ -70,19 +70,12 @@ const PdfAdminDashboard = () => {
     }
   };
 
-  // Open edit modal
-  const openEditModal = (pdf) => {
-    setSelectedPdf(pdf);
-    setEditTitle(pdf.title || '');
-    setIsEditModalOpen(true);
-  };
-
   // Update PDF title
   const handleUpdate = async () => {
     if (!selectedPdf) return;
 
     try {
-      await axios.put(`${API_BASE_URL}/pdf/${selectedPdf._id}`, { 
+      await axios.put(`${API_BASE_URL}/${selectedPdf._id}`, { 
         title: editTitle 
       });
       
@@ -103,7 +96,7 @@ const PdfAdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this PDF?')) return;
     
     try {
-      await axios.delete(`${API_BASE_URL}/pdf/${id}`);
+      await axios.delete(`${API_BASE_URL}/${id}`);
       setPdfs(pdfs.filter(pdf => pdf._id !== id));
       alert('PDF deleted successfully!');
     } catch (error) {
@@ -111,6 +104,7 @@ const PdfAdminDashboard = () => {
       alert(`Failed to delete PDF: ${error.response?.data?.message || error.message}`);
     }
   };
+
 
   return (
     <div className="container mx-auto px-4 py-8">
