@@ -13,7 +13,7 @@ const links = [
   { to: "/admin/videos", label: "Videos", icon: <Video size={20} /> },
   { to: "/admin/results", label: "Results", icon: <FileBarChart2 size={20} /> },
   { to: "/admin/leaderboard", label: "Leaderboard", icon: <BarChart2 size={20} /> },
-  { to: "/admin/entry-logo", label: "Entry Logo", icon: <ImageIcon size={20} /> }
+  { to: "/admin/pdf", label: "PDF Upload", icon: <ImageIcon size={20} /> }
 ];
 
 const Sidebar = ({ open }) => {
