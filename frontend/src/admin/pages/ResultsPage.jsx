@@ -1,15 +1,12 @@
-// pages/ResultsPage.jsx
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { Download, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
-/* ─────────── Helper to fetch JSON with JWT ─────────── */
 const fetchJSON = async (url) => {
-  const jwt =
-    localStorage.getItem('adminToken') || localStorage.getItem('token');
-
-  if (!jwt) throw new Error('No token ‑ please log in');
+  const jwt = localStorage.getItem('adminToken') || localStorage.getItem('token');
+  if (!jwt) throw new Error('No token - please log in');
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
 
@@ -23,294 +20,322 @@ const fetchJSON = async (url) => {
   return res.json();
 };
 
-/* ─────────── Animation variants ─────────── */
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 20 },
-};
-
 export default function ResultsPage() {
-  const [tab, setTab] = useState('quiz');         // 'quiz' | 'case'
-  const [rows, setRows] = useState([]);           // [school, attempts[]][]
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const [expandedRows, setExpandedRows] = useState({});
-  const [currentPage, setCurrentPage] = useState(1);
-
+  const [activeTab, setActiveTab] = useState('quiz'); // 'quiz' | 'case'
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [expandedAttempts, setExpandedAttempts] = useState({});
+  
+  // Pagination state
+  const [currentSchoolPage, setCurrentSchoolPage] = useState(1);
+  const [currentAttemptPage, setCurrentAttemptPage] = useState(1);
+  const SCHOOLS_PER_PAGE = 3;
   const ATTEMPTS_PER_PAGE = 5;
 
-  /* ─────────── Load attempts whenever tab changes ─────────── */
+  // Load results when tab changes
   useEffect(() => {
-    (async () => {
+    const loadResults = async () => {
       try {
-        setBusy(true);
-        setErr('');
+        setIsLoading(true);
+        setError('');
         const data = await fetchJSON(
-          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${tab}-status`
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
         );
 
         // Group by school
         const grouped = {};
         data.forEach((a) => {
-          const key = a.schoolName || 'N/A';
+          const key = a.schoolName || 'Other Schools';
           (grouped[key] = grouped[key] || []).push(a);
         });
-        setRows(Object.entries(grouped)); // [school, attempts]
+        setResults(Object.entries(grouped)); // [school, attempts]
+        setCurrentSchoolPage(1);
+        setCurrentAttemptPage(1);
       } catch (e) {
-        setErr(e.message);
+        setError(e.message);
       } finally {
-        setBusy(false);
+        setIsLoading(false);
       }
-    })();
-  }, [tab]);
+    };
 
-  /* ─────────── Export current tab’s data to Excel ─────────── */
+    loadResults();
+  }, [activeTab]);
+
+  // Export to Excel
   const exportToExcel = () => {
-    // Flatten into simple records
-    const records = [];
-    rows.forEach(([school, attempts]) => {
-      attempts.forEach((at) => {
-        records.push({
-          School: school,
-          User: at.userName ?? 'Deleted User',
-          Email: at.email ?? 'N/A',
-          Score: at.score,
-          'Submitted At': new Date(at.submittedAt).toLocaleString(),
-          Type: tab,                           // quiz | case
-        });
-      });
-    });
+    const records = results.flatMap(([school, attempts]) => 
+      attempts.map(at => ({
+        School: school,
+        User: at.userName ?? 'Deleted User',
+        Email: at.email ?? 'N/A',
+        Score: at.score,
+        'Submitted At': new Date(at.submittedAt).toLocaleString(),
+        Type: activeTab,
+      }))
+    );
 
-    if (!records.length) return alert('No data to export');
+    if (!records.length) {
+      toast.error('No data to export');
+      return;
+    }
 
     const ws = XLSX.utils.json_to_sheet(records);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(
-      wb,
-      ws,
-      tab === 'quiz' ? 'QuizResults' : 'CaseResults'
-    );
-
+    XLSX.utils.book_append_sheet(wb, ws, `${activeTab}-results`);
     const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     saveAs(
       new Blob([buffer], { type: 'application/octet-stream' }),
-      `${tab}-results.xlsx`
+      `${activeTab}-results-${new Date().toISOString().split('T')[0]}.xlsx`
     );
   };
 
-  /* ─────────── Helpers ─────────── */
-  const toggleExpand = (key) =>
-    setExpandedRows((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const paginate = (items) => {
-    const start = (currentPage - 1) * ATTEMPTS_PER_PAGE;
-    return items.slice(start, start + ATTEMPTS_PER_PAGE);
+  // Toggle attempt details
+  const toggleAttemptDetails = (attemptId) => {
+    setExpandedAttempts(prev => ({
+      ...prev,
+      [attemptId]: !prev[attemptId]
+    }));
   };
 
-  /* ─────────── UI ─────────── */
-  return (
-    <div
-      className="min-h-screen p-8 bg-gray-50 text-gray-900 font-sans"
-      style={{ fontFamily: "'Inter', sans-serif" }}
-    >
-      {/* Tabs */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-6">
-        {['quiz', 'case'].map((t) => (
-          <button
-            key={t}
-            onClick={() => {
-              setTab(t);
-              setExpandedRows({});
-              setCurrentPage(1);
-            }}
-            className={`px-8 py-3 rounded-full font-semibold text-lg shadow-md transition-colors duration-300
-              ${
-                tab === t
-                  ? 'bg-gradient-to-br from-purple-600 via-pink-500 to-yellow-400 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gradient-to-br hover:from-purple-400 hover:via-pink-400 hover:to-yellow-300 hover:text-white'
-              }`}
-          >
-            {t === 'quiz' ? 'Quiz Results' : 'Case‑study Results'}
-          </button>
-        ))}
+  // Pagination helpers
+  const paginatedSchools = results.slice(
+    (currentSchoolPage - 1) * SCHOOLS_PER_PAGE,
+    currentSchoolPage * SCHOOLS_PER_PAGE
+  );
 
-        {/* Excel Export Button */}
+  const totalSchoolPages = Math.ceil(results.length / SCHOOLS_PER_PAGE);
+
+  return (
+    <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-purple-50 to-blue-50">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-purple-900 mb-2">Results Dashboard</h1>
+        <p className="text-purple-600">View and analyze student performance</p>
+      </div>
+
+      {/* Tabs and Actions */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="flex bg-purple-100 rounded-lg p-1">
+          {['quiz', 'case'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === tab
+                  ? 'bg-white text-purple-700 shadow-sm'
+                  : 'text-purple-600 hover:bg-purple-50'
+              }`}
+            >
+              {tab === 'quiz' ? 'Quiz Results' : 'Case Study Results'}
+            </button>
+          ))}
+        </div>
+
         <button
           onClick={exportToExcel}
-          className="px-8 py-3 rounded-full bg-green-600 text-white font-semibold shadow-md hover:bg-green-700 transition-colors"
+          disabled={isLoading || results.length === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Download Excel
+          <Download size={18} />
+          Export to Excel
         </button>
       </div>
 
-      {busy && (
-        <p className="text-center text-purple-700 font-semibold text-lg animate-pulse">
-          Loading…
-        </p>
-      )}
-      {err && (
-        <p className="text-center text-red-600 font-semibold text-lg">
-          ⚠ {err}
-        </p>
-      )}
-      {!busy && !err && rows.length === 0 && (
-        <p className="text-center text-gray-500 text-lg">No attempts yet.</p>
-      )}
+      {/* Loading and Error States */}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="animate-spin h-12 w-12 text-purple-600" />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <p className="font-medium">Error loading results:</p>
+          <p>{error}</p>
+        </div>
+      ) : results.length === 0 ? (
+        <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
+          <p className="text-purple-600">No results found for {activeTab === 'quiz' ? 'quiz' : 'case study'}.</p>
+        </div>
+      ) : (
+        <>
+          {/* School Results */}
+          <div className="space-y-6">
+            {paginatedSchools.map(([school, attempts]) => {
+              const totalAttempts = attempts.length;
+              const totalPages = Math.ceil(totalAttempts / ATTEMPTS_PER_PAGE);
+              const paginatedAttempts = attempts.slice(
+                (currentAttemptPage - 1) * ATTEMPTS_PER_PAGE,
+                currentAttemptPage * ATTEMPTS_PER_PAGE
+              );
 
-      {/* Schools & Attempts */}
-      {!busy &&
-        rows.map(([school, allAttempts]) => {
-          const pagedAttempts = paginate(allAttempts);
-          const totalPages = Math.ceil(allAttempts.length / ATTEMPTS_PER_PAGE);
-
-          return (
-            <motion.div
-              key={school}
-              className="mb-14 bg-white rounded-2xl shadow-lg max-w-5xl mx-auto ring-1 ring-gray-200"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              {/* Header */}
-              <div className="px-8 py-5 border-b border-gray-200 rounded-t-2xl bg-gradient-to-r from-purple-100 via-pink-50 to-yellow-100">
-                <h2 className="text-2xl font-extrabold tracking-tight text-purple-700">
-                  {school} —{' '}
-                  <span className="text-gray-600 font-normal">
-                    {allAttempts.length} attempt
-                    {allAttempts.length > 1 ? 's' : ''}
-                  </span>
-                </h2>
-              </div>
-
-              {/* Attempts (paged) */}
-              {pagedAttempts.map((at, i) => {
-                const key = `${school}-${i}`;
-                const isExpanded = expandedRows[key];
-
-                return (
-                  <motion.div
-                    key={at.id || i}
-                    className="p-6 border-b border-gray-100 last:border-none cursor-pointer hover:bg-purple-50 transition-colors rounded-b-xl"
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    variants={fadeInUp}
-                    transition={{ duration: 0.3, delay: i * 0.1 }}
-                  >
+              return (
+                <motion.div
+                  key={school}
+                  className="bg-white rounded-xl shadow-sm border border-purple-100 overflow-hidden"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {/* School Header */}
+                  <div className="bg-purple-600 text-white px-6 py-4">
                     <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-lg font-semibold text-purple-900 leading-tight">
-                          {at.userName ?? 'Deleted User'}
-                        </h3>
-                        <p className="text-sm text-gray-500 tracking-wide">
-                          {at.email ?? 'N/A'}
-                        </p>
-                      </div>
-
-                      <div className="text-purple-900 font-mono font-bold text-xl tracking-wide">
-                        Score: {at.score}
-                      </div>
+                      <h2 className="text-xl font-bold">{school}</h2>
+                      <span className="bg-white text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                        {totalAttempts} attempt{totalAttempts !== 1 ? 's' : ''}
+                      </span>
                     </div>
+                  </div>
 
-                    <button
-                      onClick={() => toggleExpand(key)}
-                      className="mt-4 text-purple-600 underline hover:text-purple-800 font-medium transition-colors"
-                    >
-                      {isExpanded ? 'Hide Details' : 'View More'}
-                    </button>
+                  {/* Attempts List */}
+                  <div className="divide-y divide-purple-100">
+                    {paginatedAttempts.map((attempt) => {
+                      const isExpanded = expandedAttempts[attempt.id];
+                      const correctAnswers = attempt.questions?.filter(
+                        (q, idx) => q?.answer === attempt.answers?.[idx]
+                      ).length || 0;
 
-                    <AnimatePresence initial={false}>
-                      {isExpanded && Array.isArray(at.questions) && at.questions.length ? (
-                        <motion.div
-                          className="space-y-6 mt-6"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.4 }}
-                        >
-                          {at.questions.map((q, idx) => {
-                            const selIdx = at.answers?.[idx];
-                            const corrIdx = q?.answer;
+                      return (
+                        <div key={attempt.id} className="p-4 hover:bg-purple-50 transition">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-semibold text-purple-900">
+                                {attempt.userName || 'Anonymous User'}
+                              </h3>
+                              <p className="text-sm text-purple-600">{attempt.email || 'No email'}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-purple-700">
+                                Score: {attempt.score}
+                              </div>
+                              <div className="text-sm text-purple-500">
+                                {correctAnswers}/{attempt.questions?.length || 0} correct
+                              </div>
+                            </div>
+                          </div>
 
-                            return (
-                              <div
-                                key={q?._id || idx}
-                                className="p-5 bg-gradient-to-r from-purple-50 via-pink-50 to-yellow-50 rounded-xl border border-purple-200 shadow-sm"
+                          <div className="mt-3 flex justify-between items-center">
+                            <button
+                              onClick={() => toggleAttemptDetails(attempt.id)}
+                              className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={16} /> Hide details
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown size={16} /> View details
+                                </>
+                              )}
+                            </button>
+                            <span className="text-xs text-purple-500">
+                              {new Date(attempt.submittedAt).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="mt-4"
                               >
-                                <div className="font-semibold mb-3 text-purple-900 text-lg tracking-wide">
-                                  Q{idx + 1}. {q?.question ?? '—'}
-                                </div>
-                                <ul className="space-y-3">
-                                  {q?.options?.map((opt, j) => {
-                                    const isCorrect = j === corrIdx;
-                                    const isChosenWrong = selIdx === j && selIdx !== corrIdx;
-
-                                    let bg = '';
-                                    if (isCorrect)
-                                      bg = 'bg-green-200 text-green-900 font-semibold';
-                                    else if (isChosenWrong)
-                                      bg = 'bg-red-200 text-red-900 font-semibold';
+                                <div className="space-y-3">
+                                  {attempt.questions?.map((question, idx) => {
+                                    const selectedAnswer = attempt.answers?.[idx];
+                                    const correctAnswer = question?.answer;
+                                    const isCorrect = selectedAnswer === correctAnswer;
 
                                     return (
-                                      <li
-                                        key={j}
-                                        className={`px-4 py-3 rounded-lg border select-none tracking-wide ${bg}`}
-                                      >
-                                        {String.fromCharCode(65 + j)}. {opt ?? '—'}
-                                      </li>
+                                      <div key={idx} className="p-3 bg-purple-50 rounded-lg">
+                                        <div className="font-medium text-purple-900 mb-2">
+                                          Q{idx + 1}: {question?.question || 'Question not available'}
+                                        </div>
+                                        <ul className="space-y-2">
+                                          {question?.options?.map((option, optIdx) => {
+                                            let optionClass = 'bg-white text-purple-800';
+                                            if (optIdx === correctAnswer) {
+                                              optionClass = 'bg-green-100 text-green-800 border-green-200';
+                                            } else if (optIdx === selectedAnswer && !isCorrect) {
+                                              optionClass = 'bg-red-100 text-red-800 border-red-200';
+                                            }
+
+                                            return (
+                                              <li
+                                                key={optIdx}
+                                                className={`p-2 border rounded-md ${optionClass}`}
+                                              >
+                                                {String.fromCharCode(65 + optIdx)}. {option}
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </div>
                                     );
                                   })}
-                                </ul>
-                              </div>
-                            );
-                          })}
-                          <div className="text-right text-purple-700 italic tracking-wide text-sm mt-3">
-                            Submitted {new Date(at.submittedAt).toLocaleString()}
-                          </div>
-                        </motion.div>
-                      ) : (
-                        isExpanded && (
-                          <motion.p
-                            className="text-sm italic mt-4 text-purple-600 tracking-wide"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                          >
-                            Questions not stored for this attempt.
-                          </motion.p>
-                        )
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-6 p-6">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-6 py-3 rounded-full bg-white shadow-md text-purple-700 font-semibold disabled:opacity-50 hover:bg-gradient-to-br hover:from-purple-600 hover:via-pink-500 hover:to-yellow-400 hover:text-white transition"
-                  >
-                    Prev
-                  </button>
-                  <span className="text-gray-700 font-semibold text-lg tracking-wide">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-6 py-3 rounded-full bg-white shadow-md text-purple-700 font-semibold disabled:opacity-50 hover:bg-gradient-to-br hover:from-purple-600 hover:via-pink-500 hover:to-yellow-400 hover:text-white transition"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
+                  {/* Attempt Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-between items-center p-4 border-t border-purple-100">
+                      <button
+                        onClick={() => setCurrentAttemptPage(p => Math.max(1, p - 1))}
+                        disabled={currentAttemptPage === 1}
+                        className="flex items-center gap-1 px-3 py-1 text-purple-700 hover:bg-purple-100 rounded disabled:opacity-50"
+                      >
+                        <ChevronLeft size={16} /> Previous
+                      </button>
+                      <span className="text-sm text-purple-600">
+                        Page {currentAttemptPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentAttemptPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentAttemptPage === totalPages}
+                        className="flex items-center gap-1 px-3 py-1 text-purple-700 hover:bg-purple-100 rounded disabled:opacity-50"
+                      >
+                        Next <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* School Pagination */}
+          {totalSchoolPages > 1 && (
+            <div className="flex justify-between items-center mt-6">
+              <button
+                onClick={() => setCurrentSchoolPage(p => Math.max(1, p - 1))}
+                disabled={currentSchoolPage === 1}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50"
+              >
+                <ChevronLeft size={18} /> Previous Schools
+              </button>
+              <span className="text-purple-600">
+                Showing schools {(currentSchoolPage - 1) * SCHOOLS_PER_PAGE + 1}-
+                {Math.min(currentSchoolPage * SCHOOLS_PER_PAGE, results.length)} of {results.length}
+              </span>
+              <button
+                onClick={() => setCurrentSchoolPage(p => Math.min(totalSchoolPages, p + 1))}
+                disabled={currentSchoolPage === totalSchoolPages}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50"
+              >
+                Next Schools <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

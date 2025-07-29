@@ -1,45 +1,62 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-import { PlusCircle, X } from 'lucide-react';
+import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 
-/* ────────── constants ────────── */
 const PER_PAGE = 10;
 const LANGS = ['English', 'Sinhala'];
 const BLANK_FORM = {
   question: '',
   language: 'English',
   options: ['', '', '', ''],
-  answer: 0, // frontend uses 'answer' internally
+  answer: 0,
 };
 
-const api = axios.create({
-  baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-  },
-});
-
 export default function CaseQuestionsPage() {
-  /* data */
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [langTab, setLang] = useState('English');
-
-  /* ui */
   const [modalOpen, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(BLANK_FORM);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  /* ────────── CRUD + fetch ────────── */
+  // Create axios instance with interceptor to handle token refresh
+  const api = axios.create({
+    baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
+  });
+
+  // Add request interceptor to include token
+  api.interceptors.request.use(config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Add response interceptor to handle errors
+  api.interceptors.response.use(
+    response => response,
+    error => {
+      if (error.response && error.response.status === 401) {
+        // Handle token expiration
+        localStorage.removeItem('token');
+        window.location.reload();
+      }
+      return Promise.reject(error);
+    }
+  );
+
   const loadRows = async (p = page, lang = langTab) => {
     try {
+      setIsLoading(true);
       const { data } = await api.get('/case', {
         params: { page: p, limit: PER_PAGE, language: lang },
       });
 
-      // Map each question's correctAnswer to answer for frontend use
       const mappedQuestions = (data.questions || []).map((q) => ({
         ...q,
         answer: q.correctAnswer,
@@ -48,258 +65,336 @@ export default function CaseQuestionsPage() {
       setRows(mappedQuestions);
       setTotal(data.total || 0);
       setPage(data.page || 1);
-    } catch {
-      toast.error('Failed to load');
+      
+      // If this was the initial load, mark it as done
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+    } catch (err) {
+      toast.error('Failed to load questions. Please try again.');
+      console.error('Error loading questions:', err);
+      
+      // If this was the initial load attempt, retry once after 1 second
+      if (isInitialLoad) {
+        setTimeout(() => loadRows(p, lang), 1000);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const saveRow = async () => {
-    const invalid =
-      !form.question.trim() ||
-      form.options.some((o) => !o.trim()) ||
-      form.answer < 0 ||
-      form.answer > 3;
-    if (invalid) return toast.error('Fill question, 4 options, correct answer');
+    if (!form.question.trim()) {
+      toast.error('Please enter a question');
+      return;
+    }
+    if (form.options.some((o) => !o.trim())) {
+      toast.error('Please fill all options');
+      return;
+    }
+    if (form.answer < 0 || form.answer > 3) {
+      toast.error('Please select the correct answer');
+      return;
+    }
 
-    const req = editId
-      ? api.put(`/case/${editId}`, {
-          ...form,
-          correctAnswer: form.answer, // send as correctAnswer to backend
-          // Remove 'answer' so backend doesn't get confused (optional)
-          answer: undefined,
-        })
-      : api.post('/case', {
-          ...form,
-          correctAnswer: form.answer,
-          answer: undefined,
-        });
+    try {
+      const payload = {
+        ...form,
+        correctAnswer: form.answer,
+        answer: undefined, // Remove frontend-only field
+      };
 
-    toast
-      .promise(req, { loading: 'Saving…', success: 'Saved', error: 'Error' })
-      .then(() => {
-        setModal(false);
-        setForm({ ...BLANK_FORM, language: langTab });
-        loadRows(1, langTab);
+      const req = editId 
+        ? api.put(`/case/${editId}`, payload)
+        : api.post('/case', payload);
+
+      await toast.promise(req, {
+        loading: editId ? 'Updating question...' : 'Adding new question...',
+        success: editId ? 'Question updated successfully!' : 'Question added successfully!',
+        error: editId ? 'Failed to update question' : 'Failed to add question'
       });
+
+      setModal(false);
+      setForm({ ...BLANK_FORM, language: langTab });
+      loadRows(1, langTab); // Refresh to first page
+    } catch (error) {
+      console.error('Error saving question:', error);
+    }
   };
 
-  const deleteRow = (id) =>
-    window.confirm('Delete this question?') &&
-    toast
-      .promise(api.delete(`/case/${id}`), {
-        loading: 'Deleting…',
-        success: 'Deleted',
-        error: 'Error',
-      })
-      .then(() => loadRows(page, langTab));
+  const deleteRow = async (id, questionText) => {
+    if (!window.confirm(`Are you sure you want to delete:\n"${questionText}"?`)) return;
+    
+    try {
+      await toast.promise(api.delete(`/case/${id}`), {
+        loading: 'Deleting question...',
+        success: 'Question deleted successfully!',
+        error: 'Failed to delete question'
+      });
+      loadRows(page, langTab);
+    } catch (error) {
+      console.error('Error deleting question:', error);
+    }
+  };
 
-  /* lifecycle */
   useEffect(() => {
     loadRows(1, langTab);
-  }, [langTab]); // eslint-disable-line
+  }, [langTab]);
 
-  /* pagination helpers */
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const firstIndex = (page - 1) * PER_PAGE;
 
-  /* ────────── UI ────────── */
   return (
-    <div className="max-w-6xl mx-auto p-6 font-sans text-gray-800 bg-gray-50 min-h-screen">
+    <div className="max-w-6xl mx-auto p-4 md:p-6 bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
       <Toaster position="top-center" />
 
-      {/* Tabs + Add button */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-4">
-          {LANGS.map((l) => (
-            <button
-              key={l}
-              onClick={() => {
-                setLang(l);
-                setPage(1);
-              }}
-              className={`px-5 py-2 rounded-lg font-medium transition
-                ${
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-purple-900">Case Study Questions</h1>
+          <p className="text-purple-600">
+            {total} {langTab} questions available
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          {/* Language Tabs */}
+          <div className="flex bg-purple-100 rounded-lg p-1">
+            {LANGS.map((l) => (
+              <button
+                key={l}
+                onClick={() => {
+                  setLang(l);
+                  setPage(1);
+                }}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   langTab === l
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-400/30'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-white text-purple-700 shadow-sm'
+                    : 'text-purple-600 hover:bg-purple-50'
                 }`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+              >
+                {l}
+              </button>
+            ))}
+          </div>
 
-        <button
-          onClick={() => {
-            setForm({ ...BLANK_FORM, language: langTab });
-            setEditId(null);
-            setModal(true);
-          }}
-          className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-        >
-          <PlusCircle size={20} />
-          Add Question
-        </button>
+          {/* Add Question Button */}
+          <button
+            onClick={() => {
+              setForm({ ...BLANK_FORM, language: langTab });
+              setEditId(null);
+              setModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-sm"
+          >
+            <PlusCircle size={18} />
+            Add Question
+          </button>
+        </div>
       </div>
 
-      {/* Question‑paper style list */}
-      <div className="space-y-6">
-        {rows.length ? (
-          rows.map((q, idx) => (
-            <div
-              key={q._id}
-              className="bg-white border border-gray-200 rounded-xl shadow hover:shadow-md transition p-6"
-            >
-              {/* Heading row with buttons */}
-              <div className="sm:flex justify-between gap-4">
-                <h4 className="flex-1 text-lg font-semibold leading-snug break-words sm:pr-8">
-                  {firstIndex + idx + 1}. {q.question}
-                </h4>
+      {/* Loading State */}
+      {isLoading && isInitialLoad ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="animate-spin h-12 w-12 text-purple-600" />
+        </div>
+      ) : (
+        <>
+          {/* Questions List */}
+          <div className="space-y-4">
+            {rows.length > 0 ? (
+              rows.map((q, idx) => (
+                <div
+                  key={q._id}
+                  className="bg-white border border-purple-100 rounded-xl shadow-sm hover:shadow-md transition p-6 relative"
+                >
+                  {/* Question Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-purple-100 text-purple-800 rounded-full text-sm font-medium mt-1">
+                        {firstIndex + idx + 1}
+                      </span>
+                      <h3 className="text-lg font-semibold text-purple-900 break-words">
+                        {q.question}
+                      </h3>
+                    </div>
+                    <div className="flex gap-2 sm:self-center">
+                      <button
+                        onClick={() => {
+                          setForm({ ...q, answer: q.correctAnswer });
+                          setEditId(q._id);
+                          setModal(true);
+                        }}
+                        className="p-2 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-full transition"
+                        title="Edit"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => deleteRow(q._id, q.question)}
+                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition"
+                        title="Delete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="flex-shrink-0 flex gap-4 text-sm font-medium mt-2 sm:mt-0">
-                  <button
-                    onClick={() => {
-                      // Map backend correctAnswer to frontend answer
-                      setForm({ ...q, answer: q.correctAnswer });
-                      setEditId(q._id);
-                      setModal(true);
-                    }}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteRow(q._id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
+                  {/* Options List */}
+                  <ul className="space-y-2 ml-2 pl-6">
+                    {q.options.map((opt, i) => (
+                      <li
+                        key={i}
+                        className={`flex items-start gap-3 p-2 rounded-lg ${
+                          i === q.correctAnswer 
+                            ? 'bg-green-50 border border-green-100' 
+                            : 'hover:bg-purple-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`w-5 h-5 flex items-center justify-center rounded-full ${
+                            i === q.correctAnswer 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-purple-100 text-purple-800'
+                          } font-medium text-sm`}>
+                            {String.fromCharCode(65 + i)}
+                          </span>
+                          {i === q.correctAnswer && (
+                            <CheckCircle size={16} className="text-green-500" />
+                          )}
+                        </div>
+                        <span className="flex-1 break-words">{opt}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+              ))
+            ) : (
+              <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
+                <p className="text-purple-600">
+                  No {langTab} case study questions found. Click "Add Question" to create one.
+                </p>
               </div>
+            )}
+          </div>
 
-              {/* options */}
-              <ul className="space-y-2 ml-6 mt-4">
-                {q.options.map((opt, i) => (
-                  <li
-                    key={i}
-                    className={`flex gap-2 ${
-                      i === q.correctAnswer
-                        ? 'font-semibold text-green-700 bg-green-50 px-2 py-1 rounded'
-                        : ''
-                    }`}
-                  >
-                    <span className="w-5 font-bold">{String.fromCharCode(65 + i)}.</span>
-                    <span className="flex-1 break-words">{opt}</span>
-                    {i === q.correctAnswer && (
-                      <span className="text-green-600 text-sm font-medium">✓ Correct</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8">
+              <div className="text-sm text-purple-600">
+                Showing {firstIndex + 1} to {Math.min(firstIndex + PER_PAGE, total)} of {total} questions
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => loadRows(page - 1)}
+                  className="p-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50 transition"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="px-3 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 text-sm">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => loadRows(page + 1)}
+                  className="p-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50 transition"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
-          ))
-        ) : (
-          <p className="text-center py-10 text-gray-500 italic">No case questions found.</p>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-6 mt-10 text-gray-700">
-          <button
-            disabled={page === 1}
-            onClick={() => loadRows(page - 1)}
-            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition"
-          >
-            Prev
-          </button>
-          <span className="font-medium">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            disabled={page === totalPages}
-            onClick={() => loadRows(page + 1)}
-            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition"
-          >
-            Next
-          </button>
-        </div>
+          )}
+        </>
       )}
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl p-8 space-y-6 relative">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-semibold">{editId ? 'Edit' : 'Add'} Question</h3>
+              <h2 className="text-xl font-bold text-purple-900">
+                {editId ? 'Edit Question' : 'Add New Question'}
+              </h2>
               <button
                 onClick={() => setModal(false)}
-                className="text-gray-500 hover:text-gray-700 transition"
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition"
               >
                 <X size={24} />
               </button>
             </div>
 
-            <label className="block text-sm font-medium">
-              Question
-              <textarea
-                className="w-full mt-2 border border-gray-300 rounded-md px-3 py-2
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[70px]"
-                value={form.question}
-                onChange={(e) => setForm({ ...form, question: e.target.value })}
-              />
-            </label>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-purple-700 mb-1">
+                  Case Study Question
+                </label>
+                <textarea
+                  className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[100px]"
+                  value={form.question}
+                  onChange={(e) => setForm({ ...form, question: e.target.value })}
+                  placeholder="Enter the case study scenario..."
+                />
+              </div>
 
-            <label className="block text-sm font-medium">
-              Language
-              <select
-                className="w-full mt-2 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                value={form.language}
-                onChange={(e) => setForm({ ...form, language: e.target.value })}
-              >
-                <option>English</option>
-                <option>Sinhala</option>
-              </select>
-            </label>
+              <div>
+                <label className="block text-sm font-medium text-purple-700 mb-1">
+                  Language
+                </label>
+                <select
+                  className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                  value={form.language}
+                  onChange={(e) => setForm({ ...form, language: e.target.value })}
+                >
+                  {LANGS.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+              </div>
 
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-medium mb-1">Options (select correct answer)</legend>
-              {form.options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="correct"
-                    checked={form.answer === i}
-                    onChange={() => setForm({ ...form, answer: i })}
-                    className="accent-blue-600 cursor-pointer"
-                  />
-                  <input
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2
-                      focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={`Option ${i + 1}`}
-                    value={opt}
-                    onChange={(e) => {
-                      const opts = [...form.options];
-                      opts[i] = e.target.value;
-                      setForm({ ...form, options: opts });
-                    }}
-                  />
+              <div>
+                <label className="block text-sm font-medium text-purple-700 mb-2">
+                  Response Options (select the correct answer)
+                </label>
+                <div className="space-y-3">
+                  {form.options.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="correctOption"
+                        checked={form.answer === i}
+                        onChange={() => setForm({ ...form, answer: i })}
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500"
+                      />
+                      <input
+                        type="text"
+                        className="flex-1 border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                        placeholder={`Option ${i + 1}`}
+                        value={opt}
+                        onChange={(e) => {
+                          const opts = [...form.options];
+                          opts[i] = e.target.value;
+                          setForm({ ...form, options: opts });
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </fieldset>
+              </div>
+            </div>
 
-            <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-purple-100">
               <button
                 onClick={() => setModal(false)}
-                className="px-5 py-2 bg-gray-300 rounded-md hover:bg-gray-400 transition"
+                className="px-4 py-2 text-purple-700 hover:bg-purple-50 rounded-lg transition"
               >
                 Cancel
               </button>
               <button
                 onClick={saveRow}
-                className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition shadow-sm"
               >
-                Save
+                {editId ? 'Update Question' : 'Add Question'}
               </button>
             </div>
           </div>
