@@ -22,64 +22,61 @@ const PdfAdminDashboard = () => {
   };
 
   const fetchPDFs = async () => {
-  const token = localStorage.getItem('adminToken');
-  if (!token) {
-    console.warn('No admin token found');
-    return;
-  }
+    if (!token) {
+      console.warn('No admin token found');
+      return;
+    }
 
-  try {
-    const res = await axios.get(
-      'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf',
-      {
+    try {
+      const res = await axios.get(API_BASE_URL, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
-    setPdfList(res.data.pdfs);
-  } catch (err) {
-    console.error('Error fetching PDFs:', err);
-    alert('Fetch failed: ' + (err.response?.data?.error || err.message));
-  }
-};
-
+      });
+      setPdfs(res.data.pdfs); // ✅ correct setter
+    } catch (err) {
+      console.error('Error fetching PDFs:', err);
+      alert('Fetch failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
 
   useEffect(() => {
-    fetchPdfs();
+    fetchPDFs(); // ✅ correctly called
   }, []);
 
   const handleUpload = async () => {
-  if (!pdfFile) return alert('Please select a PDF file');
+    if (!file) return alert('Please select a PDF file');
+    if (!identifier) return alert('Please enter a unique identifier');
+    if (!token) return alert('Admin not logged in');
 
-  const token = localStorage.getItem('adminToken');
-  if (!token) return alert('Admin not logged in');
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('identifier', identifier);
 
-  const formData = new FormData();
-  formData.append('pdf', pdfFile);
-  formData.append('title', title);
-  formData.append('description', description);
-  formData.append('schoolName', selectedSchool); // if needed
-
-  try {
-    await axios.post(
-      'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf',
-      formData,
-      {
+    try {
+      setUploading(true);
+      await axios.post(API_BASE_URL, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`, // ✅ SEND TOKEN HERE
+          Authorization: `Bearer ${token}`,
         },
-      }
-    );
-    alert('PDF uploaded successfully');
-    fetchPDFs(); // refresh list
-    resetForm(); // optional
-  } catch (err) {
-    console.error('Upload error:', err);
-    alert('Upload failed: ' + (err.response?.data?.error || err.message));
-  }
-};
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percent);
+        }
+      });
+      alert('PDF uploaded successfully');
+      fetchPDFs(); // ✅ refresh after upload
+      setFile(null);
+      setIdentifier('');
+      setUploading(false);
+      setUploadProgress(0);
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + (err.response?.data?.error || err.message));
+      setUploading(false);
+    }
+  };
 
   const handleUpdate = async () => {
     try {
@@ -91,7 +88,7 @@ const PdfAdminDashboard = () => {
       setEditPdfId(null);
       setEditTitle('');
       setEditDescription('');
-      fetchPdfs();
+      fetchPDFs(); // ✅ refresh
     } catch (error) {
       console.error('Update failed:', error);
     }
@@ -100,7 +97,7 @@ const PdfAdminDashboard = () => {
   const handleDelete = async (pdfId) => {
     try {
       await axios.delete(`${API_BASE_URL}/${pdfId}`, axiosConfig);
-      fetchPdfs();
+      fetchPDFs(); // ✅ refresh
     } catch (error) {
       console.error('Delete failed:', error);
     }
