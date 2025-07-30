@@ -33,7 +33,7 @@ const PdfAdminDashboard = () => {
       'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf',
       {
         headers: {
-          Authorization: `Bearer ${token}`, // ✅ Important
+          Authorization: `Bearer ${token}`,
         },
       }
     );
