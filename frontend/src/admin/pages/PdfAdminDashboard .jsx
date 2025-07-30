@@ -35,40 +35,42 @@ const PdfAdminDashboard = () => {
   };
 
   // Upload new PDF - using /upload endpoint
-  const handleUpload = async () => {
-    if (!newFile) {
-      alert('Please select a PDF file first');
-      return;
-    }
+const handleUpload = async () => {
+  if (!newFile) {
+    alert('Please select a PDF file first');
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append('pdf', newFile);
+  const formData = new FormData();
+  formData.append('pdf', newFile);
+  formData.append('identifier', newFile.name); // ✅ Add identifier
 
-    try {
-      setIsUploading(true);
-      const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setUploadProgress(percentCompleted);
-        },
-      });
-      
-      setPdfs([...pdfs, response.data]);
-      setNewFile(null);
-      alert('PDF uploaded successfully!');
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert(`Failed to upload PDF: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
+  try {
+    setIsUploading(true);
+    const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        setUploadProgress(percentCompleted);
+      },
+    });
+
+    setPdfs([...pdfs, response.data]);
+    setNewFile(null);
+    alert('PDF uploaded successfully!');
+  } catch (error) {
+    console.error('Upload error:', error);
+    alert(`Failed to upload PDF: ${error.response?.data?.message || error.message}`);
+  } finally {
+    setIsUploading(false);
+    setUploadProgress(0);
+  }
+};
+
 
   // Update PDF title
   const handleUpdate = async () => {
