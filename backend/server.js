@@ -59,6 +59,8 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 /* ---------- SIMPLE RATE‑LIMIT ---------- */
 const rateLimit = require('express-rate-limit');

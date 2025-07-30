@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Configure upload directory
-const uploadDir = path.join(__dirname, '../uploads');
+const uploadDir = path.join(__dirname, '../uploads/pdfs');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -20,46 +20,104 @@ exports.uploadPdf = async (req, res) => {
     }
 
     const { originalname, filename, path: filePath, size } = req.file;
-    
-    // Check if PDF already exists with this identifier
+
     const existingPdf = await Pdf.findOne({ identifier });
     if (existingPdf) {
-      // Delete the old file
       if (fs.existsSync(existingPdf.path)) {
         fs.unlinkSync(existingPdf.path);
       }
-      // Update the existing record
       existingPdf.filename = filename;
+      existingPdf.originalName = originalname;
       existingPdf.path = filePath;
+      existingPdf.size = size;
       await existingPdf.save();
       return res.json(existingPdf);
     }
 
-   const pdf = new Pdf({
+    const pdf = new Pdf({
       identifier,
       filename,
       originalName: originalname,
       path: filePath,
       size,
-      uploadedBy: req.adminId, // Optional, if you're storing admin info
-   });
+      uploadedBy: req.adminId || null,
+    });
 
     await pdf.save();
     res.status(201).json(pdf);
-    
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-exports.getPdfByIdentifier = async (req, res) => {
+exports.listPdfs = async (req, res) => {
   try {
-    const pdf = await Pdf.findOne({ identifier: req.params.identifier });
+    const pdfs = await Pdf.find().sort({ createdAt: -1 });
+    res.json(pdfs);
+  } catch (error) {
+    console.error('Error fetching PDFs:', error);
+    res.status(500).json({ message: 'Error fetching PDFs' });
+  }
+};
+
+exports.getPdf = async (req, res) => {
+  try {
+    const pdf = await Pdf.findById(req.params.id);
     if (!pdf) {
       return res.status(404).json({ message: 'PDF not found' });
     }
     res.json(pdf);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updatePdf = async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const pdf = await Pdf.findById(req.params.id);
+    if (!pdf) {
+      return res.status(404).json({ message: 'PDF not found' });
+    }
+
+    if (title !== undefined) pdf.title = title;
+    if (description !== undefined) pdf.description = description;
+
+    await pdf.save();
+    res.json(pdf);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deletePdf = async (req, res) => {
+  try {
+    const pdf = await Pdf.findById(req.params.id);
+    if (!pdf) {
+      return res.status(404).json({ message: 'PDF not found' });
+    }
+
+    if (fs.existsSync(pdf.path)) {
+      fs.unlinkSync(pdf.path);
+    }
+
+    await pdf.deleteOne();
+    res.json({ message: 'PDF deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.downloadPdf = async (req, res) => {
+  try {
+    const pdf = await Pdf.findById(req.params.id);
+    if (!pdf) {
+      return res.status(404).json({ message: 'PDF not found' });
+    }
+
+    res.download(pdf.path, pdf.originalName);
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(500).json({ message: 'Download failed' });
   }
 };

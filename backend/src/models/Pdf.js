@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const PdfSchema = new mongoose.Schema({
+  identifier: {
+    type: String,
+    required: true,
+    unique: true  // optional but recommended if each identifier is unique
+  },
   filename: {
     type: String,
     required: true
