@@ -14,33 +14,15 @@ exports.uploadPdf = async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const { identifier } = req.body;
-    if (!identifier) {
-      return res.status(400).json({ message: 'Identifier is required' });
-    }
-
+    // No identifier needed here
     const { originalname, filename, path: filePath, size } = req.file;
 
-    const existingPdf = await Pdf.findOne({ identifier });
-    if (existingPdf) {
-      if (fs.existsSync(existingPdf.path)) {
-        fs.unlinkSync(existingPdf.path);
-      }
-      existingPdf.filename = filename;
-      existingPdf.originalName = originalname;
-      existingPdf.path = filePath;
-      existingPdf.size = size;
-      await existingPdf.save();
-      return res.json(existingPdf);
-    }
-
     const pdf = new Pdf({
-      identifier,
       filename,
       originalName: originalname,
       path: filePath,
       size,
-      uploadedBy: req.adminId || null,
+      uploadedBy: req.admin ? req.admin._id : null,  // Use req.admin._id from middleware
     });
 
     await pdf.save();
@@ -49,6 +31,7 @@ exports.uploadPdf = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.listPdfs = async (req, res) => {
   try {

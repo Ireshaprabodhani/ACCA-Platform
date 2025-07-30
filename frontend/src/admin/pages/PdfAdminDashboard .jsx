@@ -7,15 +7,13 @@ const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/p
 const PdfAdminDashboard = () => {
   const [pdfs, setPdfs] = useState([]);
   const [file, setFile] = useState(null);
-  const [identifier, setIdentifier] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [editPdfId, setEditPdfId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  // Consistent token usage
-  const token = localStorage.getItem('token'); // make sure key matches your UsersPage token key
+  const token = localStorage.getItem('token'); // Ensure this matches your storage key
   const axiosConfig = {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -30,7 +28,7 @@ const PdfAdminDashboard = () => {
 
     axios.get(API_BASE_URL, axiosConfig)
       .then((res) => {
-        setPdfs(res.data.pdfs || res.data); // support if your API returns pdfs in different shapes
+        setPdfs(res.data.pdfs || res.data);
       })
       .catch(() => toast.error('Failed to fetch PDFs'));
   };
@@ -41,12 +39,10 @@ const PdfAdminDashboard = () => {
 
   const handleUpload = async () => {
     if (!file) return toast.error('Please select a PDF file');
-    if (!identifier.trim()) return toast.error('Please enter a unique identifier');
     if (!token) return toast.error('Admin not logged in');
 
     const formData = new FormData();
     formData.append('pdf', file);
-    formData.append('identifier', identifier.trim());
 
     setUploading(true);
     try {
@@ -62,7 +58,6 @@ const PdfAdminDashboard = () => {
       });
       toast.success('PDF uploaded successfully');
       setFile(null);
-      setIdentifier('');
       fetchPDFs();
     } catch (err) {
       console.error('Upload error:', err);
@@ -117,13 +112,6 @@ const PdfAdminDashboard = () => {
           onChange={(e) => setFile(e.target.files[0])}
           className="border rounded px-3 py-2"
         />
-        <input
-          type="text"
-          placeholder="Identifier (unique)"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          className="border rounded px-3 py-2 flex-1"
-        />
         <button
           onClick={handleUpload}
           disabled={uploading}
@@ -142,7 +130,7 @@ const PdfAdminDashboard = () => {
             className="bg-white p-4 rounded shadow flex justify-between items-center border border-purple-100"
           >
             <div>
-              <strong className="text-purple-900">{pdf.originalName}</strong> (ID: {pdf.identifier})
+              <strong className="text-purple-900">{pdf.originalName}</strong>
               {pdf.title && <span> - {pdf.title}</span>}
               <br />
               <a
