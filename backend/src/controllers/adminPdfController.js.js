@@ -19,7 +19,7 @@ exports.uploadPdf = async (req, res) => {
       return res.status(400).json({ message: 'Identifier is required' });
     }
 
-    const { originalname, filename, path: filePath } = req.file;
+    const { originalname, filename, path: filePath, size } = req.file;
     
     // Check if PDF already exists with this identifier
     const existingPdf = await Pdf.findOne({ identifier });
@@ -35,12 +35,14 @@ exports.uploadPdf = async (req, res) => {
       return res.json(existingPdf);
     }
 
-    // Create new PDF record
-    const pdf = new Pdf({
+   const pdf = new Pdf({
       identifier,
-      filename: originalname,
-      path: filePath
-    });
+      filename,
+      originalName: originalname,
+      path: filePath,
+      size,
+      uploadedBy: req.adminId, // Optional, if you're storing admin info
+   });
 
     await pdf.save();
     res.status(201).json(pdf);
