@@ -1,4 +1,3 @@
-
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 
@@ -11,7 +10,7 @@ module.exports = async (req, res, next) => {
     const admin = await Admin.findById(decoded.id);
     if (!admin) return res.status(403).json({ error: 'Admin only' });
 
-    req.admin = admin;
+    req.adminId = admin._id;  // attach only ID here
     next();
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
