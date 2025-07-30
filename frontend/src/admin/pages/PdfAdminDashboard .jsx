@@ -21,50 +21,65 @@ const PdfAdminDashboard = () => {
     }
   };
 
-  const fetchPdfs = async () => {
-    try {
-      const response = await axios.get(API_BASE_URL, axiosConfig);
-      setPdfs(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error('Error fetching PDFs:', error);
-      setPdfs([]);
-    }
-  };
+  const fetchPDFs = async () => {
+  const token = localStorage.getItem('adminToken');
+  if (!token) {
+    console.warn('No admin token found');
+    return;
+  }
+
+  try {
+    const res = await axios.get(
+      'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`, // ✅ Important
+        },
+      }
+    );
+    setPdfList(res.data.pdfs);
+  } catch (err) {
+    console.error('Error fetching PDFs:', err);
+    alert('Fetch failed: ' + (err.response?.data?.error || err.message));
+  }
+};
+
 
   useEffect(() => {
     fetchPdfs();
   }, []);
 
   const handleUpload = async () => {
-    if (!file || !identifier) return;
+  if (!pdfFile) return alert('Please select a PDF file');
 
-    const formData = new FormData();
-    formData.append('pdf', file);
-    formData.append('identifier', identifier);
+  const token = localStorage.getItem('adminToken');
+  if (!token) return alert('Admin not logged in');
 
-    try {
-      setUploading(true);
-      await axios.post(`${API_BASE_URL}/upload`, formData, {
+  const formData = new FormData();
+  formData.append('pdf', pdfFile);
+  formData.append('title', title);
+  formData.append('description', description);
+  formData.append('schoolName', selectedSchool); // if needed
+
+  try {
+    await axios.post(
+      'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf',
+      formData,
+      {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`, // ✅ SEND TOKEN HERE
         },
-        onUploadProgress: progressEvent => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percent);
-        }
-      });
-
-      setFile(null);
-      setIdentifier('');
-      setUploadProgress(0);
-      setUploading(false);
-      fetchPdfs();
-    } catch (error) {
-      console.error('Upload failed:', error);
-      setUploading(false);
-    }
-  };
+      }
+    );
+    alert('PDF uploaded successfully');
+    fetchPDFs(); // refresh list
+    resetForm(); // optional
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('Upload failed: ' + (err.response?.data?.error || err.message));
+  }
+};
 
   const handleUpdate = async () => {
     try {
