@@ -35,7 +35,9 @@ exports.uploadPdf = async (req, res) => {
 
 exports.listPdfs = async (req, res) => {
   try {
+    console.log('Attempting to fetch PDFs...'); // Debug log
     const pdfs = await Pdf.find().sort({ createdAt: -1 });
+    console.log(`Found ${pdfs.length} PDFs`); // Debug log
     res.json(pdfs);
   } catch (error) {
     console.error('Error fetching PDFs:', error);
