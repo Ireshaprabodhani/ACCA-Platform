@@ -4,11 +4,9 @@ import axios from 'axios';
 import HeygenChatEmbed from '../components/HeygenChatEmbed';
 import RedBackground from '../assets/background.jpg';
 
-
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
-
 
 const getYouTubeId = (raw = '') => {
   if (!raw) return '';
@@ -39,8 +37,12 @@ export default function CaseVideoPage() {
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false);
 
+  // NEW: State to store PDF download URL
+  const [pdfUrl, setPdfUrl] = useState('');
+
   const isHeygen = url.includes('labs.heygen.com');
 
+  // Fetch video URL
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return nav('/login');
@@ -58,6 +60,23 @@ export default function CaseVideoPage() {
         if (err.response?.status === 401) nav('/login');
         else setError('Failed to load video. Please try again.');
         setLoading(false);
+      });
+  }, [nav]);
+
+  // NEW: Fetch PDF download URL
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return nav('/login');
+
+    axios
+      .get(`${API_BASE}/api/pdf/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ data }) => {
+        if (data?.url) setPdfUrl(data.url);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch PDF URL', err);
       });
   }, [nav]);
 
@@ -302,6 +321,19 @@ export default function CaseVideoPage() {
         </>
       ) : (
         <div className="space-y-3 mt-6">
+          {/* NEW: Download button above this text */}
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              download
+              className="inline-block mb-4 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded text-white font-semibold"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download PDF
+            </a>
+          )}
+
           <p className="text-yellow-200 text-lg">
             📺 Please watch the entire video to continue
           </p>
@@ -313,5 +345,4 @@ export default function CaseVideoPage() {
     </div>
   </div>
 );
-
 }

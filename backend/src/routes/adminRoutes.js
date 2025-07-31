@@ -60,7 +60,6 @@ router.get('/pdf',          adminAuth, pdfCtrl.listPdfs);
 router.get('/pdf/:id',      adminAuth, pdfCtrl.getPdf);
 router.put('/pdf/:id',      adminAuth, pdfCtrl.updatePdf);
 router.delete('/pdf/:id',   adminAuth, pdfCtrl.deletePdf);
-router.get('/pdf/download/:id', pdfCtrl.downloadPdf);
 
 // User Tracking
 router.post('/users',       adminAuth, adminCtrl.addUserWithMembers);
