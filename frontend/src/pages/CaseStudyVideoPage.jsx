@@ -69,20 +69,25 @@ export default function CaseVideoPage() {
   if (!token) return nav('/login');
 
   // Fetch list of PDFs
-  axios.get(`${API_BASE}/api/pdf`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
- .then(({ data }) => {
-  if (data.length > 0) {
-    const firstPdfId = data[0]._id;
+ // In your CaseVideoPage component
+axios.get(`${API_BASE}/api/pdf`, {
+  headers: { Authorization: `Bearer ${token}` },
+})
+.then((response) => {
+  console.log('PDF fetch successful:', response);
+  if (response.data.length > 0) {
+    const firstPdfId = response.data[0]._id;
     setPdfUrl(`${API_BASE}/api/pdf/download/${firstPdfId}`);
   } else {
     console.log('No PDFs available');
   }
 })
 .catch((err) => {
-  console.error('Failed to fetch PDFs', err);
-  // Show user-friendly message
+  console.error('Detailed fetch error:', {
+    message: err.message,
+    config: err.config,
+    response: err.response
+  });
   setError('Could not load PDF resources. Please try again later.');
 });
 }, [nav]);
