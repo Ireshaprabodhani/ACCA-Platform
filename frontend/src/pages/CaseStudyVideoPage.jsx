@@ -65,20 +65,25 @@ export default function CaseVideoPage() {
 
   // NEW: Fetch PDF download URL
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return nav('/login');
+  const token = localStorage.getItem('token');
+  if (!token) return nav('/login');
 
-    axios
-      .get(`${API_BASE}/api/pdf/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(({ data }) => {
-        if (data?.url) setPdfUrl(data.url);
-      })
-      .catch((err) => {
-        console.error('Failed to fetch PDF URL', err);
-      });
-  }, [nav]);
+  // Fetch list of PDFs
+  axios.get(`${API_BASE}/api/pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  .then(({ data }) => {
+    if (data.length > 0) {
+      // Use the first PDF for download, for example
+      const firstPdfId = data[0]._id;
+      setPdfUrl(`${API_BASE}/api/pdf/download/${firstPdfId}`);
+    }
+  })
+  .catch((err) => {
+    console.error('Failed to fetch PDFs', err);
+  });
+}, [nav]);
+
 
   useEffect(() => {
     if (!url || loading || isHeygen) return;
