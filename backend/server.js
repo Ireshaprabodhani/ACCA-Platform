@@ -16,6 +16,7 @@ const quizRoutes = require('./src/routes/quizRoutes');
 const videoRoutes = require('./src/routes/videoRoutes');
 const caseRoutes = require('./src/routes/caseRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
+const pdfRoutes = require('./src/routes/pdfRoutes');
 
 connectDB();
 
@@ -59,6 +60,7 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/pdf', pdfRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
