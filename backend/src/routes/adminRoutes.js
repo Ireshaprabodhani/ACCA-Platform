@@ -7,7 +7,6 @@ const adminCtrl = require('../controllers/adminController');
 const quizCtrl = require('../controllers/quizController');
 const caseCtrl = require('../controllers/caseController');
 const videoCtrl = require('../controllers/videoController');
-const pdfCtrl = require('../controllers/adminPdfController.js'); // New PDF controller
 const adminAuth = require('../middleware/adminMiddleware');
 
 // Configure storage for PDF uploads
