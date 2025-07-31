@@ -1,25 +1,11 @@
+// routes/pdfRoute.js
 const express = require('express');
 const router = express.Router();
-const adminPdfController = require('../controllers/adminPdfController');
-const pdfDownloadController = require('../controllers/pdfDownloadController');
-const multer = require('multer');
+const pdfCtrl = require('../controllers/adminPdfController');
+const auth = require('../middlewares/authMiddleware'); // ← same middleware
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-
-const upload = multer({ storage });
-
-// Admin routes
-router.post('/admin/upload', upload.single('pdf'), adminPdfController.uploadPdf);
-router.get('/admin/:identifier', adminPdfController.getPdfByIdentifier);
-
-// Public download route
-router.get('/download/:identifier', pdfDownloadController.downloadPdf);
+router.get('/', auth, pdfCtrl.listPdfs);
+router.get('/:id', auth, pdfCtrl.getPdf);
+router.get('/download/:id', auth, pdfCtrl.downloadPdf);
 
 module.exports = router;
