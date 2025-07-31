@@ -72,16 +72,19 @@ export default function CaseVideoPage() {
   axios.get(`${API_BASE}/api/pdf`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  .then(({ data }) => {
-    if (data.length > 0) {
-      // Use the first PDF for download, for example
-      const firstPdfId = data[0]._id;
-      setPdfUrl(`${API_BASE}/api/pdf/download/${firstPdfId}`);
-    }
-  })
-  .catch((err) => {
-    console.error('Failed to fetch PDFs', err);
-  });
+ .then(({ data }) => {
+  if (data.length > 0) {
+    const firstPdfId = data[0]._id;
+    setPdfUrl(`${API_BASE}/api/pdf/download/${firstPdfId}`);
+  } else {
+    console.log('No PDFs available');
+  }
+})
+.catch((err) => {
+  console.error('Failed to fetch PDFs', err);
+  // Show user-friendly message
+  setError('Could not load PDF resources. Please try again later.');
+});
 }, [nav]);
 
 

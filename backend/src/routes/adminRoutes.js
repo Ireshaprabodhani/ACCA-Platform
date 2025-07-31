@@ -53,13 +53,7 @@ router.post('/video',        adminAuth, videoCtrl.setVideo);
 router.get('/video/:type',   adminAuth, videoCtrl.getVideoByType);
 router.delete('/video/:type',adminAuth, videoCtrl.deleteVideo);
 
-// PDF Management (New Routes)
-router.post('/pdf/upload', adminAuth, upload.single('pdf'), pdfCtrl.uploadPdf); 
-router.post('/pdf',         adminAuth, upload.single('pdf'), pdfCtrl.uploadPdf);
-router.get('/pdf',          adminAuth, pdfCtrl.listPdfs);
-router.get('/pdf/:id',      adminAuth, pdfCtrl.getPdf);
-router.put('/pdf/:id',      adminAuth, pdfCtrl.updatePdf);
-router.delete('/pdf/:id',   adminAuth, pdfCtrl.deletePdf);
+
 
 // User Tracking
 router.post('/users',       adminAuth, adminCtrl.addUserWithMembers);
