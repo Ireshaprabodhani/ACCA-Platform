@@ -4,9 +4,11 @@ import axios from 'axios';
 import HeygenChatEmbed from '../components/HeygenChatEmbed';
 import RedBackground from '../assets/background.jpg';
 
+
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
+
 
 const getYouTubeId = (raw = '') => {
   if (!raw) return '';
@@ -37,12 +39,8 @@ export default function CaseVideoPage() {
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false);
 
-  // NEW: State to store PDF download URL
-  const [pdfUrl, setPdfUrl] = useState('');
-
   const isHeygen = url.includes('labs.heygen.com');
 
-  // Fetch video URL
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return nav('/login');
@@ -62,36 +60,6 @@ export default function CaseVideoPage() {
         setLoading(false);
       });
   }, [nav]);
-
-  // NEW: Fetch PDF download URL
-  useEffect(() => {
-  const token = localStorage.getItem('token');
-  if (!token) return nav('/login');
-
-  // Fetch list of PDFs
- // In your CaseVideoPage component
-axios.get(`${API_BASE}/api/pdf`, {
-  headers: { Authorization: `Bearer ${token}` },
-})
-.then((response) => {
-  console.log('PDF fetch successful:', response);
-  if (response.data.length > 0) {
-    const firstPdfId = response.data[0]._id;
-    setPdfUrl(`${API_BASE}/api/pdf/download/${firstPdfId}`);
-  } else {
-    console.log('No PDFs available');
-  }
-})
-.catch((err) => {
-  console.error('Detailed fetch error:', {
-    message: err.message,
-    config: err.config,
-    response: err.response
-  });
-  setError('Could not load PDF resources. Please try again later.');
-});
-}, [nav]);
-
 
   useEffect(() => {
     if (!url || loading || isHeygen) return;
@@ -334,19 +302,6 @@ axios.get(`${API_BASE}/api/pdf`, {
         </>
       ) : (
         <div className="space-y-3 mt-6">
-          {/* NEW: Download button above this text */}
-          {pdfUrl && (
-            <a
-              href={pdfUrl}
-              download
-              className="inline-block mb-4 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded text-white font-semibold"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Download PDF
-            </a>
-          )}
-
           <p className="text-yellow-200 text-lg">
             📺 Please watch the entire video to continue
           </p>
@@ -358,4 +313,5 @@ axios.get(`${API_BASE}/api/pdf`, {
     </div>
   </div>
 );
+
 }
