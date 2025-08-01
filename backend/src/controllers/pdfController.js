@@ -9,8 +9,10 @@ exports.uploadPdf = async (req, res) => {
   const { file } = req;
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
+  const publicPath = `/uploads/pdfs/${file.filename}`; // ✅ CORRECT PUBLIC PATH
+
   const pdf = new Pdf({
-    path: `/uploads/pdfs/${file.filename}`, // ✅ FIXED: use public path
+    path: publicPath,
     originalName: file.originalname,
     size: file.size,
     uploadedBy: req.admin._id,
