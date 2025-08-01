@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const app = express();
 const __dirname = path.resolve();
-app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
