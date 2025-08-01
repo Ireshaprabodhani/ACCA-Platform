@@ -6,8 +6,11 @@ require('dotenv').config();
 
 
 const app = express();
-/* ——— static first ——— */
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const __dirname = path.resolve();
+
+
+app.use('/uploads/pdfs', express.static(path.join(__dirname, 'uploads/pdfs')));
+
 
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
@@ -63,7 +66,6 @@ app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/pdf', adminPdfRoutes);
 app.use('/api/pdf', userPdfRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 
