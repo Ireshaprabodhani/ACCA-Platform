@@ -127,16 +127,13 @@ const PdfAdminDashboard = () => {
               <strong className="text-purple-900">{pdf.originalName}</strong>
               {pdf.title && <span> - {pdf.title}</span>}
               <br />
-             <a
-                  href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/uploads/pdfs/${pdf.filename}}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View / Download
-             </a>
-
-
-
+            <a
+              href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/uploads/pdfs/${pdf.filename}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View / Download
+            </a>
             </div>
 
             <div className="flex gap-2">
