@@ -61,7 +61,7 @@ export default function CaseVideoPage() {
 
     // Fetch latest PDF
     axios
-      .get(`${API_BASE}/api/pdf`, {
+      .get(`${API_BASE}/api/pdf/download`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) => {
