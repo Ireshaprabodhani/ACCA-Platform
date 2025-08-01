@@ -12,11 +12,12 @@ exports.uploadPdf = async (req, res) => {
   const publicPath = `/uploads/pdfs/${file.filename}`; // ✅ CORRECT PUBLIC PATH
 
   const pdf = new Pdf({
-    path: publicPath,
-    originalName: file.originalname,
-    size: file.size,
-    uploadedBy: req.admin._id,
-  });
+  filename: file.filename,
+  originalName: file.originalname,
+  size: file.size,
+  uploadedBy: req.admin._id,
+});
+
 
   await pdf.save();
   res.status(201).json(pdf);
