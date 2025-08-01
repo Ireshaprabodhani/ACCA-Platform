@@ -9,6 +9,7 @@ const pdfController = require('../controllers/pdfController');
 router.post('/', adminMiddleware, upload.single('pdf'), pdfController.uploadPdf);   
 router.get('/', adminMiddleware, pdfController.listPdfs);                           
 router.put('/:id', adminMiddleware, pdfController.editPdf);                         
-router.delete('/:id', adminMiddleware, pdfController.deletePdf);                     
+router.delete('/:id', adminMiddleware, pdfController.deletePdf);  
+router.get('/view/:id', adminMiddleware, pdfController.viewPdf);                   
 
 module.exports = router;
