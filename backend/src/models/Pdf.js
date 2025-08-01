@@ -1,17 +1,19 @@
 const mongoose = require('mongoose');
 
 const pdfSchema = new mongoose.Schema({
-  filename: String,              // Required
-  originalName: String,          // Required
-  size: Number,                  // ✅ Add this
+  filename: String,
+  originalName: String,
+  data: Buffer,        // Binary data
+  contentType: String,
+  size: Number,
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',               // ✅ Add this if you're linking to admins
+    ref: 'Admin'
   },
   createdAt: {
     type: Date,
-    default: Date.now,          // ✅ Use createdAt instead of uploadedAt
-  },
+    default: Date.now
+  }
 });
 
 module.exports = mongoose.model('Pdf', pdfSchema);

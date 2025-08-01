@@ -9,20 +9,57 @@ exports.uploadPdf = async (req, res) => {
   const { file } = req;
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
-  const publicPath = `/uploads/pdfs/${file.filename}`; // ✅ CORRECT PUBLIC PATH
-
-  const pdf = new Pdf({
-  filename: file.filename,
-  originalName: file.originalname,
-  size: file.size,
-  uploadedBy: req.admin._id,
-});
-
-
-  await pdf.save();
-  res.status(201).json(pdf);
+  try {
+    // For small files (<1MB), store directly
+    if (file.size <= 1000000) {
+      const pdf = new Pdf({
+        filename: file.filename,
+        originalName: file.originalname,
+        data: fs.readFileSync(file.path),
+        contentType: file.mimetype,
+        size: file.size,
+        storageType: 'embedded',
+        uploadedBy: req.admin._id
+      });
+      await pdf.save();
+      fs.unlinkSync(file.path);
+      return res.status(201).json(pdf);
+    }
+    
+    // For large files, use GridFS
+    const readStream = fs.createReadStream(file.path);
+    const uploadStream = gfs.openUploadStream(file.filename, {
+      metadata: {
+        originalName: file.originalname,
+        uploadedBy: req.admin._id
+      },
+      contentType: file.mimetype
+    });
+    
+    readStream.pipe(uploadStream);
+    
+    uploadStream.on('error', () => {
+      throw new Error('Upload failed');
+    });
+    
+    uploadStream.on('finish', async () => {
+      fs.unlinkSync(file.path);
+      const pdf = new Pdf({
+        filename: file.filename,
+        originalName: file.originalname,
+        size: file.size,
+        contentType: file.mimetype,
+        storageType: 'gridfs',
+        fileId: uploadStream.id,
+        uploadedBy: req.admin._id
+      });
+      await pdf.save();
+      res.status(201).json(pdf);
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Upload failed', error: err.message });
+  }
 };
-
 
 
 
