@@ -16,7 +16,7 @@ const quizRoutes = require('./src/routes/quizRoutes');
 const videoRoutes = require('./src/routes/videoRoutes');
 const caseRoutes = require('./src/routes/caseRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
-const userPdfRoutes = require('./src/routes/pdfRoutes'); 
+const userPdfRoutes = require('./src/routes/userPdfRoutes'); 
 const adminPdfRoutes = require('./src/routes/adminPDFRoutes');
 
 connectDB();
@@ -61,9 +61,9 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/pdf', userPdfRoutes); 
 app.use('/api/admin/pdf', adminPdfRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/pdf', userPdfRoutes);
+app.use('/uploads/pdfs', express.static('uploads/pdfs')); 
 
 
 /* ---------- SIMPLE RATE‑LIMIT ---------- */

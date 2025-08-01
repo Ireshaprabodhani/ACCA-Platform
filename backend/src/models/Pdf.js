@@ -1,40 +1,12 @@
 const mongoose = require('mongoose');
 
-const PdfSchema = new mongoose.Schema({
-  // Remove identifier here
-  filename: {
-    type: String,
-    required: true
-  },
-  originalName: {
-    type: String,
-    required: true
-  },
-  path: {
-    type: String,
-    required: true
-  },
-  size: {
-    type: Number,
-    required: true
-  },
-  title: {
-    type: String,
-    required: false
-  },
-  description: {
-    type: String,
-    required: false
-  },
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',
-    required: true
-  },
-  createdAt: {
+const pdfSchema = new mongoose.Schema({
+  filename: String,
+  originalName: String,
+  uploadedAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-module.exports = mongoose.model('Pdf', PdfSchema);
+module.exports = mongoose.model('Pdf', pdfSchema);

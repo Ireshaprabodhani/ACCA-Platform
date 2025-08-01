@@ -13,7 +13,8 @@ const PdfAdminDashboard = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  const token = localStorage.getItem('token'); // Ensure this matches your storage key
+  const token = localStorage.getItem('token');
+
   const axiosConfig = {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -21,15 +22,11 @@ const PdfAdminDashboard = () => {
   };
 
   const fetchPDFs = () => {
-    if (!token) {
-      toast.error('Admin not logged in');
-      return;
-    }
+    if (!token) return toast.error('Admin not logged in');
 
-    axios.get(API_BASE_URL, axiosConfig)
-      .then((res) => {
-        setPdfs(res.data.pdfs || res.data);
-      })
+    axios
+      .get(API_BASE_URL, axiosConfig)
+      .then((res) => setPdfs(res.data.pdfs || res.data))
       .catch(() => toast.error('Failed to fetch PDFs'));
   };
 
@@ -51,8 +48,8 @@ const PdfAdminDashboard = () => {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`,
         },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onUploadProgress: (e) => {
+          const percent = Math.round((e.loaded * 100) / e.total);
           setUploadProgress(percent);
         },
       });
@@ -60,7 +57,6 @@ const PdfAdminDashboard = () => {
       setFile(null);
       fetchPDFs();
     } catch (err) {
-      console.error('Upload error:', err);
       toast.error('Upload failed: ' + (err.response?.data?.error || err.message));
     } finally {
       setUploading(false);
@@ -82,7 +78,6 @@ const PdfAdminDashboard = () => {
       setEditDescription('');
       fetchPDFs();
     } catch (err) {
-      console.error('Update failed:', err);
       toast.error('Failed to update PDF');
     }
   };
@@ -94,7 +89,6 @@ const PdfAdminDashboard = () => {
       toast.success('PDF deleted');
       fetchPDFs();
     } catch (err) {
-      console.error('Delete failed:', err);
       toast.error('Failed to delete PDF');
     }
   };

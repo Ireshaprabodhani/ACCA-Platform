@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const pdfCtrl = require('../controllers/adminPdfController');
-const adminAuth = require('../middlewares/adminMiddleware'); // Admin auth
+
+const adminMiddleware = require('../middlewares/adminMiddleware'); 
+const upload = require('../middlewares/pdfUpload'); 
+const pdfController = require('../controllers/pdfController');
 
 // Admin-only routes
-router.post('/upload', adminAuth, upload.single('pdf'), pdfCtrl.uploadPdf);
-router.delete('/:id', adminAuth, pdfCtrl.deletePdf);
-router.post('/',         adminAuth, upload.single('pdf'), pdfCtrl.uploadPdf);
-router.get('/',          adminAuth, pdfCtrl.listPdfs);
-router.get('/:id',      adminAuth, pdfCtrl.getPdf);
-router.put('/:id',      adminAuth, pdfCtrl.updatePdf);
-
+router.post('/', adminMiddleware, upload.single('pdf'), pdfController.uploadPdf);   
+router.get('/', adminMiddleware, pdfController.listPdfs);                           
+router.put('/:id', adminMiddleware, pdfController.editPdf);                         
+router.delete('/:id', adminMiddleware, pdfController.deletePdf);                     
 
 module.exports = router;
