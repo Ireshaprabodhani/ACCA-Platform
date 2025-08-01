@@ -9,16 +9,17 @@ exports.uploadPdf = async (req, res) => {
   const { file } = req;
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
- const pdf = new Pdf({
-  path: req.file.filename,
-  originalName: file.originalname,
-  size: file.size,
-  uploadedBy: req.admin._id,
-});
+  const pdf = new Pdf({
+    path: `/uploads/pdfs/${file.filename}`, // ✅ FIXED: use public path
+    originalName: file.originalname,
+    size: file.size,
+    uploadedBy: req.admin._id,
+  });
 
   await pdf.save();
   res.status(201).json(pdf);
 };
+
 
 
 
