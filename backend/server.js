@@ -63,7 +63,7 @@ app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/pdf', adminPdfRoutes);
 app.use('/api/pdf', userPdfRoutes);
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 

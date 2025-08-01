@@ -10,7 +10,7 @@ exports.uploadPdf = async (req, res) => {
   const pdf = new Pdf({
     filename: file.filename,
     originalName: file.originalname,
-    path: `uploads/pdfs/${file.filename}`,  // ✅ relative path
+    path: `uploads/pdfs/${file.filename}`,
     size: file.size,
     uploadedBy: req.admin?._id || null  // Optional: track who uploaded
   });
