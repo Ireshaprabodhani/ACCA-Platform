@@ -131,7 +131,6 @@ const PdfAdminDashboard = () => {
                 href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/${pdf.path}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-green-600 hover:underline"
               >
                 View / Download
               </a>
