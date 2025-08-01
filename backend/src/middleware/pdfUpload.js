@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Resolve absolute path from server.js
-const uploadDir = path.join(__dirname, '../uploads/pdfs');
+const uploadDir = path.join(__dirname, 'src/uploads/pdfs');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({

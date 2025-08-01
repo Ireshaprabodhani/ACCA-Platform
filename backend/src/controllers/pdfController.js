@@ -2,18 +2,19 @@ const Pdf = require('../models/Pdf');
 const path = require('path');
 const fs = require('fs');
 
+
+
 // Upload
 exports.uploadPdf = async (req, res) => {
   const { file } = req;
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
-  const pdf = new Pdf({
-    filename: file.filename,
-    originalName: file.originalname,
-    path: `uploads/pdfs/${file.filename}`, // ✅ correct path
-    size: file.size,
-    uploadedBy: req.admin._id,
-  });
+ const pdf = new Pdf({
+  filename: file.filename,
+  originalName: file.originalname,
+  size: file.size,
+  uploadedBy: req.admin._id,
+});
 
   await pdf.save();
   res.status(201).json(pdf);
@@ -59,7 +60,16 @@ exports.downloadPdf = async (req, res) => {
 };
 
 // User view
+// User view
 exports.getAllForUser = async (req, res) => {
   const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
-  res.json(pdfs);
+
+  const response = pdfs.map(pdf => ({
+    _id: pdf._id,
+    originalName: pdf.originalName,
+    filename: pdf.filename,
+    url: `/uploads/pdfs/${encodeURIComponent(pdf.filename)}`
+  }));
+
+  res.json(response);
 };
