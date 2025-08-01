@@ -58,7 +58,9 @@ app.options('*', cors(corsOptions));  // manual catch‑all (older clients)
 
 app.use(express.json());
 
-app.use('/uploads/pdfs', express.static(path.join(__dirname, 'uploads/pdfs')));
+// Update this line in server.js
+app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
