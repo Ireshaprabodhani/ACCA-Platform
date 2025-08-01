@@ -7,10 +7,7 @@ require('dotenv').config();
 
 const app = express();
 const __dirname = path.resolve();
-
-
-
-
+app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
 
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
@@ -57,11 +54,6 @@ app.use(cors(corsOptions));           // automatic pre‑flight handling
 app.options('*', cors(corsOptions));  // manual catch‑all (older clients)
 
 app.use(express.json());
-
-// Update this line in server.js
-app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
-
-
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/quiz', quizRoutes);
