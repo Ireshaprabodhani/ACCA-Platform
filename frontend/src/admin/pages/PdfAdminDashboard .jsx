@@ -128,7 +128,7 @@ const PdfAdminDashboard = () => {
               {pdf.title && <span> - {pdf.title}</span>}
               <br />
             <a
-              href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/uploads/pdfs/${pdf.filename}`}
+              href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/pdf/view/${pdf._id}`}
               target="_blank"
               rel="noopener noreferrer"
             >

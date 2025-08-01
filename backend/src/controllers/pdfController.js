@@ -53,6 +53,19 @@ exports.deletePdf = async (req, res) => {
   res.json({ message: 'Deleted successfully' });
 };
 
+exports.viewPdf = async (req, res) => {
+  const { id } = req.params;
+  const pdf = await Pdf.findById(id);
+  if (!pdf) return res.status(404).json({ message: 'PDF not found' });
+
+  const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
+  
+  // Stream the file instead of download
+  const fileStream = fs.createReadStream(filePath);
+  res.setHeader('Content-Type', 'application/pdf');
+  fileStream.pipe(res);
+};
+
 // User download
 exports.downloadPdf = async (req, res) => {
   const { id } = req.params;
