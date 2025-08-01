@@ -4,11 +4,9 @@ import axios from 'axios';
 import HeygenChatEmbed from '../components/HeygenChatEmbed';
 import RedBackground from '../assets/background.jpg';
 
-
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
-
 
 const getYouTubeId = (raw = '') => {
   if (!raw) return '';
@@ -23,7 +21,6 @@ const getYouTubeId = (raw = '') => {
   return '';
 };
 
-/* ─── component ──────────────────────────────────────────── */
 export default function CaseVideoPage() {
   const nav = useNavigate();
 
@@ -38,6 +35,7 @@ export default function CaseVideoPage() {
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
 
   const isHeygen = url.includes('labs.heygen.com');
 
@@ -45,6 +43,7 @@ export default function CaseVideoPage() {
     const token = localStorage.getItem('token');
     if (!token) return nav('/login');
 
+    // Fetch case video
     axios
       .get(`${API_BASE}/api/case/video`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -58,6 +57,21 @@ export default function CaseVideoPage() {
         if (err.response?.status === 401) nav('/login');
         else setError('Failed to load video. Please try again.');
         setLoading(false);
+      });
+
+    // Fetch latest PDF
+    axios
+      .get(`${API_BASE}/api/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ data }) => {
+        if (data?.length > 0) {
+          const latestPdf = data[0];
+          setPdfUrl(`${API_BASE}/api/pdf/download/${latestPdf._id}`);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch PDF:', err);
       });
   }, [nav]);
 
@@ -200,7 +214,7 @@ export default function CaseVideoPage() {
     setEnded(false);
     const timer = setTimeout(() => {
       setEnded(true);
-    }, 13 * 60 * 1000); // 13 minutes
+    }, 13 * 60 * 1000);
     return () => clearTimeout(timer);
   }, [isHeygen]);
 
@@ -214,7 +228,7 @@ export default function CaseVideoPage() {
 
   if (error)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4" >
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4">
         <div className="bg-red-600/20 border border-red-600 rounded-lg p-6 max-w-md text-center space-y-4">
           <h2 className="text-xl font-bold">Error</h2>
           <p>{error}</p>
@@ -231,87 +245,100 @@ export default function CaseVideoPage() {
   const isYT = Boolean(getYouTubeId(url));
 
   return (
-  <div
-    className="min-h-screen text-white flex flex-col items-center justify-center px-4 py-10 relative"
-    style={{ backgroundImage: `url(${RedBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-  >
-    {blocked && (
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
-        <button
-          className="bg-green-600 hover:bg-green-700 text-lg font-bold px-6 py-4 rounded-full shadow-xl"
-          onClick={() => {
-            if (isYT && playerRef.current) playerRef.current.playVideo();
-            else if (videoRef.current) videoRef.current.play();
-            setBlocked(false);
-          }}
-        >
-          Click to start the video with sound
-        </button>
-      </div>
-    )}
-
-    <h1 className="text-4xl font-bold mb-8 text-center drop-shadow-lg">Case Study Video</h1>
-
-    <div className="w-full max-w-5xl bg-black/80 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700 mx-auto">
-      {isYT ? (
-        <div className="w-full p-4 md:p-6 flex justify-center items-center" style={{ paddingBottom: '56.25%' }}>
-          <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
+    <div
+      className="min-h-screen text-white flex flex-col items-center justify-center px-4 py-10 relative"
+      style={{ backgroundImage: `url(${RedBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      {blocked && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
+          <button
+            className="bg-green-600 hover:bg-green-700 text-lg font-bold px-6 py-4 rounded-full shadow-xl"
+            onClick={() => {
+              if (isYT && playerRef.current) playerRef.current.playVideo();
+              else if (videoRef.current) videoRef.current.play();
+              setBlocked(false);
+            }}
+          >
+            Click to start the video with sound
+          </button>
         </div>
-      ) : isHeygen ? (
-        !ended && (
+      )}
+
+      <h1 className="text-4xl font-bold mb-8 text-center drop-shadow-lg">Case Study Video</h1>
+
+      <div className="w-full max-w-5xl bg-black/80 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700 mx-auto">
+        {isYT ? (
+          <div className="w-full p-4 md:p-6 flex justify-center items-center" style={{ paddingBottom: '56.25%' }}>
+            <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
+          </div>
+        ) : isHeygen ? (
+          !ended && (
             <div className="w-full p-4 md:p-6 flex justify-center items-center">
-              <div className="w-full max-w-4xl aspect-video"> {/* Adjust max-w as needed */}
+              <div className="w-full max-w-4xl aspect-video">
                 <HeygenChatEmbed iframeUrl={url} />
               </div>
             </div>
-        )
-      ) : (
-        <video
-          ref={videoRef}
-          src={url}
-          controls={false}
-          disablePictureInPicture
-          controlsList="nodownload noplaybackrate"
-          className="w-full h-auto pointer-events-none"
-          style={{ minHeight: '400px' }}
-        />
-      )}
-    </div>
+          )
+        ) : (
+          <video
+            ref={videoRef}
+            src={url}
+            controls={false}
+            disablePictureInPicture
+            controlsList="nodownload noplaybackrate"
+            className="w-full h-auto pointer-events-none"
+            style={{ minHeight: '400px' }}
+          />
+        )}
+      </div>
 
-    <div className="mt-10 text-center">
-      {ended ? (
-        <>
-          {isHeygen && (
-            <div className="mt-10 w-full flex justify-center">
-              <HeygenChatEmbed iframeUrl={url} />
+      <div className="mt-10 text-center">
+        {ended ? (
+          <>
+            {isHeygen && (
+              <div className="mt-10 w-full flex justify-center">
+                <HeygenChatEmbed iframeUrl={url} />
+              </div>
+            )}
+
+            <p className="text-green-400 text-xl font-semibold mt-6">
+              ✅ Video completed successfully!
+            </p>
+
+            {/* DOWNLOAD PDF BUTTON */}
+            {pdfUrl && (
+              <div className="mt-6">
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-full font-bold text-white shadow-[0_0_20px_rgba(0,0,255,0.5)] hover:scale-105 transition-transform"
+                >
+                  📄 Download Case PDF
+                </a>
+              </div>
+            )}
+
+            <div className="mt-8">
+              <button
+                onClick={() => nav('/case-questions')}
+                className="bg-green-500 hover:bg-green-600 px-10 py-4 rounded-full text-lg font-bold shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-105 transition-transform"
+              >
+                Continue to Questions →
+              </button>
             </div>
-          )}
-
-          <p className="text-green-400 text-xl font-semibold mt-6">
-            ✅ Video completed successfully!
-          </p>
-
-          <div className="mt-8">
-            <button
-              onClick={() => nav('/case-questions')}
-              className="bg-green-500 hover:bg-green-600 px-10 py-4 rounded-full text-lg font-bold shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-105 transition-transform"
-            >
-              Continue to Questions →
-            </button>
+          </>
+        ) : (
+          <div className="space-y-3 mt-6">
+            <p className="text-yellow-200 text-lg">
+              📺 Please watch the entire video to continue
+            </p>
+            <p className="text-gray-300 text-sm">
+              ⚠️ Skipping is disabled • Video must be watched completely
+            </p>
           </div>
-        </>
-      ) : (
-        <div className="space-y-3 mt-6">
-          <p className="text-yellow-200 text-lg">
-            📺 Please watch the entire video to continue
-          </p>
-          <p className="text-gray-300 text-sm">
-            ⚠️ Skipping is disabled • Video must be watched completely
-          </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  </div>
-);
-
+  );
 }
