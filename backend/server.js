@@ -9,7 +9,7 @@ const app = express();
 const __dirname = path.resolve();
 
 
-app.use('/uploads/pdfs', express.static(path.join(__dirname, 'uploads/pdfs')));
+
 
 
 const connectDB = require('./src/config/db');
@@ -57,6 +57,8 @@ app.use(cors(corsOptions));           // automatic pre‑flight handling
 app.options('*', cors(corsOptions));  // manual catch‑all (older clients)
 
 app.use(express.json());
+
+app.use('/uploads/pdfs', express.static(path.join(__dirname, 'uploads/pdfs')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
