@@ -128,12 +128,13 @@ const PdfAdminDashboard = () => {
               {pdf.title && <span> - {pdf.title}</span>}
               <br />
               <a
-              href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com${pdf.path}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View / Download
-            </a>
+                href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com${pdf.path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View / Download
+              </a>
+
 
             </div>
 

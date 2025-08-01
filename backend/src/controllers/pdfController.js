@@ -10,14 +10,15 @@ exports.uploadPdf = async (req, res) => {
   const pdf = new Pdf({
     filename: file.filename,
     originalName: file.originalname,
-    path: `uploads/pdfs/${file.filename}`,
+    path: `uploads/pdfs/${file.filename}`, // ✅ correct path
     size: file.size,
-    uploadedBy: req.admin?._id || null  // Optional: track who uploaded
+    uploadedBy: req.admin._id,
   });
 
   await pdf.save();
   res.status(201).json(pdf);
 };
+
 
 
 // Admin List
