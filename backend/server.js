@@ -63,7 +63,8 @@ app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/pdf', adminPdfRoutes);
 app.use('/api/pdf', userPdfRoutes);
-app.use('/uploads/pdfs', express.static('uploads/pdfs')); 
+app.use('/uploads', express.static('uploads'));
+
 
 
 /* ---------- SIMPLE RATE‑LIMIT ---------- */
