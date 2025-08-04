@@ -75,36 +75,33 @@ export const editPdf = async (req, res) => {
 };
 
 export const viewPdf = async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const pdf = await Pdf.findById(id);
-    if (!pdf) return res.status(404).json({ message: 'PDF not found' });
+    const fileId = new mongoose.Types.ObjectId(req.params.id);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
-    res.setHeader('Cache-Control', 'no-cache');
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: 'pdfs',
+    });
 
-    if (pdf.storageType === 'embedded') {
-      if (!pdf.data) return res.status(404).json({ message: 'Embedded PDF data not found' });
-      return res.send(pdf.data);
+    const filesCursor = bucket.find({ _id: fileId });
+    const files = await filesCursor.toArray();
+
+    if (!files || files.length === 0) {
+      return res.status(404).json({ message: 'PDF not found' });
     }
 
-    if (pdf.storageType === 'gridfs') {
-      if (!gfs || !pdf.fileId) return res.status(500).json({ message: 'GridFS error or missing fileId' });
-      const downloadStream = gfs.openDownloadStream(pdf.fileId);
-      downloadStream.on('error', () => {
-        res.status(404).json({ message: 'File not found in GridFS' });
-      });
-      return downloadStream.pipe(res);
-    }
+    const file = files[0];
+    res.set({
+      'Content-Type': file.contentType || 'application/pdf',
+      'Content-Disposition': 'inline; filename="' + file.filename + '"',
+    });
 
-    res.status(400).json({ message: 'Invalid or unsupported storage type' });
-
+    const downloadStream = bucket.openDownloadStream(fileId);
+    downloadStream.pipe(res);
   } catch (err) {
-    res.status(500).json({ message: 'Error retrieving PDF', error: err.message });
+    res.status(500).json({ message: 'Failed to open PDF', error: err.message });
   }
 };
+
 
 export const deletePdf = async (req, res) => {
   const { id } = req.params;
