@@ -96,7 +96,7 @@ exports.editPdf = async (req, res) => {
 };
 
 // THIS IS THE KEY FUNCTION - View PDF
-exports.getPdfByID = async (req, res) => {
+exports.viewPdf = async (req, res) => {
   const { id } = req.params;
   
   try {
@@ -122,7 +122,6 @@ exports.getPdfByID = async (req, res) => {
       res.send(pdf.data);
     } else if (pdf.storageType === 'gridfs') {
       console.log('Serving GridFS PDF');
-      // You'll need to set up GridFS here
       const downloadStream = gfs.openDownloadStream(pdf.fileId);
       
       downloadStream.on('error', (error) => {
