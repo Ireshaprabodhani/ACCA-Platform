@@ -14,8 +14,8 @@ export const uploadPdf = async (req, res) => {
     const s3Key = `pdfs/${uuidv4()}${extension}`;
 
     const params = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: s3Key,
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Key: pdf.s3Key,
       Body: file.buffer,
       ContentType: file.mimetype,
       ACL: 'private',
@@ -74,7 +74,7 @@ export const viewPdf = async (req, res) => {
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
     const params = {
-      Bucket: process.env.S3_BUCKET_NAME,
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: pdf.s3Key,
     };
 
@@ -103,7 +103,7 @@ export const deletePdf = async (req, res) => {
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
     const params = {
-      Bucket: process.env.S3_BUCKET_NAME,
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: pdf.s3Key,
     };
 
@@ -124,7 +124,7 @@ export const downloadPdf = async (req, res) => {
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
     const params = {
-      Bucket: process.env.S3_BUCKET_NAME,
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: pdf.s3Key,
     };
 
