@@ -1,12 +1,18 @@
-// server.js – updated CORS logic
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+// server.js - ES Module version
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const __dirname = path.resolve();
+
+// Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, path) => {
     if (path.endsWith('.pdf')) {
@@ -15,35 +21,30 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   }
 }));
 
-
-const connectDB = require('./src/config/db');
-const authRoutes = require('./src/routes/authRoutes');
-const userRoutes = require('./src/routes/userRoutes');
-const quizRoutes = require('./src/routes/quizRoutes');
-const videoRoutes = require('./src/routes/videoRoutes');
-const caseRoutes = require('./src/routes/caseRoutes');
-const adminRoutes = require('./src/routes/adminRoutes');
-const userPdfRoutes = require('./src/routes/userPdfRoutes'); 
-const adminPdfRoutes = require('./src/routes/adminPDFRoutes');
+// Import routes
+import connectDB from './src/config/db.js';
+import authRoutes from './src/routes/authRoutes.js';
+import userRoutes from './src/routes/userRoutes.js';
+import quizRoutes from './src/routes/quizRoutes.js';
+import videoRoutes from './src/routes/videoRoutes.js';
+import caseRoutes from './src/routes/caseRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
+import userPdfRoutes from './src/routes/userPdfRoutes.js';
+import adminPdfRoutes from './src/routes/adminPDFRoutes.js';
 
 connectDB();
 
-
-
-// UPDATED: Use the correct current frontend URL
+// CORS setup (your existing CORS code)
 const allowedOrigins = [
-  'https://main.d1vjhvv9srhnme.amplifyapp.com',    // current frontend URL
-  'https://main.d1vjhvv9srhnme.amplifyapp.com/',   // with trailing slash
-  'http://localhost:5173',                          // local dev
-  'http://localhost:5173/'                          // local dev with slash
+  'https://main.d1vjhvv9srhnme.amplifyapp.com',
+  'https://main.d1vjhvv9srhnme.amplifyapp.com/',
+  'http://localhost:5173',
+  'http://localhost:5173/'
 ];
 
 const corsOptions = {
   origin: (origin, cb) => {
-    // Allow tools like Postman (no Origin header)
     if (!origin) return cb(null, true);
-    
-    // Check if origin is in allowed list (no need to clean since we include both versions)
     if (allowedOrigins.includes(origin)) {
       console.log(`CORS allowed origin: ${origin}`);
       return cb(null, true);
@@ -57,10 +58,12 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-app.use(cors(corsOptions));           // automatic pre‑flight handling
-app.options('*', cors(corsOptions));  // manual catch‑all (older clients)
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
+
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/quiz', quizRoutes);
@@ -70,16 +73,13 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin/pdf', adminPdfRoutes);
 app.use('/api/pdf', userPdfRoutes);
 
-
-
-/* ---------- SIMPLE RATE‑LIMIT ---------- */
-const rateLimit = require('express-rate-limit');
+// Rate limiting (your existing code)
+import rateLimit from 'express-rate-limit';
 app.use(rateLimit({
-  windowMs: 60 * 1000,     // 1 minute
-  max: 100,                // 100 reqs / IP / minute
+  windowMs: 60 * 1000,
+  max: 100,
   message: 'Too many requests—please retry later.'
 }));
-
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
