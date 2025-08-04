@@ -28,7 +28,16 @@ const PdfAdminDashboard = () => {
 
     axios
       .get(API_BASE_URL, axiosConfig)
-      .then((res) => setPdfs(res.data.pdfs || res.data))
+      .then((res) => {
+        const rawPdfs = res.data || [];
+        const parsed = rawPdfs.map((pdf) => ({
+          _id: pdf._id,
+          title: pdf.metadata?.title || '',
+          description: pdf.metadata?.description || '',
+          originalName: pdf.metadata?.originalName || pdf.filename,
+        }));
+        setPdfs(parsed);
+      })
       .catch(() => toast.error('Failed to fetch PDFs'));
   };
 
