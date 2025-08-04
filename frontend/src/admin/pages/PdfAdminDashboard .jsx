@@ -93,6 +93,32 @@ const PdfAdminDashboard = () => {
     }
   };
 
+  // Function to handle PDF viewing with authentication (Admin route)
+  const handleViewPdf = (pdfId) => {
+    // Use the correct admin route
+    const viewUrl = `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf/view/${pdfId}`;
+    
+    // Use fetch to get the PDF with authorization header, then create blob URL
+    fetch(viewUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to load PDF');
+      }
+      return response.blob();
+    })
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    })
+    .catch(error => {
+      toast.error('Failed to open PDF: ' + error.message);
+    });
+  };
+
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
       <Toaster position="top-center" />
@@ -127,14 +153,14 @@ const PdfAdminDashboard = () => {
               <strong className="text-purple-900">{pdf.originalName}</strong>
               {pdf.title && <span> - {pdf.title}</span>}
               <br />
-            <a
-              href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/pdf/view/${pdf._id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View / Download
-            </a>
-
+                <a
+                href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf/view/${pdf._id}?token=${token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                View / Download
+              </a>
             </div>
 
             <div className="flex gap-2">
