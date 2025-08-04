@@ -1,15 +1,19 @@
-const Pdf = require('../models/Pdf');
-const path = require('path');
-const fs = require('fs');
-const mongoose = require('mongoose');
+import Pdf from '../models/Pdf.js';
+import path from 'path';
+import fs from 'fs';
+import mongoose from 'mongoose';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize GridFS
 let gfs;
 const conn = mongoose.connection;
 conn.once('open', () => {
   gfs = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: 'uploads' });
+  global.gfs = gfs; // optionally make global
 });
-
 
 export const uploadPdf = async (req, res) => {
   try {
@@ -18,7 +22,7 @@ export const uploadPdf = async (req, res) => {
     }
 
     const { originalname, buffer } = req.file;
-    const stream = global.gridfsBucket.openUploadStream(originalname);
+    const stream = gfs.openUploadStream(originalname);
     stream.end(buffer);
 
     stream.on('finish', () => {
@@ -33,9 +37,7 @@ export const uploadPdf = async (req, res) => {
   }
 };
 
-
-// Admin List
-exports.listPdfs = async (req, res) => {
+export const listPdfs = async (req, res) => {
   try {
     const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
     res.json(pdfs);
@@ -44,17 +46,12 @@ exports.listPdfs = async (req, res) => {
   }
 };
 
-// Edit PDF metadata
-exports.editPdf = async (req, res) => {
+export const editPdf = async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
 
   try {
-    const pdf = await Pdf.findByIdAndUpdate(
-      id, 
-      { title, description }, 
-      { new: true }
-    );
+    const pdf = await Pdf.findByIdAndUpdate(id, { title, description }, { new: true });
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
     res.json(pdf);
   } catch (err) {
@@ -62,101 +59,50 @@ exports.editPdf = async (req, res) => {
   }
 };
 
-// THIS IS THE KEY FUNCTION - View PDF
-exports.viewPdf = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    console.log('📄 Attempting to view PDF with ID:', id);
-
-    const pdf = await Pdf.findById(id);
-    if (!pdf) {
-      console.log('❌ PDF not found in database');
-      return res.status(404).json({ message: 'PDF not found' });
-    }
-
-    const { originalName, storageType, size, fileId, data } = pdf;
-
-    console.log('✅ PDF found:', {
-      originalName,
-      storageType,
-      size
-    });
-
-    // Set headers for PDF display
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${originalName}"`);
-    res.setHeader('Cache-Control', 'no-cache');
-
-    // ✅ Handle embedded PDF (Base64 or Buffer in MongoDB)
-    if (storageType === 'embedded') {
-      if (!data) {
-        console.warn('⚠️ Embedded PDF data is missing');
-        return res.status(404).json({ message: 'Embedded PDF data not found' });
-      }
-      console.log('📤 Serving embedded PDF');
-      return res.send(data);
-    }
-
-    // ✅ Handle GridFS PDF
-    if (storageType === 'gridfs') {
-      if (!global.gfs) {
-        console.error('❌ GridFS not initialized');
-        return res.status(500).json({ message: 'GridFS is not initialized on server' });
-      }
-
-      if (!fileId) {
-        console.warn('⚠️ Missing fileId for GridFS storage');
-        return res.status(400).json({ message: 'Missing fileId for GridFS storage' });
-      }
-
-      console.log('📤 Serving GridFS PDF:', fileId.toString());
-
-      const downloadStream = global.gfs.openDownloadStream(fileId);
-
-      downloadStream.on('file', (file) => {
-        console.log('📁 GridFS file info:', file.filename, file.length);
-      });
-
-      downloadStream.on('error', (error) => {
-        console.error('❌ GridFS download error:', error);
-        if (!res.headersSent) {
-          res.status(404).json({ message: 'File not found in GridFS' });
-        }
-      });
-
-      return downloadStream.pipe(res);
-    }
-
-    // ❌ Unknown storage type
-    console.error('❌ Unknown or unsupported storage type:', storageType);
-    return res.status(400).json({ message: 'Invalid or unsupported storage type' });
-
-  } catch (err) {
-    console.error('❌ Error in viewPdf:', err);
-    if (!res.headersSent) {
-      res.status(500).json({ message: 'Error retrieving PDF', error: err.message });
-    }
-  }
-};
-
-
-// Delete PDF
-exports.deletePdf = async (req, res) => {
+export const viewPdf = async (req, res) => {
   const { id } = req.params;
 
   try {
     const pdf = await Pdf.findById(id);
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
-    // Delete based on storage type
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    if (pdf.storageType === 'embedded') {
+      if (!pdf.data) return res.status(404).json({ message: 'Embedded PDF data not found' });
+      return res.send(pdf.data);
+    }
+
     if (pdf.storageType === 'gridfs') {
+      if (!gfs || !pdf.fileId) return res.status(500).json({ message: 'GridFS error or missing fileId' });
+      const downloadStream = gfs.openDownloadStream(pdf.fileId);
+      downloadStream.on('error', () => {
+        res.status(404).json({ message: 'File not found in GridFS' });
+      });
+      return downloadStream.pipe(res);
+    }
+
+    res.status(400).json({ message: 'Invalid or unsupported storage type' });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error retrieving PDF', error: err.message });
+  }
+};
+
+export const deletePdf = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const pdf = await Pdf.findById(id);
+    if (!pdf) return res.status(404).json({ message: 'PDF not found' });
+
+    if (pdf.storageType === 'gridfs' && pdf.fileId) {
       await gfs.delete(pdf.fileId);
     } else if (pdf.storageType === 'filesystem') {
       const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
 
     await Pdf.findByIdAndDelete(id);
@@ -166,10 +112,9 @@ exports.deletePdf = async (req, res) => {
   }
 };
 
-// Download PDF
-exports.downloadPdf = async (req, res) => {
+export const downloadPdf = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     const pdf = await Pdf.findById(id);
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
@@ -197,8 +142,7 @@ exports.downloadPdf = async (req, res) => {
   }
 };
 
-// User view
-exports.getAllForUser = async (req, res) => {
+export const getAllForUser = async (req, res) => {
   try {
     const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
     const response = pdfs.map(pdf => ({
