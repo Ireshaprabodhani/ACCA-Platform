@@ -7,6 +7,8 @@ const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/p
 const PdfAdminDashboard = () => {
   const [pdfs, setPdfs] = useState([]);
   const [file, setFile] = useState(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [editPdfId, setEditPdfId] = useState(null);
@@ -35,11 +37,13 @@ const PdfAdminDashboard = () => {
   }, []);
 
   const handleUpload = async () => {
-    if (!file) return toast.error('Please select a PDF file');
+    if (!file || !title) return toast.error('File and title are required');
     if (!token) return toast.error('Admin not logged in');
 
     const formData = new FormData();
     formData.append('pdf', file);
+    formData.append('title', title);
+    formData.append('description', description);
 
     setUploading(true);
     try {
@@ -55,6 +59,8 @@ const PdfAdminDashboard = () => {
       });
       toast.success('PDF uploaded successfully');
       setFile(null);
+      setTitle('');
+      setDescription('');
       fetchPDFs();
     } catch (err) {
       toast.error('Upload failed: ' + (err.response?.data?.error || err.message));
@@ -93,7 +99,6 @@ const PdfAdminDashboard = () => {
     }
   };
 
-  // Function to handle PDF viewing with proper authentication
   const handleViewPdf = async (pdfId) => {
     if (!token) {
       toast.error('No authentication token found');
@@ -101,50 +106,32 @@ const PdfAdminDashboard = () => {
     }
 
     try {
-      const viewUrl = `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf/view/${pdfId}`;
-      
-      console.log('Fetching PDF from:', viewUrl);
-      
+      const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
       const response = await fetch(viewUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/pdf'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/pdf',
+        },
       });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response:', errorText);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      // Get the PDF as a blob
       const blob = await response.blob();
-      console.log('Blob size:', blob.size);
-      console.log('Blob type:', blob.type);
+      if (blob.size === 0) throw new Error('PDF file is empty');
 
-      if (blob.size === 0) {
-        throw new Error('PDF file is empty');
-      }
-
-      // Create a URL for the blob and open it
       const blobUrl = URL.createObjectURL(blob);
       const newWindow = window.open(blobUrl, '_blank');
-      
       if (!newWindow) {
         toast.error('Popup blocked. Please allow popups for this site.');
         return;
       }
 
-      // Clean up the blob URL after a delay
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      
     } catch (error) {
-      console.error('Error viewing PDF:', error);
       toast.error(`Failed to open PDF: ${error.message}`);
     }
   };
@@ -152,15 +139,29 @@ const PdfAdminDashboard = () => {
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
       <Toaster position="top-center" />
-
       <h1 className="text-3xl font-bold mb-6 text-purple-900">PDF Admin Dashboard</h1>
 
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center">
+      {/* Upload Section */}
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
         <input
           type="file"
           accept="application/pdf"
           onChange={(e) => setFile(e.target.files[0])}
           className="border rounded px-3 py-2"
+        />
+        <input
+          type="text"
+          placeholder="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="border rounded px-3 py-2"
+        />
+        <textarea
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="border rounded px-3 py-2 md:col-span-2"
+          rows={3}
         />
         <button
           onClick={handleUpload}
@@ -171,6 +172,7 @@ const PdfAdminDashboard = () => {
         </button>
       </div>
 
+      {/* Uploaded List */}
       <h2 className="text-2xl font-semibold mb-4 text-purple-800">Uploaded PDFs</h2>
       <ul className="space-y-3">
         {pdfs.length === 0 && <p className="text-purple-600">No PDFs uploaded yet.</p>}
@@ -213,6 +215,7 @@ const PdfAdminDashboard = () => {
         ))}
       </ul>
 
+      {/* Edit Form */}
       {editPdfId && (
         <div className="mt-6 p-4 border border-purple-300 rounded shadow bg-white max-w-lg">
           <h3 className="text-xl font-semibold mb-3 text-purple-900">Edit PDF Details</h3>
