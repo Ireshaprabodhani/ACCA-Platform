@@ -16,7 +16,7 @@ const PdfAdminDashboard = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  const token = localStorage.getItem('adminToken');
+  const token = localStorage.getItem('token');
 
   const axiosConfig = {
     headers: {
