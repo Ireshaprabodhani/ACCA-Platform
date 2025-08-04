@@ -98,10 +98,10 @@ exports.editPdf = async (req, res) => {
 // THIS IS THE KEY FUNCTION - View PDF
 exports.viewPdf = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     console.log('📄 Attempting to view PDF with ID:', id);
-    
+
     const pdf = await Pdf.findById(id);
     if (!pdf) {
       console.log('❌ PDF not found in database');
@@ -119,56 +119,42 @@ exports.viewPdf = async (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
     res.setHeader('Cache-Control', 'no-cache');
 
+    // Serve Embedded PDF
     if (pdf.storageType === 'embedded') {
       console.log('📤 Serving embedded PDF');
       if (!pdf.data) {
         return res.status(404).json({ message: 'PDF data not found' });
       }
       res.send(pdf.data);
-      
+
+    // Serve GridFS PDF
     } else if (pdf.storageType === 'gridfs') {
       console.log('📤 Serving GridFS PDF');
-      if (!gfs) {
+      if (!global.gfs) {
         return res.status(500).json({ message: 'GridFS not initialized' });
       }
-      
-      const downloadStream = gfs.openDownloadStream(pdf.fileId);
-      
+
+      const downloadStream = global.gfs.openDownloadStream(pdf.fileId);
+
       downloadStream.on('error', (error) => {
         console.error('❌ GridFS download error:', error);
         if (!res.headersSent) {
           res.status(404).json({ message: 'File not found in GridFS' });
         }
       });
-      
+
       downloadStream.on('file', (file) => {
         console.log('📁 GridFS file info:', file.filename, file.length);
       });
-      
+
       downloadStream.pipe(res);
-      
+
+    // ❌ Reject unknown or unsupported storage types
     } else {
-      // Fallback for file system storage
-      console.log('📤 Serving filesystem PDF');
-      const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
-      
-      if (!fs.existsSync(filePath)) {
-        console.log('❌ File not found on filesystem:', filePath);
-        return res.status(404).json({ message: 'File not found on filesystem' });
-      }
-      
-      const fileStream = fs.createReadStream(filePath);
-      
-      fileStream.on('error', (error) => {
-        console.error('❌ File stream error:', error);
-        if (!res.headersSent) {
-          res.status(500).json({ message: 'Error reading file' });
-        }
-      });
-      
-      fileStream.pipe(res);
+      console.error('❌ Unknown storageType:', pdf.storageType);
+      return res.status(400).json({ message: 'Invalid or unsupported storage type' });
     }
-    
+
   } catch (err) {
     console.error('❌ Error in viewPdf:', err);
     if (!res.headersSent) {
