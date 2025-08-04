@@ -32,11 +32,10 @@ const PdfAdminDashboard = () => {
         const rawPdfs = res.data || [];
         const parsed = rawPdfs.map((pdf) => ({
           _id: pdf._id,
-          title: pdf.title || '',
-          description: pdf.description || '',
-          originalName: pdf.originalName || pdf.filename,
+          title: pdf.metadata?.title || '',
+          description: pdf.metadata?.description || '',
+          originalName: pdf.metadata?.originalName || pdf.filename,
         }));
-
         setPdfs(parsed);
       })
       .catch(() => toast.error('Failed to fetch PDFs'));
@@ -109,21 +108,42 @@ const PdfAdminDashboard = () => {
     }
   };
 
-  const handleViewPdf = (pdfId) => {
-  if (!token) {
-    toast.error('No authentication token found');
-    return;
-  }
+  const handleViewPdf = async (pdfId) => {
+    if (!token) {
+      toast.error('No authentication token found');
+      return;
+    }
 
-  // Open PDF in new tab with auth token passed in URL
-  const pdfUrl = `${API_BASE_URL}/view/${pdfId}?token=${token}`;
-  const newWindow = window.open(pdfUrl, '_blank');
+    try {
+      const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
+      const response = await fetch(viewUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/pdf',
+        },
+      });
 
-  if (!newWindow) {
-    toast.error('Popup blocked. Please allow popups for this site.');
-  }
-};
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
 
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error('PDF file is empty');
+
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(`${API_BASE_URL}/view/${pdfId}`, '_blank');
+      if (!newWindow) {
+        toast.error('Popup blocked. Please allow popups for this site.');
+        return;
+      }
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (error) {
+      toast.error(`Failed to open PDF: ${error.message}`);
+    }
+  };
 
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
