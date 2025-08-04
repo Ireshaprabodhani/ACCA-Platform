@@ -37,14 +37,29 @@ export const uploadPdf = async (req, res) => {
   }
 };
 
+
 export const listPdfs = async (req, res) => {
   try {
-    const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
-    res.json(pdfs);
+    const files = await mongoose.connection.db
+      .collection('pdfs.files') // GridFS file metadata collection
+      .find({})
+      .sort({ uploadDate: -1 })
+      .toArray();
+
+    const formatted = files.map(file => ({
+      _id: file._id,
+      filename: file.filename,
+      length: file.length,
+      uploadedAt: file.uploadDate,
+    }));
+
+    res.json(formatted);
   } catch (err) {
+    console.error('Error listing PDFs:', err);
     res.status(500).json({ message: 'Failed to fetch PDFs', error: err.message });
   }
 };
+
 
 export const editPdf = async (req, res) => {
   const { id } = req.params;
