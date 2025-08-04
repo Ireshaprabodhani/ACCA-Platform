@@ -1,20 +1,8 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 
-// Resolve absolute path from server.js
-const uploadDir = path.join(__dirname, 'uploads/pdfs');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir); // absolute path
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '-');
-    cb(null, uniqueName);
-  },
-});
+// Use memory storage instead of disk
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -24,6 +12,9 @@ const upload = multer({
       return cb(new Error('Only PDFs allowed'));
     }
     cb(null, true);
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB size limit (adjust as needed)
   },
 });
 
