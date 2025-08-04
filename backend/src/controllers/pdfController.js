@@ -100,52 +100,80 @@ exports.viewPdf = async (req, res) => {
   const { id } = req.params;
   
   try {
-    console.log('Attempting to view PDF with ID:', id);
+    console.log('📄 Attempting to view PDF with ID:', id);
     
     const pdf = await Pdf.findById(id);
     if (!pdf) {
-      console.log('PDF not found in database');
+      console.log('❌ PDF not found in database');
       return res.status(404).json({ message: 'PDF not found' });
     }
 
-    console.log('PDF found:', {
+    console.log('✅ PDF found:', {
       originalName: pdf.originalName,
       storageType: pdf.storageType,
       size: pdf.size
     });
 
+    // Set headers for PDF viewing
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
+    res.setHeader('Cache-Control', 'no-cache');
 
     if (pdf.storageType === 'embedded') {
-      console.log('Serving embedded PDF');
+      console.log('📤 Serving embedded PDF');
+      if (!pdf.data) {
+        return res.status(404).json({ message: 'PDF data not found' });
+      }
       res.send(pdf.data);
+      
     } else if (pdf.storageType === 'gridfs') {
-      console.log('Serving GridFS PDF');
+      console.log('📤 Serving GridFS PDF');
+      if (!gfs) {
+        return res.status(500).json({ message: 'GridFS not initialized' });
+      }
+      
       const downloadStream = gfs.openDownloadStream(pdf.fileId);
       
       downloadStream.on('error', (error) => {
-        console.error('GridFS download error:', error);
-        res.status(404).json({ message: 'File not found in GridFS' });
+        console.error('❌ GridFS download error:', error);
+        if (!res.headersSent) {
+          res.status(404).json({ message: 'File not found in GridFS' });
+        }
+      });
+      
+      downloadStream.on('file', (file) => {
+        console.log('📁 GridFS file info:', file.filename, file.length);
       });
       
       downloadStream.pipe(res);
+      
     } else {
       // Fallback for file system storage
-      console.log('Serving filesystem PDF');
+      console.log('📤 Serving filesystem PDF');
       const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
       
       if (!fs.existsSync(filePath)) {
-        console.log('File not found on filesystem:', filePath);
+        console.log('❌ File not found on filesystem:', filePath);
         return res.status(404).json({ message: 'File not found on filesystem' });
       }
       
       const fileStream = fs.createReadStream(filePath);
+      
+      fileStream.on('error', (error) => {
+        console.error('❌ File stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Error reading file' });
+        }
+      });
+      
       fileStream.pipe(res);
     }
+    
   } catch (err) {
-    console.error('Error in viewPdf:', err);
-    res.status(500).json({ message: 'Error retrieving PDF', error: err.message });
+    console.error('❌ Error in viewPdf:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Error retrieving PDF', error: err.message });
+    }
   }
 };
 
