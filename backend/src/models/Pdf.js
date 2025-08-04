@@ -1,19 +1,16 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const pdfSchema = new mongoose.Schema({
-  filename: String,
-  originalName: String,
-  data: Buffer,        // Binary data
-  contentType: String,
+  originalName: { type: String, required: true },
+  s3Key: { type: String, required: true },      // Key in S3 bucket
   size: Number,
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  contentType: String,
+  title: String,
+  description: String,
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  uploadedAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('Pdf', pdfSchema);
+const Pdf = mongoose.model('Pdf', pdfSchema);
+
+export default Pdf;

@@ -1,179 +1,163 @@
-const Pdf = require('../models/Pdf');
-const path = require('path');
-const fs = require('fs');
-const mongoose = require('mongoose');
+import Pdf from '../models/Pdf.js';
+import s3 from '../utils/s3Client.js';
+import { v4 as uuidv4 } from 'uuid';  
+import path from 'path';
 
-
-let gfs;
-const conn = mongoose.connection;
-conn.once('open', () => {
-  gfs = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: 'uploads' });
-});
-
-
-// Upload
-exports.uploadPdf = async (req, res) => {
-  const { file } = req;
+// Upload PDF to S3 and save metadata
+export const uploadPdf = async (req, res) => {
+  const file = req.file;
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
-    // For small files (<1MB), store directly
-    if (file.size <= 1000000) {
-      const pdf = new Pdf({
-        filename: file.filename,
-        originalName: file.originalname,
-        data: fs.readFileSync(file.path),
-        contentType: file.mimetype,
-        size: file.size,
-        storageType: 'embedded',
-        uploadedBy: req.admin._id
-      });
-      await pdf.save();
-      fs.unlinkSync(file.path);
-      return res.status(201).json(pdf);
-    }
-    
-    // For large files, use GridFS
-    const readStream = fs.createReadStream(file.path);
-    const uploadStream = gfs.openUploadStream(file.filename, {
-      metadata: {
-        originalName: file.originalname,
-        uploadedBy: req.admin._id
-      },
-      contentType: file.mimetype
+    // Generate unique S3 key for the PDF
+    const extension = path.extname(file.originalname); // e.g., ".pdf"
+    const s3Key = `pdfs/${uuidv4()}${extension}`;
+
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: s3Key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: 'private',
+    };
+
+    await s3.upload(params).promise();
+
+    const pdf = new Pdf({
+      originalName: file.originalname,
+      s3Key,
+      size: file.size,
+      contentType: file.mimetype,
+      uploadedBy: req.admin._id,
+      title: req.body.title || '',
+      description: req.body.description || '',
     });
-    
-    readStream.pipe(uploadStream);
-    
-    uploadStream.on('error', () => {
-      throw new Error('Upload failed');
-    });
-    
-    uploadStream.on('finish', async () => {
-      fs.unlinkSync(file.path);
-      const pdf = new Pdf({
-        filename: file.filename,
-        originalName: file.originalname,
-        size: file.size,
-        contentType: file.mimetype,
-        storageType: 'gridfs',
-        fileId: uploadStream.id,
-        uploadedBy: req.admin._id
-      });
-      await pdf.save();
-      res.status(201).json(pdf);
-    });
+
+    await pdf.save();
+
+    res.status(201).json(pdf);
   } catch (err) {
+    console.error('Upload error:', err);
     res.status(500).json({ message: 'Upload failed', error: err.message });
   }
 };
 
-
-
-// Admin List
-exports.listPdfs = async (req, res) => {
-  const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
-  res.json(pdfs);
+// List all PDFs for admin
+export const listPdfs = async (req, res) => {
+  try {
+    const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
+    res.json(pdfs);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch PDFs', error: err.message });
+  }
 };
 
 // Edit PDF metadata
-exports.editPdf = async (req, res) => {
+export const editPdf = async (req, res) => {
   const { id } = req.params;
-  const { originalName } = req.body;
-
-  const pdf = await Pdf.findByIdAndUpdate(id, { originalName }, { new: true });
-  res.json(pdf);
-};
-
-// Delete PDF
-exports.deletePdf = async (req, res) => {
-  const { id } = req.params;
+  const { title, description } = req.body;
 
   try {
+    const pdf = await Pdf.findByIdAndUpdate(id, { title, description }, { new: true });
+    if (!pdf) return res.status(404).json({ message: 'PDF not found' });
+    res.json(pdf);
+  } catch (err) {
+    res.status(500).json({ message: 'Update failed', error: err.message });
+  }
+};
+
+// View PDF (inline display)
+export const viewPdf = async (req, res) => {
+  try {
+    const { id } = req.params;
     const pdf = await Pdf.findById(id);
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
-    // Delete based on storage type
-    if (pdf.storageType === 'gridfs') {
-      // Delete from GridFS
-      await gfs.delete(pdf.fileId);
-    } else if (pdf.storageType === 'filesystem') {
-      // Delete from file system
-      const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
-    // For embedded storage, no separate file to delete
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: pdf.s3Key,
+    };
 
+    const stream = s3.getObject(params).createReadStream();
+
+    res.setHeader('Content-Type', pdf.contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
+
+    stream.on('error', (err) => {
+      console.error('S3 view error:', err);
+      res.status(404).json({ message: 'File not found on S3' });
+    });
+
+    stream.pipe(res);
+  } catch (err) {
+    console.error('View error:', err);
+    res.status(500).json({ message: 'Error viewing PDF', error: err.message });
+  }
+};
+
+// Delete PDF (S3 + MongoDB)
+export const deletePdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pdf = await Pdf.findById(id);
+    if (!pdf) return res.status(404).json({ message: 'PDF not found' });
+
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: pdf.s3Key,
+    };
+
+    await s3.deleteObject(params).promise();
     await Pdf.findByIdAndDelete(id);
+
     res.json({ message: 'Deleted successfully' });
   } catch (err) {
-    console.error('Error in deletePdf:', err);
     res.status(500).json({ message: 'Delete failed', error: err.message });
   }
 };
 
-exports.viewPdf = async (req, res) => {
-  const { id } = req.params;
-  
+// Download PDF (force download)
+export const downloadPdf = async (req, res) => {
   try {
+    const { id } = req.params;
     const pdf = await Pdf.findById(id);
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: pdf.s3Key,
+    };
 
-    if (pdf.storageType === 'embedded') {
-      // For embedded files (small files), send the data directly
-      res.send(pdf.data);
-    } else if (pdf.storageType === 'gridfs') {
-      // For GridFS files (large files), stream from GridFS
-      const downloadStream = gfs.openDownloadStream(pdf.fileId);
-      
-      downloadStream.on('error', (error) => {
-        console.error('GridFS download error:', error);
-        res.status(404).json({ message: 'File not found in GridFS' });
-      });
-      
-      downloadStream.pipe(res);
-    } else {
-      // Fallback for file system storage (if you have any old files)
-      const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: 'File not found on filesystem' });
-      }
-      
-      const fileStream = fs.createReadStream(filePath);
-      fileStream.pipe(res);
-    }
+    const stream = s3.getObject(params).createReadStream();
+
+    res.setHeader('Content-Type', pdf.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${pdf.originalName}"`);
+
+    stream.on('error', (err) => {
+      console.error('S3 download error:', err);
+      res.status(404).json({ message: 'File not found on S3' });
+    });
+
+    stream.pipe(res);
   } catch (err) {
-    console.error('Error in viewPdf:', err);
-    res.status(500).json({ message: 'Error retrieving PDF', error: err.message });
+    res.status(500).json({ message: 'Error downloading PDF', error: err.message });
   }
 };
 
-// User download
-exports.downloadPdf = async (req, res) => {
-  const { id } = req.params;
-  const pdf = await Pdf.findById(id);
-  if (!pdf) return res.status(404).json({ message: 'PDF not found' });
-
-  const filePath = path.join(__dirname, '../uploads/pdfs/', pdf.filename);
-  res.download(filePath, pdf.originalName);
-};
-
-// User view
-// User view
-exports.getAllForUser = async (req, res) => {
-  const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
-
-  const response = pdfs.map(pdf => ({
-    _id: pdf._id,
-    originalName: pdf.originalName,
-    filename: pdf.filename,
-    url: `/uploads/pdfs/${encodeURIComponent(pdf.filename)}`
-  }));
-
-  res.json(response);
+// User endpoint to get list of PDFs (with URLs)
+export const getAllForUser = async (req, res) => {
+  try {
+    const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
+    const response = pdfs.map(pdf => ({
+      _id: pdf._id,
+      originalName: pdf.originalName,
+      title: pdf.title,
+      description: pdf.description,
+      filename: pdf.filename,
+      url: `/api/pdf/view/${pdf._id}`
+    }));
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch PDFs', error: err.message });
+  }
 };
