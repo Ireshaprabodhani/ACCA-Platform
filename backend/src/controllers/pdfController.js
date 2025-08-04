@@ -10,45 +10,29 @@ conn.once('open', () => {
   gfs = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: 'uploads' });
 });
 
-// Upload (your existing code)
-exports.uploadPdf = async (req, res) => {
+
+export const uploadPdf = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const { originalname, buffer } = req.file;
+    const stream = global.gridfsBucket.openUploadStream(originalname);
+    stream.end(buffer);
 
-    // Use GridFSBucket to store file
-    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-      bucketName: 'pdfs',
+    stream.on('finish', () => {
+      res.status(200).json({ message: 'PDF uploaded successfully', fileId: stream.id });
     });
 
-    const uploadStream = bucket.openUploadStream(originalname);
-    uploadStream.end(buffer);
-
-    uploadStream.on('finish', async (file) => {
-      const pdf = new Pdf({
-        originalName: originalname,
-        storageType: 'gridfs', // Make sure this matches viewPdf logic
-        fileId: file._id,
-        size: file.length,
-      });
-
-      await pdf.save();
-
-      return res.status(201).json({ message: 'PDF uploaded successfully', pdf });
+    stream.on('error', (err) => {
+      res.status(500).json({ error: 'Failed to upload PDF', details: err.message });
     });
-
-    uploadStream.on('error', (err) => {
-      console.error('Upload stream error:', err);
-      return res.status(500).json({ message: 'Error uploading PDF' });
-    });
-  } catch (err) {
-    console.error('Error in uploadPdf:', err);
-    res.status(500).json({ message: 'Internal Server Error' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
+
 
 // Admin List
 exports.listPdfs = async (req, res) => {

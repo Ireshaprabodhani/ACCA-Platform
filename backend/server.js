@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -12,29 +13,20 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Static files
+// Serve static PDF files with proper headers
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.pdf')) {
-      res.set('Content-Type', 'application/pdf');
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
     }
   }
 }));
 
-// Import routes
-import connectDB from './src/config/db.js';
-import authRoutes from './src/routes/authRoutes.js';
-import userRoutes from './src/routes/userRoutes.js';
-import quizRoutes from './src/routes/quizRoutes.js';
-import videoRoutes from './src/routes/videoRoutes.js';
-import caseRoutes from './src/routes/caseRoutes.js';
-import adminRoutes from './src/routes/adminRoutes.js';
-import userPdfRoutes from './src/routes/userPdfRoutes.js';
-import adminPdfRoutes from './src/routes/adminPDFRoutes.js';
+// Middleware to parse JSON and form data (for file uploads)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-connectDB();
-
-// CORS setup (your existing CORS code)
+// CORS setup
 const allowedOrigins = [
   'https://main.d1vjhvv9srhnme.amplifyapp.com',
   'https://main.d1vjhvv9srhnme.amplifyapp.com/',
@@ -61,25 +53,45 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-app.use(express.json());
+// 🛡️ Add fallback CORS headers for AWS App Runner
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
-// Routes
+// Rate limiting
+app.use(rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100,
+  message: 'Too many requests—please retry later.'
+}));
+
+// Connect to MongoDB
+import connectDB from './src/config/db.js';
+connectDB();
+
+// Import and use routes
+import authRoutes from './src/routes/authRoutes.js';
+import userRoutes from './src/routes/userRoutes.js';
+import quizRoutes from './src/routes/quizRoutes.js';
+import videoRoutes from './src/routes/videoRoutes.js';
+import caseRoutes from './src/routes/caseRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
+import userPdfRoutes from './src/routes/userPdfRoutes.js';
+import adminPdfRoutes from './src/routes/adminPDFRoutes.js';
+
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/case', caseRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/admin/pdf', adminPdfRoutes);
 app.use('/api/pdf', userPdfRoutes);
+app.use('/api/admin/pdf', adminPdfRoutes);
 
-// Rate limiting (your existing code)
-import rateLimit from 'express-rate-limit';
-app.use(rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  message: 'Too many requests—please retry later.'
-}));
-
+// Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
