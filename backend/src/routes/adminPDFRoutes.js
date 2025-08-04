@@ -17,18 +17,7 @@ router.post('/', adminMiddleware, upload.single('pdf'), pdfController.uploadPdf)
 router.get('/', adminMiddleware, pdfController.listPdfs);
 router.put('/:id', adminMiddleware, pdfController.editPdf);
 router.delete('/:id', adminMiddleware, pdfController.deletePdf);
-router.get('/test-view', (req, res) => {
-  console.log('✅ Test view route hit');
-  res.json({ message: 'Test view route works!', timestamp: new Date() });
-});
+router.get('/view/:id', adminMiddleware, pdfController.viewPdf);
 
-router.get('/view/:id', (req, res) => {
-  console.log('🔍 View route hit with ID:', req.params.id);
-  res.json({ 
-    message: 'View route reached!', 
-    id: req.params.id,
-    timestamp: new Date()
-  });
-});
 
 module.exports = router;
