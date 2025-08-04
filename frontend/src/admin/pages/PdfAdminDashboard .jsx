@@ -7,7 +7,6 @@ const API_BASE_URL = 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/p
 const PdfAdminDashboard = () => {
   const [pdfs, setPdfs] = useState([]);
   const [file, setFile] = useState(null);
-  const [fileInputKey, setFileInputKey] = useState(Date.now()); // for resetting file input UI
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -31,13 +30,13 @@ const PdfAdminDashboard = () => {
       .get(API_BASE_URL, axiosConfig)
       .then((res) => {
         const rawPdfs = res.data || [];
-        // FIXED: parse properties from root, not metadata
         const parsed = rawPdfs.map((pdf) => ({
           _id: pdf._id,
           title: pdf.title || '',
           description: pdf.description || '',
           originalName: pdf.originalName || pdf.filename,
         }));
+
         setPdfs(parsed);
       })
       .catch(() => toast.error('Failed to fetch PDFs'));
@@ -70,7 +69,6 @@ const PdfAdminDashboard = () => {
       });
       toast.success('PDF uploaded successfully');
       setFile(null);
-      setFileInputKey(Date.now()); // reset file input UI
       setTitle('');
       setDescription('');
       fetchPDFs();
@@ -112,19 +110,20 @@ const PdfAdminDashboard = () => {
   };
 
   const handleViewPdf = (pdfId) => {
-    if (!token) {
-      toast.error('No authentication token found');
-      return;
-    }
+  if (!token) {
+    toast.error('No authentication token found');
+    return;
+  }
 
-    // Opens PDF in new tab, token passed as query param
-    const pdfUrl = `${API_BASE_URL}/view/${pdfId}?token=${token}`;
-    const newWindow = window.open(pdfUrl, '_blank');
+  // Open PDF in new tab with auth token passed in URL
+  const pdfUrl = `${API_BASE_URL}/view/${pdfId}?token=${token}`;
+  const newWindow = window.open(pdfUrl, '_blank');
 
-    if (!newWindow) {
-      toast.error('Popup blocked. Please allow popups for this site.');
-    }
-  };
+  if (!newWindow) {
+    toast.error('Popup blocked. Please allow popups for this site.');
+  }
+};
+
 
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
@@ -134,7 +133,6 @@ const PdfAdminDashboard = () => {
       {/* Upload Section */}
       <div className="mb-6 grid gap-4 md:grid-cols-2">
         <input
-          key={fileInputKey}
           type="file"
           accept="application/pdf"
           onChange={(e) => setFile(e.target.files[0])}
@@ -156,7 +154,7 @@ const PdfAdminDashboard = () => {
         />
         <button
           onClick={handleUpload}
-          disabled={uploading || !file || !title}
+          disabled={uploading}
           className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
         >
           {uploading ? `Uploading (${uploadProgress}%)...` : 'Upload PDF'}
