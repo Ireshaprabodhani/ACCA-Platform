@@ -17,11 +17,6 @@ router.post('/', adminMiddleware, upload.single('pdf'), pdfController.uploadPdf)
 router.get('/', adminMiddleware, pdfController.listPdfs);
 router.put('/:id', adminMiddleware, pdfController.editPdf);
 router.delete('/:id', adminMiddleware, pdfController.deletePdf);
-
-// View route - ADD LOGGING
-router.get('/view/:id', (req, res, next) => {
-  console.log('View route hit with ID:', req.params.id);
-  next();
-}, adminMiddleware, pdfController.viewPdf);
+router.get('/view/:id', adminMiddleware, pdfController.viewPdf);
 
 module.exports = router;
