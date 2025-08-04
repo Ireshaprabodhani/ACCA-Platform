@@ -12,58 +12,41 @@ conn.once('open', () => {
 
 // Upload (your existing code)
 exports.uploadPdf = async (req, res) => {
-  const { file } = req;
-  if (!file) return res.status(400).json({ message: 'No file uploaded' });
-
   try {
-    // For small files (<1MB), store directly
-    if (file.size <= 1000000) {
-      const pdf = new Pdf({
-        filename: file.filename,
-        originalName: file.originalname,
-        data: fs.readFileSync(file.path),
-        contentType: file.mimetype,
-        size: file.size,
-        storageType: 'embedded',
-        uploadedBy: req.admin._id
-      });
-      await pdf.save();
-      fs.unlinkSync(file.path);
-      return res.status(201).json(pdf);
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
-        
-    // For large files, use GridFS
-    const readStream = fs.createReadStream(file.path);
-    const uploadStream = gfs.openUploadStream(file.filename, {
-      metadata: {
-        originalName: file.originalname,
-        uploadedBy: req.admin._id
-      },
-      contentType: file.mimetype
+
+    const { originalname, buffer } = req.file;
+
+    // Use GridFSBucket to store file
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: 'pdfs',
     });
-        
-    readStream.pipe(uploadStream);
-        
-    uploadStream.on('error', () => {
-      throw new Error('Upload failed');
-    });
-        
-    uploadStream.on('finish', async () => {
-      fs.unlinkSync(file.path);
+
+    const uploadStream = bucket.openUploadStream(originalname);
+    uploadStream.end(buffer);
+
+    uploadStream.on('finish', async (file) => {
       const pdf = new Pdf({
-        filename: file.filename,
-        originalName: file.originalname,
-        size: file.size,
-        contentType: file.mimetype,
-        storageType: 'gridfs',
-        fileId: uploadStream.id,
-        uploadedBy: req.admin._id
+        originalName: originalname,
+        storageType: 'gridfs', // Make sure this matches viewPdf logic
+        fileId: file._id,
+        size: file.length,
       });
+
       await pdf.save();
-      res.status(201).json(pdf);
+
+      return res.status(201).json({ message: 'PDF uploaded successfully', pdf });
+    });
+
+    uploadStream.on('error', (err) => {
+      console.error('Upload stream error:', err);
+      return res.status(500).json({ message: 'Error uploading PDF' });
     });
   } catch (err) {
-    res.status(500).json({ message: 'Upload failed', error: err.message });
+    console.error('Error in uploadPdf:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
@@ -108,33 +91,48 @@ exports.viewPdf = async (req, res) => {
       return res.status(404).json({ message: 'PDF not found' });
     }
 
+    const { originalName, storageType, size, fileId, data } = pdf;
+
     console.log('✅ PDF found:', {
-      originalName: pdf.originalName,
-      storageType: pdf.storageType,
-      size: pdf.size
+      originalName,
+      storageType,
+      size
     });
 
-    // Set headers for PDF viewing
+    // Set headers for PDF display
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${originalName}"`);
     res.setHeader('Cache-Control', 'no-cache');
 
-    // Serve Embedded PDF
-    if (pdf.storageType === 'embedded') {
+    // ✅ Handle embedded PDF (Base64 or Buffer in MongoDB)
+    if (storageType === 'embedded') {
+      if (!data) {
+        console.warn('⚠️ Embedded PDF data is missing');
+        return res.status(404).json({ message: 'Embedded PDF data not found' });
+      }
       console.log('📤 Serving embedded PDF');
-      if (!pdf.data) {
-        return res.status(404).json({ message: 'PDF data not found' });
-      }
-      res.send(pdf.data);
+      return res.send(data);
+    }
 
-    // Serve GridFS PDF
-    } else if (pdf.storageType === 'gridfs') {
-      console.log('📤 Serving GridFS PDF');
+    // ✅ Handle GridFS PDF
+    if (storageType === 'gridfs') {
       if (!global.gfs) {
-        return res.status(500).json({ message: 'GridFS not initialized' });
+        console.error('❌ GridFS not initialized');
+        return res.status(500).json({ message: 'GridFS is not initialized on server' });
       }
 
-      const downloadStream = global.gfs.openDownloadStream(pdf.fileId);
+      if (!fileId) {
+        console.warn('⚠️ Missing fileId for GridFS storage');
+        return res.status(400).json({ message: 'Missing fileId for GridFS storage' });
+      }
+
+      console.log('📤 Serving GridFS PDF:', fileId.toString());
+
+      const downloadStream = global.gfs.openDownloadStream(fileId);
+
+      downloadStream.on('file', (file) => {
+        console.log('📁 GridFS file info:', file.filename, file.length);
+      });
 
       downloadStream.on('error', (error) => {
         console.error('❌ GridFS download error:', error);
@@ -143,17 +141,12 @@ exports.viewPdf = async (req, res) => {
         }
       });
 
-      downloadStream.on('file', (file) => {
-        console.log('📁 GridFS file info:', file.filename, file.length);
-      });
-
-      downloadStream.pipe(res);
-
-    // ❌ Reject unknown or unsupported storage types
-    } else {
-      console.error('❌ Unknown storageType:', pdf.storageType);
-      return res.status(400).json({ message: 'Invalid or unsupported storage type' });
+      return downloadStream.pipe(res);
     }
+
+    // ❌ Unknown storage type
+    console.error('❌ Unknown or unsupported storage type:', storageType);
+    return res.status(400).json({ message: 'Invalid or unsupported storage type' });
 
   } catch (err) {
     console.error('❌ Error in viewPdf:', err);
@@ -162,6 +155,7 @@ exports.viewPdf = async (req, res) => {
     }
   }
 };
+
 
 // Delete PDF
 exports.deletePdf = async (req, res) => {
