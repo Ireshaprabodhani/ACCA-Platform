@@ -93,30 +93,60 @@ const PdfAdminDashboard = () => {
     }
   };
 
-  // Function to handle PDF viewing with authentication (Admin route)
-  const handleViewPdf = (pdfId) => {
-    // Use the correct admin route
-    const viewUrl = `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf/view/${pdfId}`;
-    
-    // Use fetch to get the PDF with authorization header, then create blob URL
-    fetch(viewUrl, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    .then(response => {
+  // Function to handle PDF viewing with proper authentication
+  const handleViewPdf = async (pdfId) => {
+    if (!token) {
+      toast.error('No authentication token found');
+      return;
+    }
+
+    try {
+      const viewUrl = `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf/view/${pdfId}`;
+      
+      console.log('Fetching PDF from:', viewUrl);
+      
+      const response = await fetch(viewUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/pdf'
+        }
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (!response.ok) {
-        throw new Error('Failed to load PDF');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-      return response.blob();
-    })
-    .then(blob => {
+
+      // Get the PDF as a blob
+      const blob = await response.blob();
+      console.log('Blob size:', blob.size);
+      console.log('Blob type:', blob.type);
+
+      if (blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
+      // Create a URL for the blob and open it
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
-    })
-    .catch(error => {
-      toast.error('Failed to open PDF: ' + error.message);
-    });
+      const newWindow = window.open(blobUrl, '_blank');
+      
+      if (!newWindow) {
+        toast.error('Popup blocked. Please allow popups for this site.');
+        return;
+      }
+
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      
+    } catch (error) {
+      console.error('Error viewing PDF:', error);
+      toast.error(`Failed to open PDF: ${error.message}`);
+    }
   };
 
   return (
@@ -153,14 +183,12 @@ const PdfAdminDashboard = () => {
               <strong className="text-purple-900">{pdf.originalName}</strong>
               {pdf.title && <span> - {pdf.title}</span>}
               <br />
-                <a
-                href={`https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/pdf/view/${pdf._id}?token=${token}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline"
+              <button
+                onClick={() => handleViewPdf(pdf._id)}
+                className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
               >
                 View / Download
-              </a>
+              </button>
             </div>
 
             <div className="flex gap-2">
