@@ -122,6 +122,7 @@ exports.viewPdf = async (req, res) => {
       res.send(pdf.data);
     } else if (pdf.storageType === 'gridfs') {
       console.log('Serving GridFS PDF');
+      // You'll need to set up GridFS here
       const downloadStream = gfs.openDownloadStream(pdf.fileId);
       
       downloadStream.on('error', (error) => {
