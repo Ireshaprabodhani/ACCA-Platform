@@ -9,13 +9,12 @@ export const uploadPdf = async (req, res) => {
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
-    // Generate unique S3 key for the PDF
-    const extension = path.extname(file.originalname); // e.g., ".pdf"
+    const extension = path.extname(file.originalname);
     const s3Key = `pdfs/${uuidv4()}${extension}`;
 
     const params = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: pdf.s3Key,
+      Key: s3Key,
       Body: file.buffer,
       ContentType: file.mimetype,
       ACL: 'private',
@@ -23,7 +22,7 @@ export const uploadPdf = async (req, res) => {
 
     await s3.upload(params).promise();
 
-    const pdf = new Pdf({
+    const newPdf = new Pdf({
       originalName: file.originalname,
       s3Key,
       size: file.size,
@@ -33,14 +32,15 @@ export const uploadPdf = async (req, res) => {
       description: req.body.description || '',
     });
 
-    await pdf.save();
+    await newPdf.save();
 
-    res.status(201).json(pdf);
+    res.status(201).json(newPdf);
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ message: 'Upload failed', error: err.message });
   }
 };
+
 
 // List all PDFs for admin
 export const listPdfs = async (req, res) => {
