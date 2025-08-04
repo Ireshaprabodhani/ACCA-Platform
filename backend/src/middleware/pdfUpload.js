@@ -1,21 +1,19 @@
-const multer = require('multer');
-const path = require('path');
+import multer from 'multer';
 
-// Use memory storage instead of disk
-const storage = multer.memoryStorage();
+const storage = multer.memoryStorage();  // Store file buffer in memory
 
 const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (ext !== '.pdf') {
-      return cb(new Error('Only PDFs allowed'));
-    }
-    cb(null, true);
-  },
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB size limit (adjust as needed)
+    fileSize: 10 * 1024 * 1024,  // max 10MB, adjust as needed
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDFs are allowed'));
+    }
   },
 });
 
-module.exports = upload;
+export default upload;
