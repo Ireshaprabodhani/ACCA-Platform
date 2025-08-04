@@ -96,7 +96,7 @@ exports.editPdf = async (req, res) => {
 };
 
 // THIS IS THE KEY FUNCTION - View PDF
-exports.viewPdf = async (req, res) => {
+exports.getPdfByID = async (req, res) => {
   const { id } = req.params;
   
   try {
