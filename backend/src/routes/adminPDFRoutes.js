@@ -5,14 +5,29 @@ import * as pdfController from '../controllers/pdfController.js';
 
 const router = express.Router();
 
+// Add debugging middleware for troubleshooting
+const debugMiddleware = (req, res, next) => {
+  console.log(`${req.method} ${req.originalUrl}`);
+  console.log('Headers:', {
+    authorization: req.headers.authorization ? 'Present' : 'Missing',
+    contentType: req.headers['content-type']
+  });
+  next();
+};
+
+// Apply debug middleware to all routes (remove in production)
+router.use(debugMiddleware);
+
 router.post('/', adminMiddleware, upload.single('pdf'), pdfController.uploadPdf);
 router.get('/', adminMiddleware, pdfController.listPdfs);
-router.get('/view/:id', adminMiddleware, pdfController.viewPdf);
+
+// Add the debugging auth middleware to view route for troubleshooting
+router.get('/view/:id', adminMiddleware, pdfController.debugAuth, pdfController.viewPdf);
 router.get('/download/:id', adminMiddleware, pdfController.downloadPdf);
 router.delete('/:id', adminMiddleware, pdfController.deletePdf);
-// router.get('/test-config', adminMiddleware, pdfController.testConfig);
-router.get('/debug-env', adminMiddleware, pdfController.debugEnvironment);
+router.put('/:id', adminMiddleware, pdfController.editPdf);
 
-// add PUT / DELETE as needed for metadata updates or delete (remember to delete from S3 as well)
+// Debug routes
+router.get('/debug-env', adminMiddleware, pdfController.debugEnvironment);
 
 export default router;

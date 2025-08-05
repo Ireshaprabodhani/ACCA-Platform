@@ -108,37 +108,84 @@ const PdfAdminDashboard = () => {
     }
   };
 
- const handleViewPdf = async (pdfId) => {
-  if (!token) {
-    toast.error('No authentication token found');
+// Updated handleViewPdf function with better error handling and authentication
+const handleViewPdf = async (pdfId) => {
+  // Get fresh token
+  const currentToken = localStorage.getItem('token');
+  
+  if (!currentToken) {
+    toast.error('Authentication required. Please log in again.');
     return;
   }
 
   try {
+    console.log('Attempting to view PDF:', pdfId);
+    console.log('Using token:', currentToken ? 'Token present' : 'No token');
+    
     const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
+    console.log('Request URL:', viewUrl);
+    
     const response = await fetch(viewUrl, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${currentToken}`,
+        'Content-Type': 'application/json',
       },
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     if (!response.ok) {
+      if (response.status === 401) {
+        toast.error('Authentication failed. Please log in again.');
+        // Optionally redirect to login
+        // window.location.href = '/admin/login';
+        return;
+      }
+      
+      if (response.status === 403) {
+        toast.error('Access denied. Admin privileges required.');
+        return;
+      }
+      
       const errorText = await response.text();
+      console.error('Error response:', errorText);
       throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    // Check if response is actually a PDF
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/pdf')) {
+      console.error('Response is not a PDF. Content-Type:', contentType);
+      const responseText = await response.text();
+      console.error('Response body:', responseText);
+      toast.error('Invalid response format. Expected PDF.');
+      return;
     }
 
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
+    
+    // Try to open in new tab
     const newWindow = window.open(blobUrl, '_blank');
-
+    
     if (!newWindow) {
       toast.error('Popup blocked. Please allow popups for this site.');
+      // As fallback, create a download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `pdf-${pdfId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
-    // Clean up blob URL after 10 seconds
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    // Clean up blob URL after 30 seconds
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    
   } catch (error) {
+    console.error('PDF view error:', error);
     toast.error(`Failed to open PDF: ${error.message}`);
   }
 };
