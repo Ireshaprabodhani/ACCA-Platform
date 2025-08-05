@@ -10,6 +10,7 @@ router.get('/', adminMiddleware, pdfController.listPdfs);
 router.get('/view/:id', adminMiddleware, pdfController.viewPdf);
 router.get('/download/:id', adminMiddleware, pdfController.downloadPdf);
 router.delete('/:id', adminMiddleware, pdfController.deletePdf);
+router.get('/test-config', adminMiddleware, pdfController.testConfig);
 
 // add PUT / DELETE as needed for metadata updates or delete (remember to delete from S3 as well)
 
