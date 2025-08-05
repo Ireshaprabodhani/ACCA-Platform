@@ -186,32 +186,108 @@ export const editPdf = async (req, res) => {
   }
 };
 
+// Updated viewPdf function in pdfController.js
 export const viewPdf = async (req, res) => {
   try {
+    console.log('=== VIEW PDF DEBUG START ===');
+    console.log('User requesting PDF:', req.admin?._id);
+    console.log('PDF ID requested:', req.params.id);
+    
     const { id } = req.params;
+    
+    // Validate ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log('Invalid ObjectId format:', id);
+      return res.status(400).json({ message: 'Invalid PDF ID format' });
+    }
+    
     const pdf = await Pdf.findById(id);
-    if (!pdf) return res.status(404).json({ message: 'PDF not found' });
+    if (!pdf) {
+      console.log('PDF not found in database:', id);
+      return res.status(404).json({ message: 'PDF not found' });
+    }
+
+    console.log('PDF found:', {
+      id: pdf._id,
+      originalName: pdf.originalName,
+      s3Key: pdf.s3Key,
+      contentType: pdf.contentType
+    });
+
+    // Check if bucket name is available
+    if (!process.env.AWS_S3_BUCKET_NAME) {
+      console.error('AWS_S3_BUCKET_NAME not configured');
+      return res.status(500).json({ message: 'S3 configuration error' });
+    }
 
     const params = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: pdf.s3Key,
     };
 
+    console.log('S3 params:', params);
+    console.log('Attempting to get object from S3...');
+
+    // Test if object exists first
+    try {
+      await s3.headObject(params).promise();
+      console.log('Object exists in S3');
+    } catch (headError) {
+      console.error('Object not found in S3:', headError.message);
+      return res.status(404).json({ message: 'File not found in storage' });
+    }
+
+    // Set headers before streaming
+    res.setHeader('Content-Type', pdf.contentType || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Adjust as needed for security
+
+    console.log('Headers set, creating stream...');
+    
     const stream = s3.getObject(params).createReadStream();
 
-    res.setHeader('Content-Type', pdf.contentType);
-    res.setHeader('Content-Disposition', `inline; filename="${pdf.originalName}"`);
-
     stream.on('error', (err) => {
-      console.error('S3 view error:', err);
-      res.status(404).json({ message: 'File not found on S3' });
+      console.error('S3 stream error:', err);
+      if (!res.headersSent) {
+        res.status(404).json({ message: 'File stream error', error: err.message });
+      }
     });
 
+    stream.on('end', () => {
+      console.log('Stream ended successfully');
+    });
+
+    console.log('Piping stream to response...');
     stream.pipe(res);
+    
+    console.log('=== VIEW PDF DEBUG END ===');
+
   } catch (err) {
-    console.error('View error:', err);
-    res.status(500).json({ message: 'Error viewing PDF', error: err.message });
+    console.error('=== VIEW PDF ERROR ===');
+    console.error('Error:', err);
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
+    console.error('=====================');
+    
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        message: 'Error viewing PDF', 
+        error: err.message,
+        debug: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      });
+    }
   }
+};
+
+// Enhanced middleware debugging
+export const debugAuth = async (req, res, next) => {
+  console.log('=== AUTH DEBUG ===');
+  console.log('Headers:', req.headers);
+  console.log('Authorization:', req.headers.authorization);
+  console.log('Admin from middleware:', req.admin?._id);
+  console.log('==================');
+  next();
 };
 
 export const deletePdf = async (req, res) => {
