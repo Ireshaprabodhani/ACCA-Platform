@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+
+import mongoose from 'mongoose';
 
 const scoreSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -7,4 +8,4 @@ const scoreSchema = new mongoose.Schema({
   competitionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Competition' }, // optional if you have multiple competitions
 });
 
-module.exports = mongoose.model('Score', scoreSchema);
+export default mongoose.model('Score', scoreSchema);

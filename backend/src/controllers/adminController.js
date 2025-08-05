@@ -1,17 +1,17 @@
-const Admin = require('../models/Admin');
-const User = require('../models/User');
-const QuizAttempt = require('../models/QuizAttempt');
-const CaseAttempt = require('../models/CaseAttempt');
-const QuizQuestion = require('../models/QuizQuestion');
-const CaseQuestion = require('../models/CaseQuestion');
-const Video = require('../models/Video');
-const Score = require('../models/Score');
-const Logo = require('../models/Logo');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import Admin from '../models/Admin.js';
+import User from '../models/User.js';
+import QuizAttempt from '../models/QuizAttempt.js';
+import CaseAttempt from '../models/CaseAttempt.js';
+import QuizQuestion from '../models/QuizQuestion.js';
+import CaseQuestion from '../models/CaseQuestion.js';
+import Video from '../models/Video.js';
+import Score from '../models/Score.js';
+import Logo from '../models/Logo.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // POST /admin/login
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
   const { email, password } = req.body;
   const admin = await Admin.findOne({ email });
   if (!admin) return res.status(400).json({ message: 'Admin not found' });
@@ -28,7 +28,7 @@ exports.login = async (req, res) => {
   res.json({ token, role: 'admin' });
 };
 
-exports.addUserWithMembers = async (req, res) => {
+export const addUserWithMembers = async (req, res) => {
   try {
     const {
       firstName,
@@ -76,9 +76,8 @@ exports.addUserWithMembers = async (req, res) => {
   }
 };
 
-
 // get users 
-exports.getUsers = async (req, res) => {
+export const getUsers = async (req, res) => {
   try {
     const { schoolName } = req.query;
     const filter = {};
@@ -95,7 +94,7 @@ exports.getUsers = async (req, res) => {
 };
 
 // delete user
-exports.deleteUser = async (req, res) => {
+export const deleteUser = async (req, res) => {
   try {
     const { id }         = req.params;  
     const { schoolName } = req.query;    
@@ -126,9 +125,8 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-
 // get quiz status
-exports.getQuizAttemptStatus = async (req, res) => {
+export const getQuizAttemptStatus = async (req, res) => {
   try {
     const { schoolName } = req.query;
 
@@ -151,7 +149,7 @@ exports.getQuizAttemptStatus = async (req, res) => {
       const u = at.userId;            // might be null
       return {
         id          : at._id,
-        userName    : u ? `${u.firstName} ${u.lastName ?? ''}`.trim() : 'Deleted User',
+        userName    : u ? `${u.firstName} ${u.lastName ?? ''}`.trim() : 'Deleted User',
         email       : u ? u.email       : 'N/A',
         schoolName  : u ? u.schoolName  || 'N/A' : 'N/A',
         score       : at.score,
@@ -169,8 +167,7 @@ exports.getQuizAttemptStatus = async (req, res) => {
   }
 };
 
-
-exports.getCaseAttemptStatus = async (req, res) => {
+export const getCaseAttemptStatus = async (req, res) => {
   try {
     const { schoolName } = req.query;
 
@@ -192,7 +189,7 @@ exports.getCaseAttemptStatus = async (req, res) => {
       const u = at.userId;
       return {
         id          : at._id,
-        userName    : u ? `${u.firstName} ${u.lastName ?? ''}`.trim() : 'Deleted User',
+        userName    : u ? `${u.firstName} ${u.lastName ?? ''}`.trim() : 'Deleted User',
         email       : u ? u.email       : 'N/A',
         schoolName  : u ? u.schoolName  || 'N/A' : 'N/A',
         score       : at.score,
@@ -210,9 +207,7 @@ exports.getCaseAttemptStatus = async (req, res) => {
   }
 };
 
-
-
-exports.getSchoolResults = async (req, res) => {
+export const getSchoolResults = async (req, res) => {
   try {
     /* ----------- gather quiz aggregate ----------- */
     const quizAgg = await QuizAttempt.aggregate([
@@ -262,9 +257,8 @@ exports.getSchoolResults = async (req, res) => {
   }
 };
 
-
 // get stats
-exports.getStats = async (req, res) => {
+export const getStats = async (req, res) => {
   try {
     const usersCount = await User.countDocuments();
     const quizQCount = await QuizQuestion.countDocuments();
@@ -283,8 +277,7 @@ exports.getStats = async (req, res) => {
 };
 
 // display leaderboard
-
-exports.getLeaderboard = async (req, res) => {
+export const getLeaderboard = async (req, res) => {
   try {
     /* 1. run the two aggregations */
     const [quizAgg, caseAgg] = await Promise.all([
@@ -367,6 +360,17 @@ exports.getLeaderboard = async (req, res) => {
   }
 };
 
+// Create default export with all functions
+const adminController = {
+  login,
+  addUserWithMembers,
+  getUsers,
+  deleteUser,
+  getQuizAttemptStatus,
+  getCaseAttemptStatus,
+  getSchoolResults,
+  getStats,
+  getLeaderboard
+};
 
-
-
+export default adminController;

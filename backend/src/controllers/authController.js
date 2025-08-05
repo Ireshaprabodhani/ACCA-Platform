@@ -1,12 +1,12 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-const Admin = require('../models/Admin');
-const bcrypt = require('bcrypt');
+import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
+import Admin from '../models/Admin.js';
+import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
 
-require('dotenv').config();
+dotenv.config();
 
-
-exports.register = async (req, res) => {
+export const register = async (req, res) => {
   try {
     const {
       firstName,
@@ -55,8 +55,7 @@ exports.register = async (req, res) => {
   }
 };
 
-
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -96,7 +95,7 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
+export const logout = async (req, res) => {
   try {
     // You can optionally blacklist the token here if you implement token blacklisting
     res.status(200).json({ message: 'Logout successful' });
@@ -106,9 +105,7 @@ exports.logout = async (req, res) => {
   }
 };
 
-
-// forgot password
-exports.forgotPassword = async (req, res) => {
+export const forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email });
@@ -127,9 +124,7 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-
-//reset password
-exports.resetPassword = async (req, res) => {
+export const resetPassword = async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
 
@@ -155,4 +150,13 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+// Default export containing all functions
+const authController = {
+  register,
+  login,
+  logout,
+  forgotPassword,
+  resetPassword
+};
 
+export default authController;

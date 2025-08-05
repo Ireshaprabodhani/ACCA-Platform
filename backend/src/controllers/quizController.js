@@ -1,9 +1,10 @@
-const QuizQuestion = require('../models/QuizQuestion');
-const QuizAttempt = require('../models/QuizAttempt');
-const mongoose = require('mongoose');
+
+import QuizQuestion from '../models/QuizQuestion.js';
+import QuizAttempt from '../models/QuizAttempt.js';
+import mongoose from 'mongoose';
 
 // Add a quiz question by admin
-exports.addQuizQuestion = async (req, res) => {
+export const addQuizQuestion = async (req, res) => {
   try {
     const { question, options, answer, language } = req.body;
 
@@ -34,7 +35,7 @@ exports.addQuizQuestion = async (req, res) => {
   }
 };
 
-exports.listQuizQuestions = async (req, res) => {
+export const listQuizQuestions = async (req, res) => {
   try {
     const { language, search, page = 1, limit = 50 } = req.query;
 
@@ -58,7 +59,7 @@ exports.listQuizQuestions = async (req, res) => {
 
 
 
-exports.getQuizQuestion = async (req, res) => {
+export const getQuizQuestion = async (req, res) => {
   try {
     const q = await QuizQuestion.findById(req.params.id);
     if (!q) return res.status(404).json({ message: 'Not found' });
@@ -70,7 +71,7 @@ exports.getQuizQuestion = async (req, res) => {
 
 
 // Update a quiz question by admin
-exports.updateQuizQuestion = async (req, res) => {
+export const updateQuizQuestion = async (req, res) => {
   try {
     const question = await QuizQuestion.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!question) {
@@ -84,7 +85,7 @@ exports.updateQuizQuestion = async (req, res) => {
 };
 
 // Delete a quiz question by admin
-exports.deleteQuizQuestion = async (req, res) => {
+export const deleteQuizQuestion = async (req, res) => {
   try {
     const deleted = await QuizQuestion.findByIdAndDelete(req.params.id);
     if (!deleted) {
@@ -99,7 +100,7 @@ exports.deleteQuizQuestion = async (req, res) => {
 
 
 // Display questions to users
-exports.getRandomQuizQuestions = async (req, res) => {
+export const getRandomQuizQuestions = async (req, res) => {
   try {
     const user = req.user;
     const language = (req.query.language || user.language || 'English')
@@ -131,7 +132,7 @@ exports.getRandomQuizQuestions = async (req, res) => {
 
 
 // Submit answers by users
-exports.submitQuizAnswers = async (req, res) => {
+export const submitQuizAnswers = async (req, res) => {
   try {
     const user   = req.user;
     const userId = user.id;
@@ -184,7 +185,7 @@ exports.submitQuizAnswers = async (req, res) => {
 };
 
 
-exports.hasUserAttemptedQuiz = async (req, res) => {
+export const hasUserAttemptedQuiz = async (req, res) => {
   try {
     const userId = req.user?.id;
     const lang   = (req.query.language || 'English')
@@ -199,3 +200,18 @@ exports.hasUserAttemptedQuiz = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
+const quizController = {
+  addQuizQuestion,
+  listQuizQuestions,
+  getQuizQuestion,
+  listQuizQuestions,
+  getQuizQuestion,
+  updateQuizQuestion,
+  deleteQuizQuestion,
+  getRandomQuizQuestions,
+  submitQuizAnswers,
+  hasUserAttemptedQuiz
+};
+export default quizController;

@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const caseAttemptSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -10,8 +10,8 @@ const caseAttemptSchema = new mongoose.Schema({
   language: String,
   schoolName: String,
   timeTaken: Number,    // time taken to complete in seconds (optional)
-},
- { timestamps: true } 
+}, 
+{ timestamps: true }
 );
 
-module.exports = mongoose.model('CaseAttempt', caseAttemptSchema);
+export default mongoose.model('CaseAttempt', caseAttemptSchema);

@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const quizAttemptSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -15,4 +15,4 @@ const quizAttemptSchema = new mongoose.Schema({
  
 );
 
-module.exports = mongoose.model('QuizAttempt', quizAttemptSchema);
+export default mongoose.model('QuizAttempt', quizAttemptSchema);

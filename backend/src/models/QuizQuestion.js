@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const quizQuestionSchema = new mongoose.Schema({
   question: { type: String, required: true },
@@ -7,4 +7,4 @@ const quizQuestionSchema = new mongoose.Schema({
   language: { type: String, enum: ['English', 'Sinhala'], required: true },
 });
 
-module.exports = mongoose.model('QuizQuestion', quizQuestionSchema);
+export default mongoose.model('QuizQuestion', quizQuestionSchema);
