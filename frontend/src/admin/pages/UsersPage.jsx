@@ -26,7 +26,7 @@ const UsersPage = () => {
         params: schoolFilter ? { schoolName: schoolFilter } : {},
       })
       .then((res) => {
-        const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const sorted = res.data?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) || [];
         setRows(sorted);
       })
       .catch(() => toast.error('Failed to load users'))
@@ -53,14 +53,14 @@ const UsersPage = () => {
 
   const exportToExcel = () => {
     const formattedData = rows.map((user) => ({
-      Name: `${user.firstName} ${user.lastName}`,
-      Email: user.email,
-      School: user.schoolName,
-      WhatsApp: user.whatsappNumber,
-      Grade: user.grade,
-      Gender: user.gender,
-      Age: user.age,
-      Registered: new Date(user.createdAt).toLocaleDateString(),
+      Name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      Email: user.email || '',
+      School: user.schoolName || '',
+      WhatsApp: user.whatsappNumber || '',
+      Grade: user.grade || '',
+      Gender: user.gender || '',
+      Age: user.age || '',
+      Registered: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '',
       LastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never',
       Members: user.members?.length || 0,
     }));
@@ -82,11 +82,11 @@ const UsersPage = () => {
   const filteredUsers = rows.filter(user => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      user.firstName.toLowerCase().includes(searchLower) ||
-      user.lastName.toLowerCase().includes(searchLower) ||
-      user.email.toLowerCase().includes(searchLower) ||
-      user.schoolName?.toLowerCase().includes(searchLower) ||
-      user.whatsappNumber?.includes(searchTerm)
+      (user.firstName?.toLowerCase() || '').includes(searchLower) ||
+      (user.lastName?.toLowerCase() || '').includes(searchLower) ||
+      (user.email?.toLowerCase() || '').includes(searchLower) ||
+      (user.schoolName?.toLowerCase() || '').includes(searchLower) ||
+      (user.whatsappNumber?.includes(searchTerm) || false)
     );
   });
 
@@ -151,25 +151,25 @@ const UsersPage = () => {
 
       {/* School Filter */}
       <div className="mb-4 flex items-center gap-2">
-  <div className="relative flex-1 max-w-xs">
-    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400" size={18} />
-    <input
-      type="text"
-      placeholder="Filter by school name..."
-      value={schoolFilter}
-      onChange={(e) => setSchoolFilter(e.target.value)}
-      className="w-full pl-10 pr-4 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-    />
-    {schoolFilter && (
-      <button
-        onClick={() => setSchoolFilter('')}
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-500 hover:text-purple-700"
-      >
-        <X size={18} />
-      </button>
-    )}
-  </div>
-</div>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400" size={18} />
+          <input
+            type="text"
+            placeholder="Filter by school name..."
+            value={schoolFilter}
+            onChange={(e) => setSchoolFilter(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          />
+          {schoolFilter && (
+            <button
+              onClick={() => setSchoolFilter('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-500 hover:text-purple-700"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
@@ -196,22 +196,26 @@ const UsersPage = () => {
                       <tr className="hover:bg-purple-50 transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="font-medium text-purple-900">
-                            {u.firstName} {u.lastName}
+                            {u.firstName || ''} {u.lastName || ''}
                           </div>
-                          <div className="text-sm text-purple-600">{u.email}</div>
+                          <div className="text-sm text-purple-600">{u.email || '—'}</div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-sm text-purple-900">{u.whatsappNumber}</div>
+                          <div className="text-sm text-purple-900">{u.whatsappNumber || '—'}</div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm text-purple-900">{u.schoolName || '—'}</div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm">
-                            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
-                              Grade {u.grade}
-                            </span>
-                            <span className="ml-2 text-purple-600">{u.gender}</span>
+                            {u.grade && (
+                              <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                                Grade {u.grade}
+                              </span>
+                            )}
+                            {u.gender && (
+                              <span className="ml-2 text-purple-600">{u.gender}</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -237,7 +241,7 @@ const UsersPage = () => {
                               )}
                             </button>
                             <button
-                              onClick={() => deleteUser(u._id, `${u.firstName} ${u.lastName}`)}
+                              onClick={() => deleteUser(u._id, `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'User')}
                               className="text-red-600 hover:text-red-800 flex items-center gap-1"
                             >
                               <Trash2 size={16} /> 
@@ -250,19 +254,25 @@ const UsersPage = () => {
                           <td colSpan={6} className="px-4 py-3 bg-purple-50">
                             <div className="p-4">
                               <h4 className="font-medium text-purple-800 mb-3">Team Members</h4>
-                              {u.members && u.members.length ? (
+                              {u.members?.length ? (
                                 <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
                                   {u.members.map((m, idx) => (
                                     <div key={idx} className="border border-purple-100 rounded-lg bg-white p-3 shadow-sm">
-                                      <p className="font-semibold text-purple-900">{m.firstName} {m.lastName}</p>
-                                      <p className="text-sm text-purple-600">{m.email}</p>
+                                      <p className="font-semibold text-purple-900">
+                                        {m.firstName || ''} {m.lastName || ''}
+                                      </p>
+                                      <p className="text-sm text-purple-600">{m.email || '—'}</p>
                                       <div className="mt-1 flex gap-2">
-                                        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
-                                          Grade {m.grade}
-                                        </span>
-                                        <span className="text-xs px-2 py-1 bg-pink-100 text-pink-800 rounded-full">
-                                          {m.gender}
-                                        </span>
+                                        {m.grade && (
+                                          <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
+                                            Grade {m.grade}
+                                          </span>
+                                        )}
+                                        {m.gender && (
+                                          <span className="text-xs px-2 py-1 bg-pink-100 text-pink-800 rounded-full">
+                                            {m.gender}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   ))}
