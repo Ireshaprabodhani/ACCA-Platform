@@ -240,6 +240,8 @@ export default function ResultsPage() {
                                   {attempt.questions?.map((question, idx) => {
                                     const selectedAnswer = attempt.answers?.[idx];
                                     const correctAnswer = question?.answer;
+                                    const isCorrect = selectedAnswer === correctAnswer;
+                                    
                                     return (
                                       <div key={idx} className="p-3 bg-purple-50 rounded-lg">
                                         <div className="font-medium text-purple-900 mb-2">
@@ -247,20 +249,38 @@ export default function ResultsPage() {
                                         </div>
                                         <ul className="space-y-2">
                                           {question?.options?.map((option, optIdx) => {
-                                            let optionClass = 'bg-white text-purple-800';
-                                            if (optIdx === correctAnswer && optIdx === selectedAnswer) {
-                                              optionClass = 'bg-green-200 text-green-900 border border-green-300';
-                                            } else if (optIdx === correctAnswer) {
+                                            // Default styling for non-selected options
+                                            let optionClass = 'bg-white text-purple-800 border border-transparent';
+                                            
+                                            // If this is the correct answer
+                                            if (optIdx === correctAnswer) {
                                               optionClass = 'bg-green-100 text-green-800 border border-green-200';
-                                            } else if (optIdx === selectedAnswer) {
-                                              optionClass = 'bg-red-100 text-red-800 border border-red-200';
                                             }
+                                            
+                                            // If this is the user's selected answer
+                                            if (optIdx === selectedAnswer) {
+                                              optionClass = isCorrect 
+                                                ? 'bg-green-200 text-green-900 border border-green-300 font-medium' 
+                                                : 'bg-red-100 text-red-800 border border-red-200 font-medium';
+                                            }
+                                            
                                             return (
                                               <li
                                                 key={optIdx}
                                                 className={`p-2 rounded-md ${optionClass}`}
                                               >
                                                 {String.fromCharCode(65 + optIdx)}. {option}
+                                                {/* Add indicators for selected/correct answers */}
+                                                {optIdx === selectedAnswer && (
+                                                  <span className="ml-2 text-xs font-semibold">
+                                                    {isCorrect ? '(Correct)' : '(Your answer)'}
+                                                  </span>
+                                                )}
+                                                {optIdx === correctAnswer && optIdx !== selectedAnswer && (
+                                                  <span className="ml-2 text-xs font-semibold text-green-700">
+                                                    (Correct answer)
+                                                  </span>
+                                                )}
                                               </li>
                                             );
                                           })}
