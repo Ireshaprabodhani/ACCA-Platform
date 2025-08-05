@@ -238,59 +238,50 @@ export default function ResultsPage() {
                               >
                                 <div className="space-y-3">
                                   {attempt.questions?.map((question, idx) => {
-                                    const selectedAnswer = attempt.answers?.[idx];
-                                    const correctAnswer = question?.answer;
-                                    const isCorrect = selectedAnswer === correctAnswer;
-                                    
-                                    return (
-                                      <div key={idx} className="p-3 bg-purple-50 rounded-lg">
-                                        <div className="font-medium text-purple-900 mb-2">
-                                          Q{idx + 1}: {question?.question || 'Question not available'}
+          const selectedAnswer = attempt.answers?.[idx];
+          const correctAnswer = question?.answer;
+          const isCorrect = selectedAnswer === correctAnswer;
+
+          return (
+            <div key={idx} className="p-3 bg-purple-50 rounded-lg mb-3">
+              <div className="font-medium text-purple-900 mb-2">
+                Q{idx + 1}: {question?.question || 'Question not available'}
+              </div>
+              <ul className="space-y-2">
+                {question?.options?.map((option, optIdx) => {
+                  // Apply to BOTH quiz and case study results
+                  let optionClass = "p-2 rounded-md border";
+                  
+                  if (optIdx === correctAnswer) {
+                    optionClass += " bg-green-50 border-green-200 text-green-700";
+                  }
+                  if (optIdx === selectedAnswer) {
+                    optionClass += isCorrect 
+                      ? " bg-green-100 border-green-300 text-green-800"
+                      : " bg-red-50 border-red-200 text-red-700";
+                  }
+                  if (optIdx !== correctAnswer && optIdx !== selectedAnswer) {
+                    optionClass += " bg-white border-gray-200 text-gray-700";
+                  }
+
+                  return (
+                    <li key={optIdx} className={optionClass}>
+                      {String.fromCharCode(65 + optIdx)}. {option}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
                                         </div>
-                                        <ul className="space-y-2">
-                                         {question?.options?.map((option, optIdx) => {
-                                            const isSelected = optIdx === selectedAnswer;
-                                            const isCorrect = optIdx === correctAnswer;
-
-                                            // Base styling
-                                            let optionClass = "p-2 rounded-md border";
-
-                                            // Apply colors based on answer state
-                                            if (isCorrect && isSelected) {
-                                              // User selected the correct answer (solid green)
-                                              optionClass += " bg-green-100 border-green-300 text-green-800";
-                                            } 
-                                            else if (isCorrect) {
-                                              // Correct answer (light green)
-                                              optionClass += " bg-green-50 border-green-200 text-green-700";
-                                            } 
-                                            else if (isSelected) {
-                                              // User selected a wrong answer (red)
-                                              optionClass += " bg-red-50 border-red-200 text-red-700";
-                                            } 
-                                            else {
-                                              // Neutral option
-                                              optionClass += " bg-white border-gray-200 text-gray-700";
-                                            }
-
-                                            return (
-                                              <li key={optIdx} className={optionClass}>
-                                                {String.fromCharCode(65 + optIdx)}. {option}
-                                              </li>
-                                            );
-                                          })}
-                                        </ul>
-                                      </div>
-                                    );
-                                  })}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
                                 </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              );
+                            })}
+                          </div>
 
                   {totalPages > 1 && (
                     <div className="flex justify-between items-center p-4 border-t border-purple-100">
