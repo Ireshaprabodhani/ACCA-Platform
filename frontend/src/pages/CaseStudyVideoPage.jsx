@@ -286,25 +286,16 @@ export default function CaseVideoPage() {
       style={{ backgroundImage: `url(${RedBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       {/* Fixed top-right PDF panel */}
-      {pdfs.length > 0 && (
-        <div className="fixed top-4 right-4 z-30 bg-black/80 border border-red-600 rounded-xl p-4 max-w-xs shadow-lg">
-          <h3 className="text-sm font-bold text-white mb-2">📄 Case Materials</h3>
-          <div className="space-y-2">
-            {pdfs.map((pdf) => (
-              <div key={pdf._id} className="flex items-center justify-between text-sm text-white">
-                <span className="truncate max-w-[140px]">{pdf.title || pdf.originalName}</span>
-                <button
-                  onClick={() => handlePdfDownload(pdf._id, pdf.originalName)}
-                  disabled={downloadingPdf === pdf._id}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 px-3 py-1 rounded text-xs font-bold disabled:cursor-not-allowed"
-                >
-                  {downloadingPdf === pdf._id ? '...' : '⬇'}
-                </button>
-              </div>
-            ))}
+       {pdfs.length > 0 && (
+          <div className="fixed top-4 right-4 z-30">
+            <button
+              onClick={() => handlePdfDownload(pdfs[0]._id, pdfs[0].originalName)}
+              className="bg-black/60 border border-red-600 text-white font-semibold px-5 py-3 rounded-xl shadow-md hover:shadow-[0_0_15px_rgba(255,0,0,0.6)] hover:border-red-400 transition-all duration-300 text-sm"
+            >
+              📥 Download Case Materials
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {blocked && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
@@ -349,7 +340,7 @@ export default function CaseVideoPage() {
         )}
       </div>
 
-      <div className="mt-10 text-center">
+      <div className="mt-5 text-center">
         {ended ? (
           <>
             {isHeygen && (
@@ -372,11 +363,11 @@ export default function CaseVideoPage() {
             </div>
           </>
         ) : (
-          <div className="space-y-3 mt-6">
+          <div className="space-y-3">
             <p className="text-yellow-200 text-lg">
               📺 Please watch the entire video to continue
             </p>
-            <p className="text-gray-300 text-sm">
+            <p className="text-gray-300 text-sm mt-1">
               ⚠️ Skipping is disabled • Video must be watched completely
             </p>
           </div>
