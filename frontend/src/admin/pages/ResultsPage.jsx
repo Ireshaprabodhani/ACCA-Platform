@@ -2,7 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { Download, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import {
+  Download,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Loader2
+} from 'lucide-react';
 
 const fetchJSON = async (url) => {
   const jwt = localStorage.getItem('adminToken') || localStorage.getItem('token');
@@ -21,40 +28,34 @@ const fetchJSON = async (url) => {
 };
 
 export default function ResultsPage() {
-  const [activeTab, setActiveTab] = useState('quiz'); // 'quiz' | 'case'
+  const [activeTab, setActiveTab] = useState('quiz');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [expandedAttempts, setExpandedAttempts] = useState({});
-  
-  // Pagination state
   const [currentSchoolPage, setCurrentSchoolPage] = useState(1);
   const [currentAttemptPage, setCurrentAttemptPage] = useState(1);
   const SCHOOLS_PER_PAGE = 3;
   const ATTEMPTS_PER_PAGE = 5;
 
-  // Load results when tab changes
   useEffect(() => {
     const loadResults = async () => {
       try {
         setIsLoading(true);
         setError('');
-              const data = await fetchJSON(
-              `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
-            );
+        const data = await fetchJSON(
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
+        );
 
-
-        // Group by school
         data.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
-        // Group by school after sorting
         const grouped = {};
         data.forEach((a) => {
           const key = a.schoolName || 'Other Schools';
           (grouped[key] = grouped[key] || []).push(a);
         });
-        setResults(Object.entries(grouped)); // [school, attempts]
 
+        setResults(Object.entries(grouped));
         setCurrentSchoolPage(1);
         setCurrentAttemptPage(1);
       } catch (e) {
@@ -67,9 +68,8 @@ export default function ResultsPage() {
     loadResults();
   }, [activeTab]);
 
-  // Export to Excel
   const exportToExcel = () => {
-    const records = results.flatMap(([school, attempts]) => 
+    const records = results.flatMap(([school, attempts]) =>
       attempts.map(at => ({
         School: school,
         User: at.userName ?? 'Deleted User',
@@ -80,10 +80,7 @@ export default function ResultsPage() {
       }))
     );
 
-    if (!records.length) {
-      toast.error('No data to export');
-      return;
-    }
+    if (!records.length) return;
 
     const ws = XLSX.utils.json_to_sheet(records);
     const wb = XLSX.utils.book_new();
@@ -95,7 +92,6 @@ export default function ResultsPage() {
     );
   };
 
-  // Toggle attempt details
   const toggleAttemptDetails = (attemptId) => {
     setExpandedAttempts(prev => ({
       ...prev,
@@ -103,7 +99,6 @@ export default function ResultsPage() {
     }));
   };
 
-  // Pagination helpers
   const paginatedSchools = results.slice(
     (currentSchoolPage - 1) * SCHOOLS_PER_PAGE,
     currentSchoolPage * SCHOOLS_PER_PAGE
@@ -113,13 +108,11 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-purple-50 to-blue-50">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-purple-900 mb-2">Results Dashboard</h1>
         <p className="text-purple-600">View and analyze student performance</p>
       </div>
 
-      {/* Tabs and Actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex bg-purple-100 rounded-lg p-1">
           {['quiz', 'case'].map((tab) => (
@@ -147,7 +140,6 @@ export default function ResultsPage() {
         </button>
       </div>
 
-      {/* Loading and Error States */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="animate-spin h-12 w-12 text-purple-600" />
@@ -163,7 +155,6 @@ export default function ResultsPage() {
         </div>
       ) : (
         <>
-          {/* School Results */}
           <div className="space-y-6">
             {paginatedSchools.map(([school, attempts]) => {
               const totalAttempts = attempts.length;
@@ -181,7 +172,6 @@ export default function ResultsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {/* School Header */}
                   <div className="bg-purple-600 text-white px-6 py-4">
                     <div className="flex justify-between items-center">
                       <h2 className="text-xl font-bold">{school}</h2>
@@ -191,7 +181,6 @@ export default function ResultsPage() {
                     </div>
                   </div>
 
-                  {/* Attempts List */}
                   <div className="divide-y divide-purple-100">
                     {paginatedAttempts.map((attempt) => {
                       const isExpanded = expandedAttempts[attempt.id];
@@ -251,8 +240,6 @@ export default function ResultsPage() {
                                   {attempt.questions?.map((question, idx) => {
                                     const selectedAnswer = attempt.answers?.[idx];
                                     const correctAnswer = question?.answer;
-                                    const isCorrect = selectedAnswer === correctAnswer;
-
                                     return (
                                       <div key={idx} className="p-3 bg-purple-50 rounded-lg">
                                         <div className="font-medium text-purple-900 mb-2">
@@ -261,16 +248,17 @@ export default function ResultsPage() {
                                         <ul className="space-y-2">
                                           {question?.options?.map((option, optIdx) => {
                                             let optionClass = 'bg-white text-purple-800';
-                                            if (optIdx === correctAnswer) {
-                                              optionClass = 'bg-green-100 text-green-800 border-green-200';
-                                            } else if (optIdx === selectedAnswer && !isCorrect) {
-                                              optionClass = 'bg-red-100 text-red-800 border-red-200';
+                                            if (optIdx === correctAnswer && optIdx === selectedAnswer) {
+                                              optionClass = 'bg-green-200 text-green-900 border border-green-300';
+                                            } else if (optIdx === correctAnswer) {
+                                              optionClass = 'bg-green-100 text-green-800 border border-green-200';
+                                            } else if (optIdx === selectedAnswer) {
+                                              optionClass = 'bg-red-100 text-red-800 border border-red-200';
                                             }
-
                                             return (
                                               <li
                                                 key={optIdx}
-                                                className={`p-2 border rounded-md ${optionClass}`}
+                                                className={`p-2 rounded-md ${optionClass}`}
                                               >
                                                 {String.fromCharCode(65 + optIdx)}. {option}
                                               </li>
@@ -289,7 +277,6 @@ export default function ResultsPage() {
                     })}
                   </div>
 
-                  {/* Attempt Pagination */}
                   {totalPages > 1 && (
                     <div className="flex justify-between items-center p-4 border-t border-purple-100">
                       <button
@@ -316,7 +303,6 @@ export default function ResultsPage() {
             })}
           </div>
 
-          {/* School Pagination */}
           {totalSchoolPages > 1 && (
             <div className="flex justify-between items-center mt-6">
               <button
