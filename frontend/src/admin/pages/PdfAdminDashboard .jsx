@@ -108,7 +108,7 @@ const PdfAdminDashboard = () => {
     }
   };
 
-  const handleViewPdf = async (pdfId) => {
+ const handleViewPdf = async (pdfId) => {
   if (!token) {
     toast.error('No authentication token found');
     return;
@@ -116,18 +116,33 @@ const PdfAdminDashboard = () => {
 
   try {
     const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
-    
-    // You should NOT fetch it here if you're going to open the S3 file in new tab
-    // Instead, open it directly
-    const newWindow = window.open(viewUrl, '_blank');
+    const response = await fetch(viewUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const newWindow = window.open(blobUrl, '_blank');
+
+    if (!newWindow) {
       toast.error('Popup blocked. Please allow popups for this site.');
     }
+
+    // Clean up blob URL after 10 seconds
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   } catch (error) {
     toast.error(`Failed to open PDF: ${error.message}`);
   }
 };
+
 
 
   return (
