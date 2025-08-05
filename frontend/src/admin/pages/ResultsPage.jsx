@@ -248,39 +248,34 @@ export default function ResultsPage() {
                                           Q{idx + 1}: {question?.question || 'Question not available'}
                                         </div>
                                         <ul className="space-y-2">
-                                          {question?.options?.map((option, optIdx) => {
-                                            // Default styling for non-selected options
-                                            let optionClass = 'bg-white text-purple-800 border border-transparent';
-                                            
-                                            // If this is the correct answer
-                                            if (optIdx === correctAnswer) {
-                                              optionClass = 'bg-green-100 text-green-800 border border-green-200';
+                                         {question?.options?.map((option, optIdx) => {
+                                            const isSelected = optIdx === selectedAnswer;
+                                            const isCorrect = optIdx === correctAnswer;
+
+                                            // Base styling
+                                            let optionClass = "p-2 rounded-md border";
+
+                                            // Apply colors based on answer state
+                                            if (isCorrect && isSelected) {
+                                              // User selected the correct answer (solid green)
+                                              optionClass += " bg-green-100 border-green-300 text-green-800";
+                                            } 
+                                            else if (isCorrect) {
+                                              // Correct answer (light green)
+                                              optionClass += " bg-green-50 border-green-200 text-green-700";
+                                            } 
+                                            else if (isSelected) {
+                                              // User selected a wrong answer (red)
+                                              optionClass += " bg-red-50 border-red-200 text-red-700";
+                                            } 
+                                            else {
+                                              // Neutral option
+                                              optionClass += " bg-white border-gray-200 text-gray-700";
                                             }
-                                            
-                                            // If this is the user's selected answer
-                                            if (optIdx === selectedAnswer) {
-                                              optionClass = isCorrect 
-                                                ? 'bg-green-200 text-green-900 border border-green-300 font-medium' 
-                                                : 'bg-red-100 text-red-800 border border-red-200 font-medium';
-                                            }
-                                            
+
                                             return (
-                                              <li
-                                                key={optIdx}
-                                                className={`p-2 rounded-md ${optionClass}`}
-                                              >
+                                              <li key={optIdx} className={optionClass}>
                                                 {String.fromCharCode(65 + optIdx)}. {option}
-                                                {/* Add indicators for selected/correct answers */}
-                                                {optIdx === selectedAnswer && (
-                                                  <span className="ml-2 text-xs font-semibold">
-                                                    {isCorrect ? '(Correct)' : '(Your answer)'}
-                                                  </span>
-                                                )}
-                                                {optIdx === correctAnswer && optIdx !== selectedAnswer && (
-                                                  <span className="ml-2 text-xs font-semibold text-green-700">
-                                                    (Correct answer)
-                                                  </span>
-                                                )}
                                               </li>
                                             );
                                           })}
