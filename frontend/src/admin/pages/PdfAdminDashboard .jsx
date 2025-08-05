@@ -109,41 +109,26 @@ const PdfAdminDashboard = () => {
   };
 
   const handleViewPdf = async (pdfId) => {
-    if (!token) {
-      toast.error('No authentication token found');
-      return;
+  if (!token) {
+    toast.error('No authentication token found');
+    return;
+  }
+
+  try {
+    const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
+    
+    // You should NOT fetch it here if you're going to open the S3 file in new tab
+    // Instead, open it directly
+    const newWindow = window.open(viewUrl, '_blank');
+
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      toast.error('Popup blocked. Please allow popups for this site.');
     }
+  } catch (error) {
+    toast.error(`Failed to open PDF: ${error.message}`);
+  }
+};
 
-    try {
-      const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
-      const response = await fetch(viewUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/pdf',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const blob = await response.blob();
-      if (blob.size === 0) throw new Error('PDF file is empty');
-
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(`${API_BASE_URL}/view/${pdfId}`, '_blank');
-      if (!newWindow) {
-        toast.error('Popup blocked. Please allow popups for this site.');
-        return;
-      }
-
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    } catch (error) {
-      toast.error(`Failed to open PDF: ${error.message}`);
-    }
-  };
 
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
