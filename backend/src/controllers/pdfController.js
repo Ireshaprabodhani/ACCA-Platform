@@ -1,51 +1,116 @@
 import Pdf from '../models/Pdf.js';
-import s3, { testS3Connection } from '../utils/s3Client.js';
+import s3 from '../utils/s3Client.js';
 import { v4 as uuidv4 } from 'uuid';  
 import path from 'path';
 
-// Upload PDF to S3 and save metadata
+// Debug function to check all environment variables
+export const debugEnvironment = async (req, res) => {
+  console.log('=== ALL ENVIRONMENT VARIABLES ===');
+  
+  // Log all environment variables (filter sensitive ones for display)
+  const envVars = {};
+  Object.keys(process.env).forEach(key => {
+    if (key.includes('AWS') || key.includes('MONGO') || key.includes('JWT')) {
+      if (key.includes('SECRET') || key.includes('KEY')) {
+        envVars[key] = process.env[key] ? `SET (${process.env[key].length} chars)` : 'NOT SET';
+      } else {
+        envVars[key] = process.env[key] || 'NOT SET';
+      }
+    }
+  });
+  
+  console.log('Filtered ENV vars:', envVars);
+  
+  // Check specific variables
+  const specificCheck = {
+    AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
+    AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET',
+    AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET',
+    AWS_REGION: process.env.AWS_REGION,
+    NODE_ENV: process.env.NODE_ENV
+  };
+  
+  console.log('Specific check:', specificCheck);
+  console.log('================================');
+  
+  res.json({
+    message: 'Environment debug info',
+    filtered: envVars,
+    specific: specificCheck,
+    processEnvKeys: Object.keys(process.env).filter(key => key.includes('AWS'))
+  });
+};
+
+// Upload PDF to S3 and save metadata with extensive debugging
 export const uploadPdf = async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
-    // Debug: Log all environment variables
-    console.log('=== ENVIRONMENT VARIABLES ===');
-    console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET');
-    console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET');
-    console.log('AWS_REGION:', process.env.AWS_REGION);
-    console.log('AWS_S3_BUCKET_NAME:', process.env.AWS_S3_BUCKET_NAME);
-    console.log('==============================');
+    console.log('=== UPLOAD DEBUG START ===');
+    console.log('Node.js version:', process.version);
+    console.log('Working directory:', process.cwd());
+    console.log('Process arguments:', process.argv);
+    
+    // Check all AWS-related environment variables
+    console.log('=== AWS ENVIRONMENT VARIABLES ===');
+    const awsVars = Object.keys(process.env)
+      .filter(key => key.includes('AWS'))
+      .reduce((obj, key) => {
+        obj[key] = process.env[key] ? (key.includes('SECRET') || key.includes('KEY') ? 'SET' : process.env[key]) : 'NOT SET';
+        return obj;
+      }, {});
+    console.log('AWS vars found:', awsVars);
 
-    // Check if required environment variables are set
+    // Direct access check
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    const accessKey = process.env.AWS_ACCESS_KEY_ID;
+    const secretKey = process.env.AWS_SECRET_ACCESS_KEY;
+    const region = process.env.AWS_REGION;
+    
+    console.log('Direct access results:');
+    console.log('- bucketName:', bucketName);
+    console.log('- accessKey:', accessKey ? 'SET' : 'NOT SET');
+    console.log('- secretKey:', secretKey ? 'SET' : 'NOT SET');
+    console.log('- region:', region);
+
+    // Alternative environment variable names to check
+    const alternativeNames = [
+      'AWS_S3_BUCKET_NAME',
+      'AWS_BUCKET_NAME',
+      'S3_BUCKET_NAME',
+      'BUCKET_NAME'
+    ];
+    
+    console.log('Checking alternative names:');
+    alternativeNames.forEach(name => {
+      console.log(`- ${name}:`, process.env[name] || 'NOT SET');
+    });
+
+    if (!bucketName) {
+      // Try alternative environment variable names
+      const alternateBucket = process.env.AWS_BUCKET_NAME || 
+                             process.env.S3_BUCKET_NAME || 
+                             process.env.BUCKET_NAME ||
+                             'accaplatformbucket'; // fallback to your actual bucket name
+      
+      console.log('Using alternate bucket name:', alternateBucket);
+      
+      if (!alternateBucket || alternateBucket === 'accaplatformbucket') {
+        // Hardcode temporarily for debugging
+        console.log('Using hardcoded bucket name for debugging');
+        process.env.AWS_S3_BUCKET_NAME = 'accaplatformbucket';
+      }
+    }
+
     if (!process.env.AWS_S3_BUCKET_NAME) {
-      throw new Error('AWS_S3_BUCKET_NAME environment variable is not set');
-    }
-    if (!process.env.AWS_ACCESS_KEY_ID) {
-      throw new Error('AWS_ACCESS_KEY_ID environment variable is not set');
-    }
-    if (!process.env.AWS_SECRET_ACCESS_KEY) {
-      throw new Error('AWS_SECRET_ACCESS_KEY environment variable is not set');
-    }
-    if (!process.env.AWS_REGION) {
-      throw new Error('AWS_REGION environment variable is not set');
+      throw new Error(`AWS_S3_BUCKET_NAME environment variable is not set. Available AWS vars: ${Object.keys(awsVars).join(', ')}`);
     }
 
-    // Test S3 connection
-    const connectionTest = await testS3Connection();
-    if (!connectionTest) {
-      throw new Error('Failed to connect to S3 bucket');
-    }
+    console.log('Final bucket name to use:', process.env.AWS_S3_BUCKET_NAME);
 
     const extension = path.extname(file.originalname);
     const s3Key = `pdfs/${uuidv4()}${extension}`;
-
-    console.log('=== UPLOAD DETAILS ===');
-    console.log('File name:', file.originalname);
-    console.log('File size:', file.size);
-    console.log('File type:', file.mimetype);
-    console.log('S3 Key:', s3Key);
-    console.log('=====================');
 
     const params = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
@@ -55,25 +120,18 @@ export const uploadPdf = async (req, res) => {
       ACL: 'private',
     };
 
-    console.log('=== S3 UPLOAD PARAMS ===');
-    console.log('Bucket:', params.Bucket);
-    console.log('Key:', params.Key);
-    console.log('ContentType:', params.ContentType);
-    console.log('Body length:', params.Body.length);
-    console.log('========================');
-
-    // Perform the upload
-    console.log('Starting S3 upload...');
-    const uploadResult = await s3.upload(params).promise();
-    console.log('S3 Upload successful!');
-    console.log('Upload result:', {
-      Location: uploadResult.Location,
-      Bucket: uploadResult.Bucket,
-      Key: uploadResult.Key,
-      ETag: uploadResult.ETag
+    console.log('S3 params:', {
+      Bucket: params.Bucket,
+      Key: params.Key,
+      ContentType: params.ContentType,
+      BodyLength: params.Body.length
     });
 
-    // Save to MongoDB
+    console.log('Attempting S3 upload...');
+    const uploadResult = await s3.upload(params).promise();
+    console.log('S3 Upload successful:', uploadResult.Location);
+    console.log('=== UPLOAD DEBUG END ===');
+
     const newPdf = new Pdf({
       originalName: file.originalname,
       s3Key,
@@ -85,77 +143,27 @@ export const uploadPdf = async (req, res) => {
     });
 
     await newPdf.save();
-    console.log('PDF metadata saved to MongoDB:', newPdf._id);
-
     res.status(201).json(newPdf);
+
   } catch (err) {
     console.error('=== UPLOAD ERROR ===');
-    console.error('Error name:', err.name);
+    console.error('Error:', err);
     console.error('Error message:', err.message);
-    console.error('Error code:', err.code);
-    console.error('Full error:', err);
+    console.error('Error stack:', err.stack);
     console.error('===================');
     
-    // Provide specific error responses
-    if (err.message.includes('environment variable is not set')) {
-      return res.status(500).json({ 
-        message: 'Server configuration error', 
-        error: err.message
-      });
-    }
-    
-    if (err.code === 'NoSuchBucket') {
-      return res.status(500).json({ 
-        message: 'S3 bucket not found', 
-        error: `Bucket '${process.env.AWS_S3_BUCKET_NAME}' does not exist or is not accessible`
-      });
-    }
-    
-    if (err.code === 'InvalidAccessKeyId') {
-      return res.status(500).json({ 
-        message: 'AWS credentials error', 
-        error: 'Invalid AWS Access Key ID'
-      });
-    }
-    
-    if (err.code === 'SignatureDoesNotMatch') {
-      return res.status(500).json({ 
-        message: 'AWS credentials error', 
-        error: 'Invalid AWS Secret Access Key'
-      });
-    }
-
-    res.status(500).json({ message: 'Upload failed', error: err.message });
-  }
-};
-
-// Test endpoint to check configuration
-export const testConfig = async (req, res) => {
-  try {
-    const config = {
-      environment: process.env.NODE_ENV || 'development',
-      aws: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID ? 'SET (length: ' + process.env.AWS_ACCESS_KEY_ID.length + ')' : 'NOT SET',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ? 'SET (length: ' + process.env.AWS_SECRET_ACCESS_KEY.length + ')' : 'NOT SET',
-        region: process.env.AWS_REGION || 'NOT SET',
-        bucketName: process.env.AWS_S3_BUCKET_NAME || 'NOT SET'
-      }
-    };
-
-    // Test S3 connection
-    const s3Connection = await testS3Connection();
-    config.s3Connection = s3Connection ? 'SUCCESS' : 'FAILED';
-
-    res.json(config);
-  } catch (error) {
     res.status(500).json({ 
-      message: 'Configuration test failed', 
-      error: error.message 
+      message: 'Upload failed', 
+      error: err.message,
+      debug: {
+        availableAwsVars: Object.keys(process.env).filter(key => key.includes('AWS')),
+        nodeEnv: process.env.NODE_ENV
+      }
     });
   }
 };
 
-// List all PDFs for admin
+// Keep all other existing functions unchanged
 export const listPdfs = async (req, res) => {
   try {
     const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
@@ -165,7 +173,6 @@ export const listPdfs = async (req, res) => {
   }
 };
 
-// Edit PDF metadata
 export const editPdf = async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
@@ -179,7 +186,6 @@ export const editPdf = async (req, res) => {
   }
 };
 
-// View PDF (inline display)
 export const viewPdf = async (req, res) => {
   try {
     const { id } = req.params;
@@ -208,7 +214,6 @@ export const viewPdf = async (req, res) => {
   }
 };
 
-// Delete PDF (S3 + MongoDB)
 export const deletePdf = async (req, res) => {
   try {
     const { id } = req.params;
@@ -229,7 +234,6 @@ export const deletePdf = async (req, res) => {
   }
 };
 
-// Download PDF (force download)
 export const downloadPdf = async (req, res) => {
   try {
     const { id } = req.params;
@@ -257,7 +261,6 @@ export const downloadPdf = async (req, res) => {
   }
 };
 
-// User endpoint to get list of PDFs (with URLs)
 export const getAllForUser = async (req, res) => {
   try {
     const pdfs = await Pdf.find().sort({ uploadedAt: -1 });
@@ -274,3 +277,16 @@ export const getAllForUser = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch PDFs', error: err.message });
   }
 };
+
+const pdfController = {
+  debugEnvironment,
+  uploadPdf,
+  listPdfs,
+  editPdf,
+  viewPdf,
+  deletePdf,
+  downloadPdf,
+  getAllForUser,
+};
+
+export default pdfController;

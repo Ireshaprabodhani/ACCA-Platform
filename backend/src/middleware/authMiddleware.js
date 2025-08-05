@@ -1,9 +1,8 @@
 // middlewares/authMiddleware.js
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-require('dotenv').config();
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js'; // Adjust path as needed
 
-module.exports = async (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ message: 'No token provided' });
 
@@ -26,3 +25,6 @@ module.exports = async (req, res, next) => {
     res.status(401).json({ message: 'Token invalid or expired' });
   }
 };
+
+// Use default export
+export default authMiddleware;

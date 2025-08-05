@@ -1,7 +1,6 @@
+import User from '../models/User.js'
 
-const User = require('../models/User');
-
-exports.updateLanguage = async (req, res) => {
+export const updateLanguage = async (req, res) => {
   try {
     const userId = req.user.id; // from auth middleware
     const { language } = req.body;
@@ -14,3 +13,8 @@ exports.updateLanguage = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+const userController = {
+  updateLanguage,
+};
+export default userController;

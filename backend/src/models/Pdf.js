@@ -11,6 +11,7 @@ const pdfSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now },
 });
 
-const Pdf = mongoose.model('Pdf', pdfSchema);
+// Check if model already exists before creating it
+const Pdf = mongoose.models.Pdf || mongoose.model('Pdf', pdfSchema);
 
 export default Pdf;

@@ -1,8 +1,9 @@
-const express = require('express');
+
+import express from 'express';
+import userController from '../controllers/userController.js'
+import authMiddleware from '../middleware/authMiddleware.js';
 const router = express.Router();
-const userController = require('../controllers/userController');
-const authMiddleware = require('../middleware/authMiddleware');
 
 router.put('/language', authMiddleware, userController.updateLanguage);
 
-module.exports = router;
+export default router;

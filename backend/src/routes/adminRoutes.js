@@ -1,13 +1,22 @@
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const path = require('path');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const adminCtrl = require('../controllers/adminController');
-const quizCtrl = require('../controllers/quizController');
-const caseCtrl = require('../controllers/caseController');
-const videoCtrl = require('../controllers/videoController');
-const adminAuth = require('../middleware/adminMiddleware');
+// Import controllers
+import * as adminCtrl from '../controllers/adminController.js';
+import * as quizCtrl from '../controllers/quizController.js';
+import * as caseCtrl from '../controllers/caseController.js';
+import * as videoCtrl from '../controllers/videoController.js';
+
+// Import middleware
+import adminAuth from '../middleware/adminMiddleware.js';
+
+const router = express.Router();
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configure storage for PDF uploads
 const storage = multer.diskStorage({
@@ -52,8 +61,6 @@ router.post('/video',        adminAuth, videoCtrl.setVideo);
 router.get('/video/:type',   adminAuth, videoCtrl.getVideoByType);
 router.delete('/video/:type',adminAuth, videoCtrl.deleteVideo);
 
-
-
 // User Tracking
 router.post('/users',       adminAuth, adminCtrl.addUserWithMembers);
 router.get('/users',        adminAuth, adminCtrl.getUsers);
@@ -66,4 +73,4 @@ router.get('/results',      adminAuth, adminCtrl.getSchoolResults);
 router.get('/stats',        adminAuth, adminCtrl.getStats);
 router.get('/leaderboard',  adminAuth, adminCtrl.getLeaderboard);
 
-module.exports = router;
+export default router;

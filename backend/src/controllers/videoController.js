@@ -1,9 +1,8 @@
 // intro video
-const Video = require('../models/Video');
+import Video from '../models/Video.js';
 
 
-
-exports.setVideo = async (req, res) => {
+export const setVideo = async (req, res) => {
   const { type, url } = req.body;
   if (!type || !url) return res.status(400).json({ error:'Type and URL are required' });
 
@@ -15,7 +14,7 @@ exports.setVideo = async (req, res) => {
   res.json({ message:'Video saved', video });
 };
 
-exports.getCaseVideo = async (req, res) => {
+export const getCaseVideo = async (req, res) => {
   try {
     const caseVideo = await Video.findOne({ type: 'case' }); // ✅ changed from 'heygen'
     if (!caseVideo || !caseVideo.url) {
@@ -29,7 +28,7 @@ exports.getCaseVideo = async (req, res) => {
 };
 
 
-exports.deleteVideo = async (req, res) => {
+export const deleteVideo = async (req, res) => {
   const { type } = req.params;
   const deleted = await Video.findOneAndDelete({ type });
   if (!deleted) return res.status(404).json({ error:'Video not found' });
@@ -38,7 +37,7 @@ exports.deleteVideo = async (req, res) => {
 
 
 
-exports.getIntroVideo = async (req, res) => {
+export const getIntroVideo = async (req, res) => {
   try {
     const introVideo = await Video.findOne({ type: 'intro' });
     res.json({ url: introVideo?.url || '' });
@@ -48,7 +47,7 @@ exports.getIntroVideo = async (req, res) => {
 };
 
 
-exports.getVideoByType = async (req, res) => {
+export const getVideoByType = async (req, res) => {
   const { type } = req.params;
   if (!['intro', 'case'].includes(type)) {
     return res.status(400).json({ error: 'Invalid video type' });
@@ -65,3 +64,12 @@ exports.getVideoByType = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch video', details: err.message });
   }
 };
+
+const videoController = {
+  setVideo,
+  getCaseVideo,
+  deleteVideo,
+  getIntroVideo,
+  getVideoByType
+};
+export default videoController;

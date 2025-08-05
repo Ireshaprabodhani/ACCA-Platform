@@ -1,8 +1,9 @@
-const CaseQuestion = require('../models/CaseQuestion');
-const CaseAttempt = require('../models/CaseAttempt');
-const Video = require('../models/Video');
 
-exports.addCaseQuestion = async (req, res) => {
+import CaseQuestion from '../models/CaseQuestion.js';
+import CaseAttempt from '../models/CaseAttempt.js';
+import Video from '../models/Video.js';
+
+export const addCaseQuestion = async (req, res) => {
   try {
     const { question, options, correctAnswer, language } = req.body;
     const newquestion = new CaseQuestion({ question, options, correctAnswer, language });
@@ -14,17 +15,17 @@ exports.addCaseQuestion = async (req, res) => {
   }
 };
 
-exports.updateCaseQuestion = async (req, res) => {
+export const updateCaseQuestion = async (req, res) => {
   const question = await CaseQuestion.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json(question);
 };
 
-exports.deleteCaseQuestion = async (req, res) => {
+export const deleteCaseQuestion = async (req, res) => {
   await CaseQuestion.findByIdAndDelete(req.params.id);
   res.json({ message: 'Case question deleted' });
 };
 
-exports.listCaseQuestions = async (req, res) => {
+export const listCaseQuestions = async (req, res) => {
   try {
     const { language, search, page = 1, limit = 50 } = req.query;
 
@@ -49,7 +50,7 @@ exports.listCaseQuestions = async (req, res) => {
   }
 };
 
-exports.getCaseQuestion = async (req, res) => {
+export const getCaseQuestion = async (req, res) => {
   try {
     const q = await CaseQuestion.findById(req.params.id);
     if (!q) return res.status(404).json({ message: 'Not found' });
@@ -59,7 +60,7 @@ exports.getCaseQuestion = async (req, res) => {
   }
 };
 
-exports.getCaseVideo = async (req, res) => {
+export const getCaseVideo = async (req, res) => {
   try {
     const caseVideo = await Video.findOne({ type: 'case' });
     if (!caseVideo) return res.status(404).json({ message: 'Case video not found' });
@@ -70,7 +71,7 @@ exports.getCaseVideo = async (req, res) => {
   }
 };
 
-exports.getCaseQuestions = async (req, res) => {
+export const getCaseQuestions = async (req, res) => {
   try {
     const user = req.user;
 
@@ -103,7 +104,7 @@ exports.getCaseQuestions = async (req, res) => {
   }
 };
 
-exports.submitCaseAnswers = async (req, res) => {
+export const submitCaseAnswers = async (req, res) => {
   try {
     const userId = req.user.id;
     const { answers, timeTaken, language: requestedLanguage } = req.body;
@@ -165,3 +166,16 @@ exports.submitCaseAnswers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+const caseController = {
+  addCaseQuestion,
+  updateCaseQuestion,
+  deleteCaseQuestion,
+  listCaseQuestions,
+  getCaseQuestion,
+  getCaseVideo,
+  getCaseQuestions,
+  submitCaseAnswers
+};
+
+export default caseController;
