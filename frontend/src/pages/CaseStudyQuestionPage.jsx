@@ -8,7 +8,6 @@ export default function CaseStudyQuestionPage() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [index, setIndex] = useState(0);
-  const [language, setLanguage] = useState('English');
   const [timeLeft, setTimeLeft] = useState(20 * 60);
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -21,11 +20,11 @@ export default function CaseStudyQuestionPage() {
   const audioRef = useRef(null);
   const answersRef = useRef([]);
   const timeLeftRef = useRef(timeLeft);
-  const languageRef = useRef(language);
+  const language = 'English'; // Hardcoded
+  const languageRef = useRef('English');
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
-  useEffect(() => { languageRef.current = language; }, [language]);
 
   const handleSubmit = useCallback(async () => {
     if (submittedRef.current || sending) return;
@@ -58,7 +57,7 @@ export default function CaseStudyQuestionPage() {
       try {
         setIsLoading(true);
         const { data } = await axios.get(
-          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/questions?language=${language}`,
+          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/questions?language=English`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
         setQuestions(data);
@@ -73,7 +72,7 @@ export default function CaseStudyQuestionPage() {
         setIsLoading(false);
       }
     })();
-  }, [language, navigate]);
+  }, [navigate]);
 
   useEffect(() => {
     if (isLoading || submitted) return;
@@ -101,8 +100,6 @@ export default function CaseStudyQuestionPage() {
   const currentAnswered = answers[index] !== null;
   const progress = questions.length ? ((index + 1) / questions.length) * 100 : 0;
   const q = questions[index];
-  const canSwitchLanguage = index === 0 && answers.every(a => a === null);
-  const locked = !canSwitchLanguage;
 
   const optionStyle = i =>
     answers[index] === i
@@ -124,134 +121,116 @@ export default function CaseStudyQuestionPage() {
     }}>{error || 'No questions'}</div>;
 
   return (
-  <div className="min-h-screen flex items-center justify-center" style={{
-    backgroundImage: `url(${RedBackground})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-  }}>
-    <audio ref={audioRef} loop preload="auto">
-      <source src="/case-study-bgm.mp3" type="audio/mpeg" />
-    </audio>
+    <div className="min-h-screen flex items-center justify-center" style={{
+      backgroundImage: `url(${RedBackground})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }}>
+      <audio ref={audioRef} loop preload="auto">
+        <source src="/case-study-bgm.mp3" type="audio/mpeg" />
+      </audio>
 
-    <div className="w-full max-w-4xl mx-auto p-8 shadow-xl rounded-none bg-[#000000b3] text-white">
-      {/* top bar */}
-      <div className="flex justify-between items-center mb-6">
-        <select
-          value={language}
-          disabled={locked}
-          onChange={e => !locked && setLanguage(e.target.value)}
-          className="p-2 rounded border border-gray-300 bg-white text-black disabled:opacity-50"
-        >
-          <option value="English">English</option>
-          <option value="Sinhala">Sinhala</option>
-        </select>
-
-        <div className={`text-md font-semibold px-4 py-1 rounded ${timeLeft < 60 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
-          ⏱ Time: {formatTime(timeLeft)}
-        </div>
-      </div>
-
-      {/* progress bar */}
-      <div className="h-3 w-full bg-gray-300 rounded-full mb-6 overflow-hidden">
-        <motion.div
-          className="h-full bg-yellow-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.4 }}
-        />
-      </div>
-
-      {/* question card */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={index}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-        >
-          <h2 className="text-lg font-semibold mb-4">Q{index + 1}. {q.question}</h2>
-          <div className="space-y-3">
-            {q.options.map((opt, i) => (
-              <div
-                key={i}
-                onClick={() => {
-                  if (submitted) return;
-                  setAnswers(prev => {
-                    const updated = [...prev];
-                    updated[index] = updated[index] === i ? null : i;
-                    return updated;
-                  });
-                }}
-                className={`p-4 rounded-lg cursor-pointer transition ${
-                  answers[index] === i
-                    ? 'border-2 border-yellow-500 bg-yellow-200 text-black'
-                    : 'border border-gray-300 bg-white/80 hover:bg-yellow-50 text-black'
-                }`}
-              >
-                {opt}
-              </div>
-            ))}
+      <div className="w-full max-w-4xl mx-auto p-8 shadow-xl rounded-none bg-[#000000b3] text-white">
+        {/* top bar (no dropdown) */}
+        <div className="flex justify-end items-center mb-6">
+          <div className={`text-md font-semibold px-4 py-1 rounded ${timeLeft < 60 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+            ⏱ Time: {formatTime(timeLeft)}
           </div>
-        </motion.div>
-      </AnimatePresence>
+        </div>
 
-      {/* nav buttons */}
-     <div className="flex justify-between items-center mt-8 gap-4">
-        {/* Previous Button - Gray gradient */}
-        <button
-          onClick={() => setIndex(prev => Math.max(0, prev - 1))}
-          disabled={index === 0 || submitted}
-          className="px-5 py-2 rounded font-semibold text-white transition"
-          style={{
-            background: 'linear-gradient(45deg, #555, #888 50%, #333)',
-          }}
-        >
-          ← Previous
-        </button>
+        {/* progress bar */}
+        <div className="h-3 w-full bg-gray-300 rounded-full mb-6 overflow-hidden">
+          <motion.div
+            className="h-full bg-yellow-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.4 }}
+          />
+        </div>
 
-        {/* Next / Submit Button - Red gradient */}
-        {index === questions.length - 1 ? (
-          <button
-            onClick={handleSubmit}
-            disabled={!allAnswered || submitted}
-            className="px-6 py-2 rounded font-semibold text-white transition disabled:opacity-50"
-            style={{
-              background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
-            }}
+        {/* question card */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
           >
-            {sending ? 'Submitting…' : 'Submit Answers'}
-          </button>
-        ) : (
+            <h2 className="text-lg font-semibold mb-4">Q{index + 1}. {q.question}</h2>
+            <div className="space-y-3">
+              {q.options.map((opt, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    if (submitted) return;
+                    setAnswers(prev => {
+                      const updated = [...prev];
+                      updated[index] = updated[index] === i ? null : i;
+                      return updated;
+                    });
+                  }}
+                  className={`p-4 rounded-lg cursor-pointer transition ${optionStyle(i)}`}
+                >
+                  {opt}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* nav buttons */}
+        <div className="flex justify-between items-center mt-8 gap-4">
           <button
-            onClick={() => setIndex(prev => Math.min(questions.length - 1, prev + 1))}
-            disabled={submitted || !currentAnswered}
+            onClick={() => setIndex(prev => Math.max(0, prev - 1))}
+            disabled={index === 0 || submitted}
             className="px-5 py-2 rounded font-semibold text-white transition"
             style={{
-              background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+              background: 'linear-gradient(45deg, #555, #888 50%, #333)',
             }}
           >
-            Next →
+            ← Previous
           </button>
+
+          {index === questions.length - 1 ? (
+            <button
+              onClick={handleSubmit}
+              disabled={!allAnswered || submitted}
+              className="px-6 py-2 rounded font-semibold text-white transition disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+              }}
+            >
+              {sending ? 'Submitting…' : 'Submit Answers'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setIndex(prev => Math.min(questions.length - 1, prev + 1))}
+              disabled={submitted || !currentAnswered}
+              className="px-5 py-2 rounded font-semibold text-white transition"
+              style={{
+                background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+              }}
+            >
+              Next →
+            </button>
+          )}
+        </div>
+
+        {/* modal */}
+        {submitted && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50"
+          >
+            <div className="bg-white p-6 rounded-xl shadow-xl text-center max-w-sm w-full">
+              <h2 className="text-xl font-bold text-green-700 mb-2">✅ Submission Complete</h2>
+              <p className="text-gray-600">Thank you! Your answers have been recorded.</p>
+            </div>
+          </motion.div>
         )}
       </div>
-
-
-      {/* modal */}
-      {submitted && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50"
-        >
-          <div className="bg-white p-6 rounded-xl shadow-xl text-center max-w-sm w-full">
-            <h2 className="text-xl font-bold text-green-700 mb-2">✅ Submission Complete</h2>
-            <p className="text-gray-600">Thank you! Your answers have been recorded.</p>
-          </div>
-        </motion.div>
-      )}
     </div>
-  </div>
-);
-
+  );
 }
