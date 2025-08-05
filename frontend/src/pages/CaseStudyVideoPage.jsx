@@ -44,7 +44,6 @@ export default function CaseVideoPage() {
     const token = localStorage.getItem('token');
     if (!token) return nav('/login');
 
-    // Fetch case video
     axios
       .get(`${API_BASE}/api/case/video`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -60,22 +59,18 @@ export default function CaseVideoPage() {
         setLoading(false);
       });
 
-    // Fetch available PDFs using the correct user endpoint
     axios
       .get(`${API_BASE}/api/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) => {
-        console.log('PDFs fetched:', data);
         setPdfs(data || []);
       })
       .catch((err) => {
         console.error('Failed to fetch PDFs:', err);
-        // Don't show error to user as PDFs are optional
       });
   }, [nav]);
 
-  // Function to handle PDF download
   const handlePdfDownload = async (pdfId, fileName) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -84,7 +79,7 @@ export default function CaseVideoPage() {
     }
 
     setDownloadingPdf(pdfId);
-    
+
     try {
       const response = await fetch(`${API_BASE}/api/pdf/download/${pdfId}`, {
         method: 'GET',
@@ -101,23 +96,15 @@ export default function CaseVideoPage() {
         throw new Error(`Download failed: ${response.status}`);
       }
 
-      // Get the blob from response
       const blob = await response.blob();
-      
-      // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = fileName || `case-study-${pdfId}.pdf`;
-      
-      // Trigger download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Cleanup
       window.URL.revokeObjectURL(downloadUrl);
-      
     } catch (error) {
       console.error('PDF download error:', error);
       alert('Failed to download PDF. Please try again.');
@@ -126,7 +113,6 @@ export default function CaseVideoPage() {
     }
   };
 
-  // All your existing useEffect hooks remain the same...
   useEffect(() => {
     if (!url || loading || isHeygen) return;
 
@@ -192,9 +178,7 @@ export default function CaseVideoPage() {
             }
           },
           onError: () =>
-            setError(
-              'Error playing video. Please refresh the page or contact support.'
-            ),
+            setError('Error playing video. Please refresh the page or contact support.'),
         },
       });
     };
@@ -301,6 +285,27 @@ export default function CaseVideoPage() {
       className="min-h-screen text-white flex flex-col items-center justify-center px-4 py-10 relative"
       style={{ backgroundImage: `url(${RedBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
+      {/* Fixed top-right PDF panel */}
+      {pdfs.length > 0 && (
+        <div className="fixed top-4 right-4 z-30 bg-black/80 border border-red-600 rounded-xl p-4 max-w-xs shadow-lg">
+          <h3 className="text-sm font-bold text-white mb-2">📄 Case Materials</h3>
+          <div className="space-y-2">
+            {pdfs.map((pdf) => (
+              <div key={pdf._id} className="flex items-center justify-between text-sm text-white">
+                <span className="truncate max-w-[140px]">{pdf.title || pdf.originalName}</span>
+                <button
+                  onClick={() => handlePdfDownload(pdf._id, pdf.originalName)}
+                  disabled={downloadingPdf === pdf._id}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 px-3 py-1 rounded text-xs font-bold disabled:cursor-not-allowed"
+                >
+                  {downloadingPdf === pdf._id ? '...' : '⬇'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {blocked && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
           <button
@@ -357,43 +362,6 @@ export default function CaseVideoPage() {
               ✅ Video completed successfully!
             </p>
 
-            {/* PDF DOWNLOAD SECTION */}
-            {pdfs.length > 0 && (
-              <div className="mt-8 bg-black/60 rounded-xl p-6 max-w-2xl mx-auto">
-                <h3 className="text-xl font-bold text-white mb-4">📄 Case Study Materials</h3>
-                <div className="space-y-3">
-                  {pdfs.map((pdf) => (
-                    <div key={pdf._id} className="flex items-center justify-between bg-white/10 rounded-lg p-4">
-                      <div className="text-left">
-                        <p className="font-semibold text-white">
-                          {pdf.title || pdf.originalName}
-                        </p>
-                        {pdf.description && (
-                          <p className="text-gray-300 text-sm mt-1">{pdf.description}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handlePdfDownload(pdf._id, pdf.originalName)}
-                        disabled={downloadingPdf === pdf._id}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 px-6 py-2 rounded-full font-bold text-white shadow-lg hover:scale-105 transition-transform disabled:scale-100 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {downloadingPdf === pdf._id ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                            Downloading...
-                          </>
-                        ) : (
-                          <>
-                            📥 Download
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="mt-8">
               <button
                 onClick={() => nav('/case-questions')}
@@ -411,20 +379,6 @@ export default function CaseVideoPage() {
             <p className="text-gray-300 text-sm">
               ⚠️ Skipping is disabled • Video must be watched completely
             </p>
-            
-            {/* Show available PDFs even before video ends, but disable download */}
-            {pdfs.length > 0 && (
-              <div className="mt-6 bg-black/40 rounded-lg p-4 max-w-lg mx-auto">
-                <p className="text-gray-400 text-sm mb-2">📄 Case materials will be available after video completion</p>
-                <div className="space-y-2">
-                  {pdfs.map((pdf) => (
-                    <div key={pdf._id} className="text-gray-500 text-sm">
-                      • {pdf.title || pdf.originalName}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
