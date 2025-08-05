@@ -35,7 +35,8 @@ export default function CaseVideoPage() {
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfs, setPdfs] = useState([]);
+  const [downloadingPdf, setDownloadingPdf] = useState(null);
 
   const isHeygen = url.includes('labs.heygen.com');
 
@@ -59,22 +60,73 @@ export default function CaseVideoPage() {
         setLoading(false);
       });
 
-    // Fetch latest PDF
+    // Fetch available PDFs using the correct user endpoint
     axios
-      .get(`${API_BASE}/api/pdf/download`, {
+      .get(`${API_BASE}/api/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) => {
-        if (data?.length > 0) {
-          const latestPdf = data[0];
-          setPdfUrl(`${API_BASE}/api/pdf/download/${latestPdf._id}`);
-        }
+        console.log('PDFs fetched:', data);
+        setPdfs(data || []);
       })
       .catch((err) => {
-        console.error('Failed to fetch PDF:', err);
+        console.error('Failed to fetch PDFs:', err);
+        // Don't show error to user as PDFs are optional
       });
   }, [nav]);
 
+  // Function to handle PDF download
+  const handlePdfDownload = async (pdfId, fileName) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      nav('/login');
+      return;
+    }
+
+    setDownloadingPdf(pdfId);
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/pdf/download/${pdfId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          nav('/login');
+          return;
+        }
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName || `case-study-${pdfId}.pdf`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup
+      window.URL.revokeObjectURL(downloadUrl);
+      
+    } catch (error) {
+      console.error('PDF download error:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(null);
+    }
+  };
+
+  // All your existing useEffect hooks remain the same...
   useEffect(() => {
     if (!url || loading || isHeygen) return;
 
@@ -305,17 +357,40 @@ export default function CaseVideoPage() {
               ✅ Video completed successfully!
             </p>
 
-            {/* DOWNLOAD PDF BUTTON */}
-            {pdfUrl && (
-              <div className="mt-6">
-                <a
-                  href={pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-full font-bold text-white shadow-[0_0_20px_rgba(0,0,255,0.5)] hover:scale-105 transition-transform"
-                >
-                  📄 Download Case PDF
-                </a>
+            {/* PDF DOWNLOAD SECTION */}
+            {pdfs.length > 0 && (
+              <div className="mt-8 bg-black/60 rounded-xl p-6 max-w-2xl mx-auto">
+                <h3 className="text-xl font-bold text-white mb-4">📄 Case Study Materials</h3>
+                <div className="space-y-3">
+                  {pdfs.map((pdf) => (
+                    <div key={pdf._id} className="flex items-center justify-between bg-white/10 rounded-lg p-4">
+                      <div className="text-left">
+                        <p className="font-semibold text-white">
+                          {pdf.title || pdf.originalName}
+                        </p>
+                        {pdf.description && (
+                          <p className="text-gray-300 text-sm mt-1">{pdf.description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handlePdfDownload(pdf._id, pdf.originalName)}
+                        disabled={downloadingPdf === pdf._id}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 px-6 py-2 rounded-full font-bold text-white shadow-lg hover:scale-105 transition-transform disabled:scale-100 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {downloadingPdf === pdf._id ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                            Downloading...
+                          </>
+                        ) : (
+                          <>
+                            📥 Download
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -336,6 +411,20 @@ export default function CaseVideoPage() {
             <p className="text-gray-300 text-sm">
               ⚠️ Skipping is disabled • Video must be watched completely
             </p>
+            
+            {/* Show available PDFs even before video ends, but disable download */}
+            {pdfs.length > 0 && (
+              <div className="mt-6 bg-black/40 rounded-lg p-4 max-w-lg mx-auto">
+                <p className="text-gray-400 text-sm mb-2">📄 Case materials will be available after video completion</p>
+                <div className="space-y-2">
+                  {pdfs.map((pdf) => (
+                    <div key={pdf._id} className="text-gray-500 text-sm">
+                      • {pdf.title || pdf.originalName}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
