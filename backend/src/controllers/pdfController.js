@@ -12,6 +12,8 @@ export const uploadPdf = async (req, res) => {
     const extension = path.extname(file.originalname);
     const s3Key = `pdfs/${uuidv4()}${extension}`;
 
+    console.log('Bucket Name:', process.env.AWS_S3_BUCKET_NAME);
+
     const params = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: s3Key,
