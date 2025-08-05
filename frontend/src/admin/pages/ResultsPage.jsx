@@ -39,17 +39,22 @@ export default function ResultsPage() {
       try {
         setIsLoading(true);
         setError('');
-        const data = await fetchJSON(
-          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
-        );
+              const data = await fetchJSON(
+              `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
+            );
+
 
         // Group by school
+        data.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+        // Group by school after sorting
         const grouped = {};
         data.forEach((a) => {
           const key = a.schoolName || 'Other Schools';
           (grouped[key] = grouped[key] || []).push(a);
         });
         setResults(Object.entries(grouped)); // [school, attempts]
+
         setCurrentSchoolPage(1);
         setCurrentAttemptPage(1);
       } catch (e) {
