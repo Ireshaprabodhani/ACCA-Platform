@@ -4,7 +4,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 
 const PER_PAGE = 10;
-const LANGS = ['English', 'Sinhala'];
 const BLANK_FORM = {
   question: '',
   language: 'English',
@@ -16,7 +15,6 @@ export default function CaseQuestionsPage() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [langTab, setLang] = useState('English');
   const [modalOpen, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(BLANK_FORM);
@@ -50,11 +48,11 @@ export default function CaseQuestionsPage() {
     }
   );
 
-  const loadRows = async (p = page, lang = langTab) => {
+  const loadRows = async (p = page) => {
     try {
       setIsLoading(true);
       const { data } = await api.get('/case', {
-        params: { page: p, limit: PER_PAGE, language: lang },
+        params: { page: p, limit: PER_PAGE, language: 'English' },
       });
 
       const mappedQuestions = (data.questions || []).map((q) => ({
@@ -66,7 +64,6 @@ export default function CaseQuestionsPage() {
       setTotal(data.total || 0);
       setPage(data.page || 1);
       
-      // If this was the initial load, mark it as done
       if (isInitialLoad) {
         setIsInitialLoad(false);
       }
@@ -74,9 +71,8 @@ export default function CaseQuestionsPage() {
       toast.error('Failed to load questions. Please try again.');
       console.error('Error loading questions:', err);
       
-      // If this was the initial load attempt, retry once after 1 second
       if (isInitialLoad) {
-        setTimeout(() => loadRows(p, lang), 1000);
+        setTimeout(() => loadRows(p), 1000);
       }
     } finally {
       setIsLoading(false);
@@ -101,7 +97,7 @@ export default function CaseQuestionsPage() {
       const payload = {
         ...form,
         correctAnswer: form.answer,
-        answer: undefined, // Remove frontend-only field
+        answer: undefined,
       };
 
       const req = editId 
@@ -115,8 +111,8 @@ export default function CaseQuestionsPage() {
       });
 
       setModal(false);
-      setForm({ ...BLANK_FORM, language: langTab });
-      loadRows(1, langTab); // Refresh to first page
+      setForm(BLANK_FORM);
+      loadRows(1);
     } catch (error) {
       console.error('Error saving question:', error);
     }
@@ -131,15 +127,15 @@ export default function CaseQuestionsPage() {
         success: 'Question deleted successfully!',
         error: 'Failed to delete question'
       });
-      loadRows(page, langTab);
+      loadRows(page);
     } catch (error) {
       console.error('Error deleting question:', error);
     }
   };
 
   useEffect(() => {
-    loadRows(1, langTab);
-  }, [langTab]);
+    loadRows(1);
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const firstIndex = (page - 1) * PER_PAGE;
@@ -153,35 +149,15 @@ export default function CaseQuestionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-purple-900">Case Study Questions</h1>
           <p className="text-purple-600">
-            {total} {langTab} questions available
+            {total} questions available
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          {/* Language Tabs */}
-          <div className="flex bg-purple-100 rounded-lg p-1">
-            {LANGS.map((l) => (
-              <button
-                key={l}
-                onClick={() => {
-                  setLang(l);
-                  setPage(1);
-                }}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  langTab === l
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-purple-600 hover:bg-purple-50'
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-
           {/* Add Question Button */}
           <button
             onClick={() => {
-              setForm({ ...BLANK_FORM, language: langTab });
+              setForm(BLANK_FORM);
               setEditId(null);
               setModal(true);
             }}
@@ -272,7 +248,7 @@ export default function CaseQuestionsPage() {
             ) : (
               <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
                 <p className="text-purple-600">
-                  No {langTab} case study questions found. Click "Add Question" to create one.
+                  No case study questions found. Click "Add Question" to create one.
                 </p>
               </div>
             )}
@@ -335,21 +311,6 @@ export default function CaseQuestionsPage() {
                   onChange={(e) => setForm({ ...form, question: e.target.value })}
                   placeholder="Enter the case study scenario..."
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-purple-700 mb-1">
-                  Language
-                </label>
-                <select
-                  className="w-full border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"
-                  value={form.language}
-                  onChange={(e) => setForm({ ...form, language: e.target.value })}
-                >
-                  {LANGS.map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
               </div>
 
               <div>
