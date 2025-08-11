@@ -18,15 +18,17 @@ const UsersPage = () => {
 
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
+  // Load all users once
   const loadRows = () => {
     setIsLoading(true);
     axios
       .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/users', {
         headers: tokenHeader,
-        params: schoolFilter ? { schoolName: schoolFilter } : {},
       })
       .then((res) => {
-        const sorted = res.data?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) || [];
+        const sorted = res.data?.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        ) || [];
         setRows(sorted);
       })
       .catch(() => toast.error('Failed to load users'))
@@ -75,19 +77,26 @@ const UsersPage = () => {
     toast.success('Export started');
   };
 
-  useEffect(loadRows, [schoolFilter]);
+  useEffect(loadRows, []);
 
   const toggle = (id) => setExpanded((cur) => (cur === id ? null : id));
 
+  // Frontend filtering for both search and school name
   const filteredUsers = rows.filter(user => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const schoolLower = schoolFilter.toLowerCase();
+
+    const matchesSearch = 
       (user.firstName?.toLowerCase() || '').includes(searchLower) ||
       (user.lastName?.toLowerCase() || '').includes(searchLower) ||
       (user.email?.toLowerCase() || '').includes(searchLower) ||
       (user.schoolName?.toLowerCase() || '').includes(searchLower) ||
-      (user.whatsappNumber?.includes(searchTerm) || false)
-    );
+      (user.whatsappNumber?.includes(searchTerm) || false);
+
+    const matchesSchool = 
+      schoolLower ? (user.schoolName?.toLowerCase() || '').includes(schoolLower) : true;
+
+    return matchesSearch && matchesSchool;
   });
 
   const indexOfLastUser = currentPage * usersPerPage;

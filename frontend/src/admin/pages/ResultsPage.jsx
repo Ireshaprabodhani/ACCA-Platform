@@ -185,7 +185,11 @@ export default function ResultsPage() {
                     {paginatedAttempts.map((attempt) => {
                       const isExpanded = expandedAttempts[attempt.id];
                       const correctAnswers = attempt.questions?.filter(
-                        (q, idx) => q?.answer === attempt.answers?.[idx]
+                        (q, idx) => {
+                          // Handle both quiz (answer) and case study (correctAnswer) data structures
+                          const correctAnswer = q?.correctAnswer !== undefined ? q.correctAnswer : q?.answer;
+                          return correctAnswer === attempt.answers?.[idx];
+                        }
                       ).length || 0;
 
                       return (
@@ -238,50 +242,69 @@ export default function ResultsPage() {
                               >
                                 <div className="space-y-3">
                                   {attempt.questions?.map((question, idx) => {
-          const selectedAnswer = attempt.answers?.[idx];
-          const correctAnswer = question?.answer;
-          const isCorrect = selectedAnswer === correctAnswer;
+                                    const selectedAnswer = attempt.answers?.[idx];
+                                    // Handle both quiz (answer) and case study (correctAnswer) data structures
+                                    const correctAnswer = question?.correctAnswer !== undefined ? question.correctAnswer : question?.answer;
+                                    const isCorrect = selectedAnswer === correctAnswer;
 
-          return (
-            <div key={idx} className="p-3 bg-purple-50 rounded-lg mb-3">
-              <div className="font-medium text-purple-900 mb-2">
-                Q{idx + 1}: {question?.question || 'Question not available'}
-              </div>
-              <ul className="space-y-2">
-                {question?.options?.map((option, optIdx) => {
-                  // Apply to BOTH quiz and case study results
-                  let optionClass = "p-2 rounded-md border";
-                  
-                  if (optIdx === correctAnswer) {
-                    optionClass += " bg-green-50 border-green-200 text-green-700";
-                  }
-                  if (optIdx === selectedAnswer) {
-                    optionClass += isCorrect 
-                      ? " bg-green-100 border-green-300 text-green-800"
-                      : " bg-red-50 border-red-200 text-red-700";
-                  }
-                  if (optIdx !== correctAnswer && optIdx !== selectedAnswer) {
-                    optionClass += " bg-white border-gray-200 text-gray-700";
-                  }
-
-                  return (
-                    <li key={optIdx} className={optionClass}>
-                      {String.fromCharCode(65 + optIdx)}. {option}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
+                                    return (
+                                      <div key={idx} className="p-3 bg-purple-50 rounded-lg mb-3">
+                                        <div className="font-medium text-purple-900 mb-2">
+                                          Q{idx + 1}: {question?.question || 'Question not available'}
                                         </div>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
+                                        <ul className="space-y-2">
+                                          {question?.options?.map((option, optIdx) => {
+                                            // Apply to BOTH quiz and case study results
+                                            let optionClass = "p-2 rounded-md border";
+                                            
+                                            // Correct answer styling (always green background)
+                                            if (optIdx === correctAnswer) {
+                                              optionClass += " bg-green-100 border-green-300 text-green-800 font-medium";
+                                            }
+                                            
+                                            // User selected answer styling
+                                            if (optIdx === selectedAnswer && optIdx !== correctAnswer) {
+                                              // Wrong answer - red background
+                                              optionClass = "p-2 rounded-md border bg-red-100 border-red-300 text-red-800 font-medium";
+                                            }
+                                            
+                                            // If user selected the correct answer, it gets both correct and selected styling
+                                            if (optIdx === selectedAnswer && optIdx === correctAnswer) {
+                                              optionClass = "p-2 rounded-md border bg-green-200 border-green-400 text-green-900 font-bold";
+                                            }
+                                            
+                                            // Unselected options
+                                            if (optIdx !== correctAnswer && optIdx !== selectedAnswer) {
+                                              optionClass += " bg-gray-50 border-gray-200 text-gray-700";
+                                            }
+
+                                            return (
+                                              <li key={optIdx} className={optionClass}>
+                                                {String.fromCharCode(65 + optIdx)}. {option}
+                                                {optIdx === correctAnswer && optIdx !== selectedAnswer && (
+                                                  <span className="ml-2 text-green-600 font-bold">✓ Correct</span>
+                                                )}
+                                                {optIdx === selectedAnswer && optIdx !== correctAnswer && (
+                                                  <span className="ml-2 text-red-600 font-bold">✗ Your answer</span>
+                                                )}
+                                                {optIdx === selectedAnswer && optIdx === correctAnswer && (
+                                                  <span className="ml-2 text-green-700 font-bold">✓ Correct answer</span>
+                                                )}
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              );
-                            })}
-                          </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {totalPages > 1 && (
                     <div className="flex justify-between items-center p-4 border-t border-purple-100">
