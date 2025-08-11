@@ -48,6 +48,11 @@ const PdfAdminDashboard = () => {
   const handleUpload = async () => {
     if (!file || !title) return toast.error('File and title are required');
     if (!token) return toast.error('Admin not logged in');
+    
+    // Prevent upload if PDF already exists
+    if (pdfs.length >= 1) {
+      return toast.error('Only one PDF is allowed. Please delete the existing PDF before uploading a new one.');
+    }
 
     const formData = new FormData();
     formData.append('pdf', file);
@@ -72,7 +77,12 @@ const PdfAdminDashboard = () => {
       setDescription('');
       fetchPDFs();
     } catch (err) {
-      toast.error('Upload failed: ' + (err.response?.data?.error || err.message));
+      // Handle specific duplicate error
+      if (err.response?.data?.error?.includes('E11000 duplicate key error')) {
+        toast.error('Only one PDF is allowed. Please delete the existing PDF before uploading a new one.');
+      } else {
+        toast.error('Upload failed: ' + (err.response?.data?.error || err.message));
+      }
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -108,89 +118,68 @@ const PdfAdminDashboard = () => {
     }
   };
 
-// Updated handleViewPdf function with better error handling and authentication
-const handleViewPdf = async (pdfId) => {
-  // Get fresh token
-  const currentToken = localStorage.getItem('token');
-  
-  if (!currentToken) {
-    toast.error('Authentication required. Please log in again.');
-    return;
-  }
-
-  try {
-    console.log('Attempting to view PDF:', pdfId);
-    console.log('Using token:', currentToken ? 'Token present' : 'No token');
+  const handleViewPdf = async (pdfId) => {
+    const currentToken = localStorage.getItem('token');
     
-    const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
-    console.log('Request URL:', viewUrl);
-    
-    const response = await fetch(viewUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${currentToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    console.log('Response status:', response.status);
-    console.log('Response headers:', response.headers);
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        toast.error('Authentication failed. Please log in again.');
-        // Optionally redirect to login
-        // window.location.href = '/admin/login';
-        return;
-      }
-      
-      if (response.status === 403) {
-        toast.error('Access denied. Admin privileges required.');
-        return;
-      }
-      
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
-    // Check if response is actually a PDF
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/pdf')) {
-      console.error('Response is not a PDF. Content-Type:', contentType);
-      const responseText = await response.text();
-      console.error('Response body:', responseText);
-      toast.error('Invalid response format. Expected PDF.');
+    if (!currentToken) {
+      toast.error('Authentication required. Please log in again.');
       return;
     }
 
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    
-    // Try to open in new tab
-    const newWindow = window.open(blobUrl, '_blank');
-    
-    if (!newWindow) {
-      toast.error('Popup blocked. Please allow popups for this site.');
-      // As fallback, create a download link
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `pdf-${pdfId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    try {
+      const viewUrl = `${API_BASE_URL}/view/${pdfId}`;
+      
+      const response = await fetch(viewUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please log in again.');
+          return;
+        }
+        
+        if (response.status === 403) {
+          toast.error('Access denied. Admin privileges required.');
+          return;
+        }
+        
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        const responseText = await response.text();
+        toast.error('Invalid response format. Expected PDF.');
+        return;
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const newWindow = window.open(blobUrl, '_blank');
+      
+      if (!newWindow) {
+        toast.error('Popup blocked. Please allow popups for this site.');
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `pdf-${pdfId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+      
+    } catch (error) {
+      toast.error(`Failed to open PDF: ${error.message}`);
     }
-
-    // Clean up blob URL after 30 seconds
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-    
-  } catch (error) {
-    console.error('PDF view error:', error);
-    toast.error(`Failed to open PDF: ${error.message}`);
-  }
-};
-
-
+  };
 
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
@@ -199,39 +188,49 @@ const handleViewPdf = async (pdfId) => {
 
       {/* Upload Section */}
       <div className="mb-6 grid gap-4 md:grid-cols-2">
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => setFile(e.target.files[0])}
-          className="border rounded px-3 py-2"
-        />
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="border rounded px-3 py-2"
-        />
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="border rounded px-3 py-2 md:col-span-2"
-          rows={3}
-        />
-        <button
-          onClick={handleUpload}
-          disabled={uploading}
-          className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
-        >
-          {uploading ? `Uploading (${uploadProgress}%)...` : 'Upload PDF'}
-        </button>
+        {pdfs.length === 0 ? (
+          <>
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setFile(e.target.files[0])}
+              className="border rounded px-3 py-2"
+            />
+            <input
+              type="text"
+              placeholder="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="border rounded px-3 py-2"
+            />
+            <textarea
+              placeholder="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="border rounded px-3 py-2 md:col-span-2"
+              rows={3}
+            />
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
+            >
+              {uploading ? `Uploading (${uploadProgress}%)...` : 'Upload PDF'}
+            </button>
+          </>
+        ) : (
+          <div className="md:col-span-2 bg-yellow-50 border border-yellow-200 p-4 rounded">
+            <p className="text-yellow-800 font-medium">
+              You can only have one PDF at a time. To upload a new PDF, please delete the existing one first.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Uploaded List */}
-      <h2 className="text-2xl font-semibold mb-4 text-purple-800">Uploaded PDFs</h2>
+      <h2 className="text-2xl font-semibold mb-4 text-purple-800">Current PDF</h2>
       <ul className="space-y-3">
-        {pdfs.length === 0 && <p className="text-purple-600">No PDFs uploaded yet.</p>}
+        {pdfs.length === 0 && <p className="text-purple-600">No PDF currently uploaded.</p>}
         {pdfs.map((pdf) => (
           <li
             key={pdf._id}

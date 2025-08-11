@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-import { PlusCircle, X, PlayCircle, Edit2, Trash2, ExternalLink } from 'lucide-react';
+import { PlusCircle, X, PlayCircle, Edit2, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 
 /* ------------ config ------------ */
 const TYPES = [
@@ -11,48 +11,96 @@ const TYPES = [
 ];
 const BLANK_FORM = { type: TYPES[0].value, url: '' };
 
-const api = axios.create({
-  baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
-  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-});
-
 export default function VideosPage() {
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState(BLANK_FORM);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Create axios instance with interceptors (same pattern as CaseQuestionsPage)
+  const api = axios.create({
+    baseURL: 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin',
+  });
+
+  // Add request interceptor to include token
+  api.interceptors.request.use(config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Add response interceptor to handle errors
+  api.interceptors.response.use(
+    response => response,
+    error => {
+      if (error.response && error.response.status === 401) {
+        // Handle token expiration
+        localStorage.removeItem('token');
+        toast.error('Session expired. Please login again.');
+        // You can redirect to login page here
+        // window.location.href = '/admin/login';
+      }
+      return Promise.reject(error);
+    }
+  );
 
   /* ------------ helpers ------------ */
   const loadRows = async () => {
-    setLoading(true);
-    const list = [];
-    for (const type of TYPES) {
-      try {
-        const { data } = await api.get(`/video/${type.value}`);
-        list.push(data);
-      } catch (err) {
-        if (err.response?.status !== 404) toast.error('Load error');
-        else list.push({ type: type.value, url: '' });
+    try {
+      setLoading(true);
+      const list = [];
+      
+      for (const type of TYPES) {
+        try {
+          const { data } = await api.get(`/video/${type.value}`);
+          list.push(data);
+        } catch (err) {
+          if (err.response?.status === 404) {
+            list.push({ type: type.value, url: '' });
+          } else if (err.response?.status !== 401) {
+            // Don't show error for 401 as it's handled by interceptor
+            console.error(`Error loading ${type.label}:`, err);
+            list.push({ type: type.value, url: '' });
+          }
+        }
       }
+      
+      setRows(list);
+      
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+    } catch (err) {
+      toast.error('Failed to load videos. Please try again.');
+      console.error('Error loading videos:', err);
+      
+      // Retry logic for initial load
+      if (isInitialLoad) {
+        setTimeout(() => loadRows(), 1000);
+      }
+    } finally {
+      setLoading(false);
     }
-    setRows(list);
-    setLoading(false);
   };
 
   const save = async () => {
     if (!form.url.trim()) return toast.error('Please enter a valid video URL');
     
     try {
-      toast.loading('Saving...');
-      await api.post('/video', form);
-      toast.success('Video saved successfully');
+      await toast.promise(api.post('/video', form), {
+        loading: 'Saving video...',
+        success: 'Video saved successfully!',
+        error: 'Failed to save video'
+      });
+
       setOpen(false);
       setForm(BLANK_FORM);
       loadRows();
     } catch (error) {
-      toast.error('Failed to save video');
-    } finally {
-      toast.dismiss();
+      console.error('Error saving video:', error);
     }
   };
 
@@ -60,14 +108,14 @@ export default function VideosPage() {
     if (!window.confirm('Are you sure you want to delete this video?')) return;
     
     try {
-      toast.loading('Deleting...');
-      await api.delete(`/video/${type}`);
-      toast.success('Video deleted');
+      await toast.promise(api.delete(`/video/${type}`), {
+        loading: 'Deleting video...',
+        success: 'Video deleted successfully!',
+        error: 'Failed to delete video'
+      });
       loadRows();
     } catch (error) {
-      toast.error('Failed to delete video');
-    } finally {
-      toast.dismiss();
+      console.error('Error deleting video:', error);
     }
   };
 
@@ -78,7 +126,9 @@ export default function VideosPage() {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  useEffect(() => { loadRows(); }, []);
+  useEffect(() => { 
+    loadRows(); 
+  }, []);
 
   const hasAllVideos = rows.length && rows.every(v => v.url);
 
@@ -108,90 +158,100 @@ export default function VideosPage() {
         </button>
       </div>
 
-      {/* Video Cards Grid */}
-      {loading ? (
+      {/* Loading State - Similar to CaseQuestionsPage */}
+      {loading && isInitialLoad ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
         </div>
       ) : (
+        /* Video Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {rows.map(video => (
-            <div key={video.type} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg text-gray-800 capitalize">
-                      {TYPES.find(t => t.value === video.type)?.label || video.type}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {video.url ? 'Video configured' : 'No video added'}
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => { setForm({ type: video.type, url: video.url }); setOpen(true); }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
-                      title="Edit"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    {video.url && (
+          {rows.length > 0 ? (
+            rows.map(video => (
+              <div key={video.type} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                <div className="p-5">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-800 capitalize">
+                        {TYPES.find(t => t.value === video.type)?.label || video.type}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {video.url ? 'Video configured' : 'No video added'}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
                       <button
-                        onClick={() => del(video.type)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-full"
-                        title="Delete"
+                        onClick={() => { setForm({ type: video.type, url: video.url }); setOpen(true); }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
+                        title="Edit"
                       >
-                        <Trash2 size={18} />
+                        <Edit2 size={18} />
                       </button>
-                    )}
-                  </div>
-                </div>
-
-                {video.url ? (
-                  <>
-                    <div className="relative pt-[56.25%] bg-black rounded-lg overflow-hidden mb-3">
-                      {extractVideoId(video.url) ? (
-                        <iframe
-                          src={`https://www.youtube.com/embed/${extractVideoId(video.url)}`}
-                          className="absolute top-0 left-0 w-full h-full"
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title="Video preview"
-                        />
-                      ) : (
-                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-white">
-                          <a href={video.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            <PlayCircle size={24} />
-                            <span>Play Video</span>
-                          </a>
-                        </div>
+                      {video.url && (
+                        <button
+                          onClick={() => del(video.type)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       )}
                     </div>
-                    <a
-                      href={video.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline flex items-center gap-1 truncate"
-                    >
-                      <ExternalLink size={14} />
-                      {video.url}
-                    </a>
-                  </>
-                ) : (
-                  <div className="bg-gray-50 rounded-lg p-8 text-center">
-                    <p className="text-gray-400 mb-3">No video added</p>
-                    <button
-                      onClick={() => { setForm({ type: video.type, url: '' }); setOpen(true); }}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      Add Video
-                    </button>
                   </div>
-                )}
+
+                  {video.url ? (
+                    <>
+                      <div className="relative pt-[56.25%] bg-black rounded-lg overflow-hidden mb-3">
+                        {extractVideoId(video.url) ? (
+                          <iframe
+                            src={`https://www.youtube.com/embed/${extractVideoId(video.url)}`}
+                            className="absolute top-0 left-0 w-full h-full"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            title="Video preview"
+                          />
+                        ) : (
+                          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-white">
+                            <a href={video.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                              <PlayCircle size={24} />
+                              <span>Play Video</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline flex items-center gap-1 truncate"
+                      >
+                        <ExternalLink size={14} />
+                        {video.url}
+                      </a>
+                    </>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-8 text-center">
+                      <p className="text-gray-400 mb-3">No video added</p>
+                      <button
+                        onClick={() => { setForm({ type: video.type, url: '' }); setOpen(true); }}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        Add Video
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
+            ))
+          ) : (
+            /* Empty state similar to CaseQuestionsPage */
+            <div className="col-span-2 bg-white rounded-xl border border-gray-100 p-8 text-center">
+              <p className="text-gray-600">
+                No videos found. Click "Add Video" to create one.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       )}
 
