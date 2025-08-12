@@ -12,7 +12,7 @@ export const addQuizQuestion = async (req, res) => {
     if (
       !question?.trim() ||
       !Array.isArray(options) ||
-      options.length !== 4 ||
+      options.length !== 5 ||
       options.some((o) => !o.trim()) ||
       answer < 0 ||
       answer > 3 ||
