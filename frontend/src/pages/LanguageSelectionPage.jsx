@@ -52,7 +52,7 @@ const LanguageSelectionPage = () => {
         </motion.h1>
 
         <motion.div
-          className="flex flex-col md:flex-row gap-6"
+          className="flex flex-row gap-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.6 }}

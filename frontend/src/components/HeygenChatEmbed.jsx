@@ -4,27 +4,10 @@ import axios from 'axios';
 const API_BASE =
   import.meta.env.VITE_API_URL || 'https://pc3mcwztgh.ap-south-1.awsapprunner.com';
 
-const HeygenChatEmbed = ({ onEnded }) => {
-  const [iframeUrl, setIframeUrl] = useState('');
+const HeygenChatEmbed = ({ iframeUrl, onEnded }) => {
   const [clientWidth, setClientWidth] = useState(window.innerWidth);
   const [isVisible, setIsVisible] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    axios
-      .get(`${API_BASE}/api/case/video`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(({ data }) => {
-        if (data?.url) setIframeUrl(data.url);
-      })
-      .catch((err) => {
-        console.error('Failed to load Heygen iframe:', err);
-      });
-  }, []);
 
   useEffect(() => {
     const handleResize = () => setClientWidth(window.innerWidth);
@@ -38,7 +21,8 @@ const HeygenChatEmbed = ({ onEnded }) => {
       if (e.origin.includes('heygen.com') && e.data?.type === 'streaming-embed') {
         if (e.data.action === 'init') setIsVisible(true);
         else if (e.data.action === 'show') setIsExpanded(true);
-        else if (e.data.action === 'hide') setIsExpanded(false);
+        // Force expanded state even when HeyGen tries to minimize
+        else if (e.data.action === 'hide') setIsExpanded(true);
 
         if (e.data.action === 'ended' && typeof onEnded === 'function') {
           onEnded();
@@ -51,21 +35,18 @@ const HeygenChatEmbed = ({ onEnded }) => {
 
   if (!iframeUrl) return null;
 
+  // Always maintain full width regardless of HeyGen's internal state
   return (
-    <div className={`
-      mx-auto relative
-      ${isExpanded ? 
-        (clientWidth < 540 ? 
-          'w-full h-[calc(100vh-100px)] min-h-[600px] px-2' : 
-          'w-full max-w-[calc(700px*16/9)] h-[700px] px-4'
-        ) : 
-        'w-[200px] h-[200px]'
-      }
-    `}>
+    <div className="w-full h-full min-h-[400px] relative">
       <iframe
         src={iframeUrl}
         title="Heygen AI Avatar"
-        className="w-full h-full border-none rounded-none"
+        className="w-full h-full border-none rounded-lg"
+        style={{
+          minHeight: '400px',
+          width: '100%',
+          height: '100%'
+        }}
         allow="microphone; autoplay; fullscreen; encrypted-media; picture-in-picture"
         allowFullScreen
         loading="lazy"

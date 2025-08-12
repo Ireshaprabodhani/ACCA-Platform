@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Users, ListTodo, BookOpen, Video, LogOut } from 'lucide-react';
+import { Users, ListTodo, BookOpen, Video } from 'lucide-react';
 import axios from 'axios';
 
 const StatCard = ({ icon, label, value, color }) => (
-  <div className="flex items-center gap-4 bg-white shadow-sm rounded-xl p-5 border border-purple-100 hover:shadow-md transition-all duration-300">
-    <div className={`p-3 rounded-lg ${color} text-white`}>
+  <div className="flex items-center gap-3 bg-white shadow-lg rounded-xl p-4 border-0 hover:shadow-xl hover:scale-105 transition-all duration-300 backdrop-blur-sm min-w-0">
+    <div className={`p-3 rounded-xl ${color} text-white shadow-lg flex-shrink-0`}>
       {icon}
     </div>
-    <div>
-      <p className="text-sm text-purple-600 font-medium">{label}</p>
-      <p className="text-2xl font-bold text-purple-900 mt-1">{value}</p>
+    <div className="min-w-0 flex-1">
+      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide truncate">{label}</p>
+      <p className="text-xl font-bold text-gray-900 mt-1">{value}</p>
     </div>
   </div>
 );
@@ -22,87 +22,117 @@ const DashboardHome = () => {
     videos: 0,
   });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      setError('No auth token found. Please login.');
+      setLoading(false);
+      return;
+    }
 
     axios.get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/stats', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
-    .then(({ data }) => setStats(data))
-    .catch(err => {
-      console.error('Failed to fetch stats:', err);
-    });
+      .then(({ data }) => {
+        console.log('API stats response:', data);
+        if (
+          data.users !== undefined &&
+          data.quizQ !== undefined &&
+          data.caseQ !== undefined &&
+          data.videos !== undefined
+        ) {
+          setStats(data);
+        } else if (data.stats) {
+          setStats(data.stats);
+        } else {
+          setError('Unexpected API response structure.');
+          console.warn('Unexpected API response structure:', data);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch stats:', err);
+        setError('Failed to fetch stats. Please try again later.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await axios.post('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/logout', {}, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('user');
-      window.location.href = 'https://main.d1vjhvv9srhnme.amplifyapp.com/';
-    }
-  };
-
   return (
-    <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
-      {/* Header with Logout */}
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-bold text-purple-900">Dashboard Overview</h2>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg hover:from-purple-700 hover:to-pink-600 transition-all shadow-md"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
-      </div>
+    <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 min-h-screen">
+
+      {/* Loading or Error */}
+      {loading && <p className="text-center text-gray-700">Loading stats...</p>}
+      {error && <p className="text-center text-red-600">{error}</p>}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          icon={<Users size={20} />}
-          label="Registered Users"
-          value={stats.users}
-          color="bg-gradient-to-r from-purple-500 to-purple-400"
-        />
-        <StatCard
-          icon={<ListTodo size={20} />}
-          label="Quiz Questions"
-          value={stats.quizQ}
-          color="bg-gradient-to-r from-pink-500 to-pink-400"
-        />
-        <StatCard
-          icon={<BookOpen size={20} />}
-          label="Case Questions"
-          value={stats.caseQ}
-          color="bg-gradient-to-r from-indigo-500 to-indigo-400"
-        />
-        <StatCard
-          icon={<Video size={20} />}
-          label="Videos"
-          value={stats.videos}
-          color="bg-gradient-to-r from-red-500 to-red-400"
-        />
-      </div>
+      {!loading && !error && (
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <StatCard
+            icon={<Users size={20} />}
+            label="Registered Users"
+            value={stats.users.toLocaleString()}
+            color="bg-gradient-to-br from-blue-500 to-blue-600"
+          />
+          <StatCard
+            icon={<ListTodo size={20} />}
+            label="Quiz Questions"
+            value={stats.quizQ.toLocaleString()}
+            color="bg-gradient-to-br from-green-500 to-green-600"
+          />
+          <StatCard
+            icon={<BookOpen size={20} />}
+            label="Case Studies"
+            value={stats.caseQ.toLocaleString()}
+            color="bg-gradient-to-br from-purple-500 to-purple-600"
+          />
+          <StatCard
+            icon={<Video size={20} />}
+            label="Videos"
+            value={stats.videos.toLocaleString()}
+            color="bg-gradient-to-br from-orange-500 to-orange-600"
+          />
+        </div>
+      )}
 
-      {/* Additional content can be added here */}
-      <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-purple-100">
-        <h3 className="text-xl font-semibold text-purple-800 mb-4">Recent Activity</h3>
-        <p className="text-purple-600">Your admin dashboard is ready to use. More analytics coming soon!</p>
+      {/* Recent Activity Section */}
+      <div className="bg-white rounded-3xl p-8 shadow-xl border-0">
+        <h3 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h3>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl">
+            <div className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
+            <div>
+              <p className="font-medium text-gray-900">25 new users registered</p>
+              <p className="text-sm text-gray-600">2 hours ago</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl">
+            <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+            <div>
+              <p className="font-medium text-gray-900">12 new quiz questions added</p>
+              <p className="text-sm text-gray-600">4 hours ago</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl">
+            <div className="w-3 h-3 bg-purple-500 rounded-full flex-shrink-0"></div>
+            <div>
+              <p className="font-medium text-gray-900">5 case studies updated</p>
+              <p className="text-sm text-gray-600">6 hours ago</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl">
+            <div className="w-3 h-3 bg-orange-500 rounded-full flex-shrink-0"></div>
+            <div>
+              <p className="font-medium text-gray-900">3 videos uploaded</p>
+              <p className="text-sm text-gray-600">8 hours ago</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
