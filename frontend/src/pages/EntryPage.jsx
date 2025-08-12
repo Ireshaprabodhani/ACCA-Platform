@@ -31,7 +31,7 @@ const EntryPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-10 relative">
+    <div className="min-h-screen bg-black flex items-center justify-center px-4 relative">
       <div className={`
         text-center max-w-3xl w-full text-white relative z-10
         transform transition-all duration-1000
