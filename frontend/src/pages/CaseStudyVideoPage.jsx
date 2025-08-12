@@ -38,36 +38,82 @@ export default function CaseVideoPage() {
   const [pdfs, setPdfs] = useState([]);
   const [downloadingPdf, setDownloadingPdf] = useState(null);
 
-  // Timer state with persistence
-  const [secondsLeft, setSecondsLeft] = useState(() => {
-    const savedTime = localStorage.getItem('caseVideoTimeLeft');
-    const savedTimestamp = localStorage.getItem('caseVideoTimestamp');
-
-    if (savedTime && savedTimestamp) {
-      const elapsed = Math.floor((Date.now() - parseInt(savedTimestamp)) / 1000);
-      const remaining = parseInt(savedTime) - elapsed;
-      return remaining > 0 ? remaining : 0;
-    }
-    return 600; // 10 minutes countdown
-  });
-
-  const [timerEnded, setTimerEnded] = useState(() => {
-    const savedTime = localStorage.getItem('caseVideoTimeLeft');
-    const savedTimestamp = localStorage.getItem('caseVideoTimestamp');
-
-    if (savedTime && savedTimestamp) {
-      const elapsed = Math.floor((Date.now() - parseInt(savedTimestamp)) / 1000);
-      const remaining = parseInt(savedTime) - elapsed;
-      return remaining <= 0;
-    }
-    return false;
-  });
-
-  const [timerStarted, setTimerStarted] = useState(() => {
-    return localStorage.getItem('caseVideoTimerStarted') === 'true';
-  });
+  // Simplified timer state
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerFinished, setTimerFinished] = useState(false);
 
   const isHeygen = url.includes('labs.heygen.com');
+
+  // Initialize timer from localStorage on mount
+  useEffect(() => {
+    const savedTimeLeft = localStorage.getItem('caseVideoTimeLeft');
+    const savedTimestamp = localStorage.getItem('caseVideoTimestamp');
+    const savedTimerActive = localStorage.getItem('caseVideoTimerActive');
+    const savedTimerFinished = localStorage.getItem('caseVideoTimerFinished');
+
+    if (savedTimerFinished === 'true') {
+      setTimerFinished(true);
+      setTimeLeft(0);
+      return;
+    }
+
+    if (savedTimeLeft && savedTimestamp && savedTimerActive === 'true') {
+      const elapsed = Math.floor((Date.now() - parseInt(savedTimestamp, 10)) / 1000);
+      const remaining = Math.max(0, parseInt(savedTimeLeft, 10) - elapsed);
+      
+      if (remaining <= 0) {
+        setTimerFinished(true);
+        setTimeLeft(0);
+        localStorage.setItem('caseVideoTimerFinished', 'true');
+      } else {
+        setTimeLeft(remaining);
+        setTimerActive(true);
+      }
+    }
+  }, []);
+
+  // Start timer when component is ready
+  useEffect(() => {
+    if (loading || timerActive || timerFinished) return;
+
+    // Start the timer
+    setTimerActive(true);
+    localStorage.setItem('caseVideoTimerActive', 'true');
+    localStorage.setItem('caseVideoTimestamp', Date.now().toString());
+    localStorage.setItem('caseVideoTimeLeft', timeLeft.toString());
+  }, [loading, timerActive, timerFinished, timeLeft]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!timerActive || timerFinished) return;
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        const newTime = prevTime - 1;
+        
+        // Update localStorage every 5 seconds
+        if (newTime % 5 === 0) {
+          localStorage.setItem('caseVideoTimeLeft', newTime.toString());
+          localStorage.setItem('caseVideoTimestamp', Date.now().toString());
+        }
+        
+        // Timer finished
+        if (newTime <= 0) {
+          setTimerActive(false);
+          setTimerFinished(true);
+          localStorage.setItem('caseVideoTimerActive', 'false');
+          localStorage.setItem('caseVideoTimerFinished', 'true');
+          localStorage.setItem('caseVideoTimeLeft', '0');
+          return 0;
+        }
+        
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [timerActive, timerFinished]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -100,56 +146,6 @@ export default function CaseVideoPage() {
       });
   }, [nav]);
 
-  // Start timer when user comes from previous page
-  useEffect(() => {
-    const startTimer = () => {
-      if (!timerStarted && !loading) {
-        setTimerStarted(true);
-        localStorage.setItem('caseVideoTimerStarted', 'true');
-        localStorage.setItem('caseVideoTimestamp', Date.now().toString());
-        localStorage.setItem('caseVideoTimeLeft', secondsLeft.toString());
-      }
-    };
-
-    // Check if user came from previous page
-    const referrer = document.referrer;
-    const fromPreviousPage =
-      referrer &&
-      (referrer.includes('/login') ||
-        referrer.includes('/dashboard') ||
-        referrer.includes('/case-study') ||
-        referrer.includes('/previous-step'));
-
-    if (fromPreviousPage || !timerStarted) {
-      startTimer();
-    }
-  }, [loading, timerStarted, secondsLeft]);
-
-  // Timer countdown effect with persistence and fix
-  useEffect(() => {
-    if (loading || !timerStarted || timerEnded) return;
-
-    const timerId = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerId);
-          setTimerEnded(true);
-          localStorage.setItem('caseVideoEnded', 'true');
-          return 0;
-        }
-        const newTime = prev - 1;
-        // Persist time every 5 seconds
-        if (newTime % 5 === 0) {
-          localStorage.setItem('caseVideoTimeLeft', newTime.toString());
-          localStorage.setItem('caseVideoTimestamp', Date.now().toString());
-        }
-        return newTime;
-      });
-    }, 1000);
-
-    return () => clearInterval(timerId);
-  }, [loading, timerStarted, timerEnded]);
-
   const formatTime = (sec) => {
     const m = Math.floor(sec / 60)
       .toString()
@@ -162,8 +158,8 @@ export default function CaseVideoPage() {
   const handleContinueToQuestions = () => {
     localStorage.removeItem('caseVideoTimeLeft');
     localStorage.removeItem('caseVideoTimestamp');
-    localStorage.removeItem('caseVideoTimerStarted');
-    localStorage.removeItem('caseVideoEnded');
+    localStorage.removeItem('caseVideoTimerActive');
+    localStorage.removeItem('caseVideoTimerFinished');
     nav('/case-questions');
   };
 
@@ -397,12 +393,20 @@ export default function CaseVideoPage() {
 
       {/* Timer positioned above video */}
       <div className="w-full max-w-3xl flex justify-end mb-2">
-        <div className="bg-black/70 text-yellow-300 font-mono text-lg px-4 py-2 rounded-lg shadow-lg border border-yellow-600/50">
-          ⏳ Time Remaining: {formatTime(secondsLeft)}
+        <div className={`font-mono text-lg px-4 py-2 rounded-lg shadow-lg border ${
+          timerFinished 
+            ? 'bg-green-600/80 text-white border-green-400/50' 
+            : 'bg-black/70 text-yellow-300 border-yellow-600/50'
+        }`}>
+          {timerFinished ? (
+            <span>✅ Time Complete!</span>
+          ) : (
+            <span>⏳ Time Remaining: {formatTime(timeLeft)}</span>
+          )}
         </div>
       </div>
 
-      {/* Video container with gradient background to handle white space */}
+      {/* Video container */}
       <div
         className="w-full max-w-3xl rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700 mx-auto relative"
         style={{
@@ -466,7 +470,7 @@ export default function CaseVideoPage() {
         )}
       </div>
 
-      {/* PDF download button positioned below video, bottom right */}
+      {/* PDF download button */}
       {pdfs.length > 0 && (
         <div className="w-full max-w-3xl flex justify-end mt-4">
           <button
@@ -486,23 +490,27 @@ export default function CaseVideoPage() {
         </div>
       )}
 
-      <div className="mt-5 text-center">
-        {(ended || timerEnded) ? (
+      {/* Continue button - shown only when timer is finished */}
+      <div className="mt-8 text-center">
+        {timerFinished && (
           <>
-            <p className="text-green-400 text-xl font-semibold mt-6">
-              ✅ Video completed successfully!
+            <p className="text-green-400 text-xl font-semibold mb-6">
+              ✅ Required viewing time completed!
             </p>
-
-            <div className="mt-8">
-              <button
-                onClick={handleContinueToQuestions}
-                className="bg-green-500 hover:bg-green-600 px-10 py-4 rounded-full text-lg font-bold shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-105 transition-transform"
-              >
-                Continue to Questions →
-              </button>
-            </div>
+            <button
+              onClick={handleContinueToQuestions}
+              className="bg-green-500 hover:bg-green-600 px-10 py-4 rounded-full text-lg font-bold shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-105 transition-transform"
+            >
+              Continue to Questions →
+            </button>
           </>
-        ) : null}
+        )}
+
+        {!timerFinished && (
+          <p className="text-gray-400 text-sm">
+            Please wait for the timer to complete before proceeding.
+          </p>
+        )}
       </div>
     </div>
   );
