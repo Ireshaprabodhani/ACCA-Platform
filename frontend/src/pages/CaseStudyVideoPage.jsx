@@ -38,6 +38,35 @@ export default function CaseVideoPage() {
   const [pdfs, setPdfs] = useState([]);
   const [downloadingPdf, setDownloadingPdf] = useState(null);
 
+  // Timer state with persistence
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const savedTime = localStorage.getItem('caseVideoTimeLeft');
+    const savedTimestamp = localStorage.getItem('caseVideoTimestamp');
+
+    if (savedTime && savedTimestamp) {
+      const elapsed = Math.floor((Date.now() - parseInt(savedTimestamp)) / 1000);
+      const remaining = parseInt(savedTime) - elapsed;
+      return remaining > 0 ? remaining : 0;
+    }
+    return 600; // 10 minutes countdown
+  });
+
+  const [timerEnded, setTimerEnded] = useState(() => {
+    const savedTime = localStorage.getItem('caseVideoTimeLeft');
+    const savedTimestamp = localStorage.getItem('caseVideoTimestamp');
+
+    if (savedTime && savedTimestamp) {
+      const elapsed = Math.floor((Date.now() - parseInt(savedTimestamp)) / 1000);
+      const remaining = parseInt(savedTime) - elapsed;
+      return remaining <= 0;
+    }
+    return false;
+  });
+
+  const [timerStarted, setTimerStarted] = useState(() => {
+    return localStorage.getItem('caseVideoTimerStarted') === 'true';
+  });
+
   const isHeygen = url.includes('labs.heygen.com');
 
   useEffect(() => {
@@ -71,6 +100,73 @@ export default function CaseVideoPage() {
       });
   }, [nav]);
 
+  // Start timer when user comes from previous page
+  useEffect(() => {
+    const startTimer = () => {
+      if (!timerStarted && !loading) {
+        setTimerStarted(true);
+        localStorage.setItem('caseVideoTimerStarted', 'true');
+        localStorage.setItem('caseVideoTimestamp', Date.now().toString());
+        localStorage.setItem('caseVideoTimeLeft', secondsLeft.toString());
+      }
+    };
+
+    // Check if user came from previous page
+    const referrer = document.referrer;
+    const fromPreviousPage =
+      referrer &&
+      (referrer.includes('/login') ||
+        referrer.includes('/dashboard') ||
+        referrer.includes('/case-study') ||
+        referrer.includes('/previous-step'));
+
+    if (fromPreviousPage || !timerStarted) {
+      startTimer();
+    }
+  }, [loading, timerStarted, secondsLeft]);
+
+  // Timer countdown effect with persistence and fix
+  useEffect(() => {
+    if (loading || !timerStarted || timerEnded) return;
+
+    const timerId = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerId);
+          setTimerEnded(true);
+          localStorage.setItem('caseVideoEnded', 'true');
+          return 0;
+        }
+        const newTime = prev - 1;
+        // Persist time every 5 seconds
+        if (newTime % 5 === 0) {
+          localStorage.setItem('caseVideoTimeLeft', newTime.toString());
+          localStorage.setItem('caseVideoTimestamp', Date.now().toString());
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [loading, timerStarted, timerEnded]);
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60)
+      .toString()
+      .padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // Clean up timer data when navigating to questions
+  const handleContinueToQuestions = () => {
+    localStorage.removeItem('caseVideoTimeLeft');
+    localStorage.removeItem('caseVideoTimestamp');
+    localStorage.removeItem('caseVideoTimerStarted');
+    localStorage.removeItem('caseVideoEnded');
+    nav('/case-questions');
+  };
+
   const handlePdfDownload = async (pdfId, fileName) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -84,7 +180,7 @@ export default function CaseVideoPage() {
       const response = await fetch(`${API_BASE}/api/pdf/download/${pdfId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -161,15 +257,13 @@ export default function CaseVideoPage() {
               clearInterval(intervalRef.current);
               intervalRef.current = setInterval(() => {
                 const t = target.getCurrentTime();
-                if (t - watchdog.current > 1.5)
-                  target.seekTo(watchdog.current, true);
+                if (t - watchdog.current > 1.5) target.seekTo(watchdog.current, true);
                 else watchdog.current = t;
               }, 500);
             }
             if (data === window.YT.PlayerState.PAUSED) {
               setTimeout(() => {
-                if (target.getPlayerState() === window.YT.PlayerState.PAUSED)
-                  target.playVideo();
+                if (target.getPlayerState() === window.YT.PlayerState.PAUSED) target.playVideo();
               }, 800);
             }
             if (data === window.YT.PlayerState.ENDED) {
@@ -214,8 +308,7 @@ export default function CaseVideoPage() {
     const onPlay = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        if (v.currentTime - watchdog.current > 1.5)
-          v.currentTime = watchdog.current;
+        if (v.currentTime - watchdog.current > 1.5) v.currentTime = watchdog.current;
         else watchdog.current = v.currentTime;
       }, 500);
     };
@@ -285,18 +378,6 @@ export default function CaseVideoPage() {
       className="min-h-screen text-white flex flex-col items-center justify-center px-4 py-10 relative"
       style={{ backgroundImage: `url(${RedBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
-      {/* Fixed top-right PDF panel */}
-       {pdfs.length > 0 && (
-          <div className="fixed top-4 right-4 z-30">
-            <button
-              onClick={() => handlePdfDownload(pdfs[0]._id, pdfs[0].originalName)}
-              className="bg-black/60 border border-red-600 text-white font-semibold px-5 py-3 rounded-xl shadow-md hover:shadow-[0_0_15px_rgba(255,0,0,0.6)] hover:border-red-400 transition-all duration-300 text-sm"
-            >
-              📥 Download Case Materials
-            </button>
-          </div>
-        )}
-
       {blocked && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
           <button
@@ -314,64 +395,114 @@ export default function CaseVideoPage() {
 
       <h1 className="text-4xl font-bold mb-8 text-center drop-shadow-lg">Case Study Video</h1>
 
-      <div className="w-full max-w-5xl bg-black/80 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700 mx-auto">
+      {/* Timer positioned above video */}
+      <div className="w-full max-w-3xl flex justify-end mb-2">
+        <div className="bg-black/70 text-yellow-300 font-mono text-lg px-4 py-2 rounded-lg shadow-lg border border-yellow-600/50">
+          ⏳ Time Remaining: {formatTime(secondsLeft)}
+        </div>
+      </div>
+
+      {/* Video container with gradient background to handle white space */}
+      <div
+        className="w-full max-w-3xl rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,0,0.4)] border border-red-700 mx-auto relative"
+        style={{
+          background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+          minHeight: '400px',
+        }}
+      >
         {isYT ? (
-          <div className="w-full p-4 md:p-6 flex justify-center items-center" style={{ paddingBottom: '56.25%' }}>
+          <div
+            className="w-full relative"
+            style={{
+              paddingBottom: '56.25%',
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+            }}
+          >
             <div id="yt-player" className="absolute top-0 left-0 w-full h-full" />
           </div>
         ) : isHeygen ? (
-          !ended && (
-            <div className="w-full p-4 md:p-6 flex justify-center items-center">
-              <div className="w-full max-w-4xl aspect-video">
+          <div
+            className="w-full flex items-center justify-center p-4"
+            style={{
+              minHeight: '400px',
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+            }}
+          >
+            <div
+              className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #262626 0%, #3d3d3d 50%, #262626 100%)',
+                boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)',
+                minHeight: '400px',
+              }}
+            >
+              <div className="w-full h-full">
                 <HeygenChatEmbed iframeUrl={url} />
               </div>
             </div>
-          )
+          </div>
         ) : (
-          <video
-            ref={videoRef}
-            src={url}
-            controls={false}
-            disablePictureInPicture
-            controlsList="nodownload noplaybackrate"
-            className="w-full h-auto pointer-events-none"
-            style={{ minHeight: '400px' }}
-          />
+          <div
+            className="w-full flex items-center justify-center p-4"
+            style={{
+              minHeight: '400px',
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+            }}
+          >
+            <video
+              ref={videoRef}
+              src={url}
+              controls={false}
+              disablePictureInPicture
+              controlsList="nodownload noplaybackrate"
+              className="w-full h-auto object-contain pointer-events-none rounded-lg"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                boxShadow: '0 0 30px rgba(0,0,0,0.8)',
+              }}
+            />
+          </div>
         )}
       </div>
 
-      <div className="mt-5 text-center">
-        {ended ? (
-          <>
-            {isHeygen && (
-              <div className="mt-10 w-full flex justify-center">
-                <HeygenChatEmbed iframeUrl={url} />
-              </div>
+      {/* PDF download button positioned below video, bottom right */}
+      {pdfs.length > 0 && (
+        <div className="w-full max-w-3xl flex justify-end mt-4">
+          <button
+            onClick={() => handlePdfDownload(pdfs[0]._id, pdfs[0].originalName)}
+            disabled={downloadingPdf}
+            className="bg-black/60 border border-red-600 text-white font-semibold px-5 py-3 rounded-xl shadow-md hover:shadow-[0_0_15px_rgba(255,0,0,0.6)] hover:border-red-400 transition-all duration-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloadingPdf ? (
+              <>
+                <div className="inline-block animate-spin h-4 w-4 border-b-2 border-white rounded-full mr-2" />
+                Downloading...
+              </>
+            ) : (
+              <>📥 Download Case Materials</>
             )}
+          </button>
+        </div>
+      )}
 
+      <div className="mt-5 text-center">
+        {(ended || timerEnded) ? (
+          <>
             <p className="text-green-400 text-xl font-semibold mt-6">
               ✅ Video completed successfully!
             </p>
 
             <div className="mt-8">
               <button
-                onClick={() => nav('/case-questions')}
+                onClick={handleContinueToQuestions}
                 className="bg-green-500 hover:bg-green-600 px-10 py-4 rounded-full text-lg font-bold shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-105 transition-transform"
               >
                 Continue to Questions →
               </button>
             </div>
           </>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-yellow-200 text-lg">
-              📺 Please watch the entire video to continue
-            </p>
-            <p className="text-gray-300 text-sm mt-1">
-              ⚠️ Skipping is disabled • Video must be watched completely
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

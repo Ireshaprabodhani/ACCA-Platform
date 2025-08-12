@@ -13,6 +13,7 @@ export default function CaseStudyQuestionPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState(null);
 
   const navigate = useNavigate();
   const timerRef = useRef(null);
@@ -25,6 +26,53 @@ export default function CaseStudyQuestionPage() {
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+
+  // Generate or retrieve session ID for this attempt
+  const getSessionId = useCallback(() => {
+    let sid = sessionStorage.getItem('case_study_session_id');
+    if (!sid) {
+      sid = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem('case_study_session_id', sid);
+    }
+    return sid;
+  }, []);
+
+  // Save progress to sessionStorage
+  const saveProgress = useCallback((currentAnswers, currentIndex, currentTimeLeft) => {
+    if (!sessionId) return;
+    
+    const progressData = {
+      answers: currentAnswers,
+      index: currentIndex,
+      timeLeft: currentTimeLeft,
+      timestamp: Date.now(),
+      language: languageRef.current
+    };
+    
+    sessionStorage.setItem(`case_study_progress_${sessionId}`, JSON.stringify(progressData));
+  }, [sessionId]);
+
+  // Load progress from sessionStorage
+  const loadProgress = useCallback(() => {
+    if (!sessionId) return null;
+    
+    const savedData = sessionStorage.getItem(`case_study_progress_${sessionId}`);
+    if (!savedData) return null;
+    
+    try {
+      return JSON.parse(savedData);
+    } catch (err) {
+      console.error('Failed to parse saved progress:', err);
+      return null;
+    }
+  }, [sessionId]);
+
+  // Clear progress from sessionStorage
+  const clearProgress = useCallback(() => {
+    if (!sessionId) return;
+    sessionStorage.removeItem(`case_study_progress_${sessionId}`);
+    sessionStorage.removeItem('case_study_session_id');
+  }, [sessionId]);
 
   const handleSubmit = useCallback(async () => {
     if (submittedRef.current || sending) return;
@@ -43,6 +91,9 @@ export default function CaseStudyQuestionPage() {
         },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
+      
+      // Clear progress after successful submission
+      clearProgress();
       navigate('/thank-you');
     } catch (err) {
       setError(err.response?.data?.message || 'Submit failed');
@@ -50,19 +101,70 @@ export default function CaseStudyQuestionPage() {
       setSubmitted(false);
       submittedRef.current = false;
     }
-  }, [sending, navigate]);
+  }, [sending, navigate, clearProgress]);
 
+  // Load questions and restore progress
   useEffect(() => {
     (async () => {
       try {
         setIsLoading(true);
+        
+        // Initialize session ID
+        const sid = getSessionId();
+        setSessionId(sid);
+        
+        // Load questions
         const { data } = await axios.get(
           `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/case/questions?language=English`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
+        
         setQuestions(data);
-        setAnswers(Array(data.length).fill(null));
-        setIndex(0);
+        
+        // Try to load saved progress
+        const savedProgress = sessionStorage.getItem(`case_study_progress_${sid}`);
+        
+        if (savedProgress) {
+          try {
+            const progressData = JSON.parse(savedProgress);
+            const timeSinceLastSave = Date.now() - progressData.timestamp;
+            const timeElapsedInSeconds = Math.floor(timeSinceLastSave / 1000);
+            
+            // Only restore if less than 30 minutes have passed (safety check)
+            if (timeSinceLastSave < 30 * 60 * 1000) {
+              // Calculate remaining time accounting for time elapsed since last save
+              const adjustedTimeLeft = Math.max(0, (progressData.timeLeft || 20 * 60) - timeElapsedInSeconds);
+              
+              setAnswers(progressData.answers || Array(data.length).fill(null));
+              setIndex(progressData.index || 0);
+              setTimeLeft(adjustedTimeLeft);
+              
+              console.log(`Progress restored: ${progressData.timeLeft}s saved, ${timeElapsedInSeconds}s elapsed, ${adjustedTimeLeft}s remaining`);
+              
+              // If time has run out while away, auto-submit
+              if (adjustedTimeLeft <= 0) {
+                setTimeout(() => handleSubmit(), 1000);
+              }
+            } else {
+              // Clear old progress if too much time has passed
+              sessionStorage.removeItem(`case_study_progress_${sid}`);
+              setAnswers(Array(data.length).fill(null));
+              setIndex(0);
+              setTimeLeft(20 * 60);
+            }
+          } catch (err) {
+            console.error('Failed to restore progress:', err);
+            setAnswers(Array(data.length).fill(null));
+            setIndex(0);
+            setTimeLeft(20 * 60);
+          }
+        } else {
+          // No saved progress, start fresh
+          setAnswers(Array(data.length).fill(null));
+          setIndex(0);
+          setTimeLeft(20 * 60);
+        }
+        
         audioRef.current?.play().catch(() => {});
       } catch (err) {
         if (err.response?.status === 403) navigate('/thank-you');
@@ -72,10 +174,19 @@ export default function CaseStudyQuestionPage() {
         setIsLoading(false);
       }
     })();
-  }, [navigate]);
+  }, [navigate, getSessionId, handleSubmit]);
 
+  // Save progress whenever answers, index, or timeLeft changes
+  useEffect(() => {
+    if (!isLoading && questions.length > 0 && sessionId) {
+      saveProgress(answers, index, timeLeft);
+    }
+  }, [answers, index, timeLeft, isLoading, questions.length, sessionId, saveProgress]);
+
+  // Timer effect
   useEffect(() => {
     if (isLoading || submitted) return;
+    
     const tick = () => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -86,14 +197,40 @@ export default function CaseStudyQuestionPage() {
         return prev - 1;
       });
     };
+    
     timerRef.current = setInterval(tick, 1000);
     return () => clearInterval(timerRef.current);
   }, [isLoading, submitted, handleSubmit]);
 
+  // Cleanup on unmount
   useEffect(() => () => {
     clearInterval(timerRef.current);
     audioRef.current?.pause();
   }, []);
+
+  // Handle page visibility change to save progress
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && !isLoading && questions.length > 0) {
+        saveProgress(answers, index, timeLeft);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [saveProgress, answers, index, timeLeft, isLoading, questions.length]);
+
+  // Handle beforeunload to save progress
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!isLoading && questions.length > 0) {
+        saveProgress(answers, index, timeLeft);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveProgress, answers, index, timeLeft, isLoading, questions.length]);
 
   const formatTime = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   const allAnswered = answers.every(a => a !== null);
@@ -131,8 +268,11 @@ export default function CaseStudyQuestionPage() {
       </audio>
 
       <div className="w-full max-w-4xl mx-auto p-8 shadow-xl rounded-none bg-[#000000b3] text-white">
-        {/* top bar (no dropdown) */}
-        <div className="flex justify-end items-center mb-6">
+        {/* top bar with progress indicator */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-sm text-gray-300">
+            Question {index + 1} of {questions.length}
+          </div>
           <div className={`text-md font-semibold px-4 py-1 rounded ${timeLeft < 60 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
             ⏱ Time: {formatTime(timeLeft)}
           </div>
@@ -184,9 +324,9 @@ export default function CaseStudyQuestionPage() {
           <button
             onClick={() => setIndex(prev => Math.max(0, prev - 1))}
             disabled={index === 0 || submitted}
-            className="px-5 py-2 rounded font-semibold text-white transition"
+            className="px-5 py-2 rounded font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              background: 'linear-gradient(45deg, #555, #888 50%, #333)',
+              background: index === 0 || submitted ? '#666' : 'linear-gradient(45deg, #555, #888 50%, #333)',
             }}
           >
             ← Previous
@@ -198,7 +338,7 @@ export default function CaseStudyQuestionPage() {
               disabled={!allAnswered || submitted}
               className="px-6 py-2 rounded font-semibold text-white transition disabled:opacity-50"
               style={{
-                background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+                background: !allAnswered || submitted ? '#666' : 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
               }}
             >
               {sending ? 'Submitting…' : 'Submit Answers'}
@@ -206,15 +346,20 @@ export default function CaseStudyQuestionPage() {
           ) : (
             <button
               onClick={() => setIndex(prev => Math.min(questions.length - 1, prev + 1))}
-              disabled={submitted || !currentAnswered}
-              className="px-5 py-2 rounded font-semibold text-white transition"
+              disabled={submitted}
+              className="px-5 py-2 rounded font-semibold text-white transition disabled:opacity-50"
               style={{
-                background: 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
+                background: submitted ? '#666' : 'linear-gradient(45deg, #9a0000, #ff0034 50%, maroon)',
               }}
             >
               Next →
             </button>
           )}
+        </div>
+
+        {/* Answered questions indicator */}
+        <div className="mt-4 text-sm text-gray-300 text-center">
+          Answered: {answers.filter(a => a !== null).length} / {questions.length}
         </div>
 
         {/* modal */}
