@@ -18,27 +18,24 @@ const links = [
 
 const Sidebar = ({ open }) => {
   const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        // Replace with your actual logout API endpoint
-        await fetch('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('user');
-      window.location.href = 'https://main.d1vjhvv9srhnme.amplifyapp.com/';
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      await fetch('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
     }
-  };
+  } catch (err) {
+    console.error('Logout error:', err);
+  } finally {
+    localStorage.clear();
+    window.location.replace('https://main.d1vjhvv9srhnme.amplifyapp.com/');
+  }
+};
+
 
   return (
     <motion.aside

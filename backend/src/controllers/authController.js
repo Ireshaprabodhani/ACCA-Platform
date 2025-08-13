@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
+import { tokenBlacklist } from '../utils/tokenBlacklist.js';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 
@@ -97,11 +98,17 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    // You can optionally blacklist the token here if you implement token blacklisting
-    res.status(200).json({ message: 'Logout successful' });
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.split(' ')[1];
+
+    if (token) {
+      tokenBlacklist.add(token);
+    }
+
+    return res.status(200).json({ message: 'Logout successful' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Logout failed' });
+    console.error('Logout error:', error);
+    return res.status(500).json({ message: 'Logout failed' });
   }
 };
 
