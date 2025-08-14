@@ -1,4 +1,3 @@
-
 import QuizQuestion from '../models/QuizQuestion.js';
 import QuizAttempt from '../models/QuizAttempt.js';
 import mongoose from 'mongoose';
@@ -8,14 +7,14 @@ export const addQuizQuestion = async (req, res) => {
   try {
     const { question, options, answer, language } = req.body;
 
-    // basic validation
+    // basic validation - Changed to support 5 options instead of 5
     if (
       !question?.trim() ||
       !Array.isArray(options) ||
-      options.length !== 5 ||
+      options.length !== 5 ||  // Changed from 5 to 5
       options.some((o) => !o.trim()) ||
       answer < 0 ||
-      answer > 3 ||
+      answer > 4 ||  // Changed from 3 to 4 for 5 options (0-4)
       !['English', 'Sinhala'].includes(language)
     ) {
       return res.status(400).json({ message: 'Invalid question format' });
@@ -57,8 +56,6 @@ export const listQuizQuestions = async (req, res) => {
   }
 };
 
-
-
 export const getQuizQuestion = async (req, res) => {
   try {
     const q = await QuizQuestion.findById(req.params.id);
@@ -69,15 +66,26 @@ export const getQuizQuestion = async (req, res) => {
   }
 };
 
-
 // Update a quiz question by admin
 export const updateQuizQuestion = async (req, res) => {
   try {
-    const question = await QuizQuestion.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!question) {
+    const { question, options, answer, language } = req.body;
+
+    // Validation for update - same as add
+    if (
+      question && !question.trim() ||
+      options && (!Array.isArray(options) || options.length !== 5 || options.some((o) => !o.trim())) ||
+      answer !== undefined && (answer < 0 || answer > 4) ||  // Changed from 3 to 4
+      language && !['English', 'Sinhala'].includes(language)
+    ) {
+      return res.status(400).json({ message: 'Invalid question format' });
+    }
+
+    const updatedQuestion = await QuizQuestion.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedQuestion) {
       return res.status(404).json({ message: 'Question not found' });
     }
-    res.json(question);
+    res.json(updatedQuestion);
   } catch (error) {
     console.error("Error in updateQuizQuestion:", error);
     res.status(500).json({ message: error.message });
@@ -98,7 +106,6 @@ export const deleteQuizQuestion = async (req, res) => {
   }
 };
 
-
 // Display questions to users
 export const getRandomQuizQuestions = async (req, res) => {
   try {
@@ -109,8 +116,7 @@ export const getRandomQuizQuestions = async (req, res) => {
     if (!['English', 'Sinhala'].includes(language))
       return res.status(400).json({ message: 'Invalid language selected' });
 
-
- const attempt = await QuizAttempt.findOne({ userId: user._id, language });
+    const attempt = await QuizAttempt.findOne({ userId: user._id, language });
 
     if (attempt)
       return res.status(403).json({ message: 'You have already attempted the quiz.' });
@@ -129,20 +135,23 @@ export const getRandomQuizQuestions = async (req, res) => {
   }
 };
 
-
-
 // Submit answers by users
 export const submitQuizAnswers = async (req, res) => {
   try {
-    const user   = req.user;
+    const user = req.user;
     const userId = user.id;
-    const { answers, timeTaken = 0 } = req.body;   // ⬅ grab timeTaken too
+    const { answers, timeTaken = 0 } = req.body;
 
     if (!Array.isArray(answers) || answers.length !== 15)
       return res.status(400).json({ message: 'You must provide exactly 15 answers.' });
 
-    
-    const existingAttempt = await QuizAttempt.findOne({ userId });   // one quiz per account
+    // Validate that all answers are within the valid range (0-4 for 5 options)
+    const invalidAnswers = answers.filter(ans => ans < 0 || ans > 4);
+    if (invalidAnswers.length > 0) {
+      return res.status(400).json({ message: 'All answers must be between 0 and 4.' });
+    }
+
+    const existingAttempt = await QuizAttempt.findOne({ userId });
     if (existingAttempt)
       return res.status(403).json({ message: 'Quiz already submitted' });
 
@@ -152,7 +161,6 @@ export const submitQuizAnswers = async (req, res) => {
     if (!['English', 'Sinhala'].includes(language))
       return res.status(400).json({ message: 'Invalid language selected' });
 
-    /* take the *same* 15 random Qs the user just answered */
     const questions = await QuizQuestion.aggregate([
       { $match: { language } }, { $sample: { size: 15 } }
     ]);
@@ -160,7 +168,6 @@ export const submitQuizAnswers = async (req, res) => {
     if (questions.length !== 15)
       return res.status(500).json({ message: 'Not enough questions in the database.' });
 
-    /* grade */
     let score = 0;
     answers.forEach((ans, i) => {
       if (questions[i] && questions[i].answer === ans) score++;
@@ -168,12 +175,12 @@ export const submitQuizAnswers = async (req, res) => {
 
     await QuizAttempt.create({
       userId,
-      questions : questions.map(q => q._id),
+      questions: questions.map(q => q._id),
       answers,
       score,
       submittedAt: new Date(),
       language,
-      schoolName : user.schoolName || null,
+      schoolName: user.schoolName || null,
       timeTaken
     });
 
@@ -184,11 +191,10 @@ export const submitQuizAnswers = async (req, res) => {
   }
 };
 
-
 export const hasUserAttemptedQuiz = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const lang   = (req.query.language || 'English')
+    const lang = (req.query.language || 'English')
       .trim().toLowerCase().replace(/^\w/, c => c.toUpperCase());
 
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -201,11 +207,8 @@ export const hasUserAttemptedQuiz = async (req, res) => {
   }
 };
 
-
 const quizController = {
   addQuizQuestion,
-  listQuizQuestions,
-  getQuizQuestion,
   listQuizQuestions,
   getQuizQuestion,
   updateQuizQuestion,
@@ -214,4 +217,5 @@ const quizController = {
   submitQuizAnswers,
   hasUserAttemptedQuiz
 };
+
 export default quizController;

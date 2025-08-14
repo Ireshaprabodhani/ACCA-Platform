@@ -6,7 +6,7 @@ import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle } 
 const defaultForm = {
   question: '',
   language: 'English',
-  options: ['', '', '', ''],
+  options: ['', '', '', '', ''], 
   answer: 0,
 };
 
@@ -45,7 +45,7 @@ export default function QuizQuestionsPage() {
       toast.error('Please fill all options');
       return;
     }
-    if (form.answer < 0 || form.answer > 3) {
+    if (form.answer < 0 || form.answer > 4) { // Changed from 3 to 4 for 5 options
       toast.error('Please select the correct answer');
       return;
     }
@@ -162,7 +162,12 @@ export default function QuizQuestionsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        setForm({ ...q });
+                        // Ensure the form has 5 options when editing
+                        const editForm = { ...q };
+                        if (editForm.options.length < 5) {
+                          editForm.options = [...editForm.options, ...Array(5 - editForm.options.length).fill('')];
+                        }
+                        setForm(editForm);
                         setEditId(q._id);
                         setModalOpen(true);
                       }}
@@ -249,7 +254,7 @@ export default function QuizQuestionsPage() {
       {/* Add/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-purple-900">
                 {editId ? 'Edit Question' : 'Add New Question'}
@@ -303,10 +308,13 @@ export default function QuizQuestionsPage() {
                         onChange={() => setForm({ ...form, answer: i })}
                         className="h-4 w-4 text-purple-600 focus:ring-purple-500"
                       />
+                      <span className="text-sm font-medium text-purple-700 min-w-[20px]">
+                        {String.fromCharCode(65 + i)}:
+                      </span>
                       <input
                         type="text"
                         className="flex-1 border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"
-                        placeholder={`Option ${i + 1}`}
+                        placeholder={`Option ${String.fromCharCode(65 + i)}`}
                         value={opt}
                         onChange={(e) => {
                           const opts = [...form.options];
