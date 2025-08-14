@@ -103,7 +103,7 @@ export default function QuizQuestionsPage() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <div className="flex justify-between sm:flex-row gap-3 w-full sm:w-auto">
           {/* Language Tabs */}
           <div className="flex bg-purple-100 rounded-lg p-1">
             {['English', 'Sinhala'].map((lang) => (
