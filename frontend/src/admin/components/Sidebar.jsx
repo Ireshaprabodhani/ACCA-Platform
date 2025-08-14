@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   Users, ListTodo, BookOpen, Video, BarChart2, FileBarChart2, ImageIcon, LogOut
 } from "lucide-react";
@@ -17,25 +17,47 @@ const links = [
 ];
 
 const Sidebar = ({ open }) => {
-  const handleLogout = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    if (token) {
-      await fetch('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-    }
-  } catch (err) {
-    console.error('Logout error:', err);
-  } finally {
-    localStorage.clear();
-    window.location.replace('https://main.d1vjhvv9srhnme.amplifyapp.com/');
-  }
-};
+  const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      // Clear all storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear any cached data
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => {
+            caches.delete(name);
+          });
+        });
+      }
+      
+      // Replace the current entry in history and navigate
+      window.history.replaceState(null, null, '/');
+      
+      // Navigate to login page and replace the current entry
+      navigate('/', { replace: true });
+      
+      // Additional security: redirect to external URL after a short delay
+      setTimeout(() => {
+        window.location.href = 'https://main.d1vjhvv9srhnme.amplifyapp.com/';
+      }, 100);
+    }
+  };
 
   return (
     <motion.aside
