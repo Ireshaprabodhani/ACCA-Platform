@@ -14,6 +14,9 @@ const STORAGE_KEY_VOLUME = "introVideoVolume";
 const isYouTubeUrl = (u = '') =>
   /youtu\.?be/.test(u) || /youtube\.com/.test(u);
 
+const isVimeoUrl = (u = '') =>
+  /vimeo\.com/.test(u);
+
 const getYouTubeId = (raw = '') => {
   try {
     const url = new URL(raw);
@@ -26,6 +29,18 @@ const getYouTubeId = (raw = '') => {
   return '';
 };
 
+const getVimeoId = (raw = '') => {
+  try {
+    const url = new URL(raw);
+    if (url.hostname === 'vimeo.com') {
+      // Extract ID from path like /1110899373
+      const match = url.pathname.match(/\/(\d+)/);
+      return match ? match[1] : '';
+    }
+  } catch {}
+  return '';
+};
+
 const loadYT = () =>
   new Promise((resolve) => {
     if (window.YT?.Player) return resolve(window.YT);
@@ -33,6 +48,15 @@ const loadYT = () =>
     s.src = 'https://www.youtube.com/iframe_api';
     document.body.appendChild(s);
     window.onYouTubeIframeAPIReady = () => resolve(window.YT);
+  });
+
+const loadVimeo = () =>
+  new Promise((resolve) => {
+    if (window.Vimeo?.Player) return resolve(window.Vimeo);
+    const s = document.createElement('script');
+    s.src = 'https://player.vimeo.com/api/player.js';
+    s.onload = () => resolve(window.Vimeo);
+    document.head.appendChild(s);
   });
 
 export default function IntroductionVideoPage() {
@@ -49,15 +73,17 @@ export default function IntroductionVideoPage() {
 
   const vidRef = useRef(null);
   const ytRef = useRef(null);
+  const vimeoRef = useRef(null);
   const watchDog = useRef(0);
 
   const [resumeApplied, setResumeApplied] = useState(false);
   const [showPlayButton, setShowPlayButton] = useState(false);
+
   // Simple polling-based timer that checks video status every second
   useEffect(() => {
     if (!videoDuration || ended) return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       let currentTime = 0;
       let isPlaying = false;
 
@@ -67,14 +93,19 @@ export default function IntroductionVideoPage() {
           currentTime = ytRef.current.getCurrentTime() || 0;
           isPlaying = ytRef.current.getPlayerState() === window.YT?.PlayerState?.PLAYING;
         } catch (e) {
-          // YouTube not ready yet
+          return;
+        }
+      } else if (isVimeoUrl(url) && vimeoRef.current) {
+        try {
+          currentTime = await vimeoRef.current.getCurrentTime() || 0;
+          isPlaying = !(await vimeoRef.current.getPaused());
+        } catch (e) {
           return;
         }
       } else if (vidRef.current && !isNaN(vidRef.current.duration)) {
         currentTime = vidRef.current.currentTime || 0;
         isPlaying = !vidRef.current.paused && !vidRef.current.ended;
       } else {
-        // Video not ready yet
         return;
       }
 
@@ -164,12 +195,12 @@ export default function IntroductionVideoPage() {
         width: 800,
         videoId: id,
         playerVars: {
-          autoplay: 0, // Don't autoplay initially
+          autoplay: 0,
           playsinline: 1,
           controls: 0,
           rel: 0,
           mute: muted ? 1 : 0,
-          start: Math.floor(parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0), // Start from saved time
+          start: Math.floor(parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0),
         },
         events: {
           onReady: (e) => {
@@ -178,7 +209,6 @@ export default function IntroductionVideoPage() {
 
             const savedTime = parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0;
 
-            // Set volume and mute state
             e.target.setVolume(muted ? 0 : volume * 100);
             if (muted) {
               e.target.mute();
@@ -186,25 +216,19 @@ export default function IntroductionVideoPage() {
               e.target.unMute();
             }
 
-            // Resume from saved position if exists and not at the end
-            if (savedTime && savedTime < dur - 5) { // Resume if not within 5 seconds of end
+            if (savedTime && savedTime < dur - 5) {
               console.log(`Resuming YouTube video from ${savedTime} seconds`);
-              
-              // Calculate remaining time from saved position
               const remainingTime = dur - savedTime;
               setTimeLeft(Math.max(0, Math.floor(remainingTime)));
               
-              // Start playing immediately (video should already be at correct position due to start parameter)
               setTimeout(() => {
                 e.target.playVideo();
               }, 500);
             } else if (savedTime >= dur - 5) {
-              // Video was completed, remove saved time and show continue button
               localStorage.removeItem(STORAGE_KEY_TIME);
               setEnded(true);
               setTimeLeft(0);
             } else {
-              // No saved time, start from beginning
               setTimeLeft(dur);
               e.target.playVideo();
             }
@@ -212,10 +236,8 @@ export default function IntroductionVideoPage() {
             setResumeApplied(true);
             setIsInitialLoad(false);
           },
-          onStateChange: ({ data, target }) => {
+          onStateChange: ({ data }) => {
             console.log('YouTube state changed:', data);
-            // Let the polling timer handle everything
-            // Just update basic states here
             if (data === YT.PlayerState.ENDED) {
               setEnded(true);
               setPlaying(false);
@@ -228,13 +250,101 @@ export default function IntroductionVideoPage() {
 
     return () => {
       ytRef.current?.destroy?.();
-      // Polling timer will be cleaned up by useEffect
+    };
+  }, [url, muted, volume]);
+
+  // Vimeo setup
+  useEffect(() => {
+    if (!isVimeoUrl(url)) return;
+
+    const id = getVimeoId(url);
+    if (!id) {
+      setError('Invalid Vimeo URL.');
+      return;
+    }
+
+    loadVimeo().then((Vimeo) => {
+      const iframe = document.getElementById('vimeo-player');
+      vimeoRef.current = new Vimeo.Player(iframe);
+
+      vimeoRef.current.ready().then(async () => {
+        try {
+          const dur = Math.floor(await vimeoRef.current.getDuration());
+          setVideoDuration(dur);
+
+          const savedTime = parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0;
+
+          // Set volume and mute state
+          await vimeoRef.current.setVolume(muted ? 0 : volume);
+
+          if (savedTime && savedTime < dur - 5) {
+            console.log(`Resuming Vimeo video from ${savedTime} seconds`);
+            await vimeoRef.current.setCurrentTime(savedTime);
+            const remainingTime = dur - savedTime;
+            setTimeLeft(Math.max(0, Math.floor(remainingTime)));
+            
+            setTimeout(async () => {
+              try {
+                await vimeoRef.current.play();
+              } catch (e) {
+                console.log('Vimeo autoplay prevented - showing play button');
+                setShowPlayButton(true);
+              }
+            }, 500);
+          } else if (savedTime >= dur - 5) {
+            localStorage.removeItem(STORAGE_KEY_TIME);
+            setEnded(true);
+            setTimeLeft(0);
+          } else {
+            setTimeLeft(dur);
+            try {
+              await vimeoRef.current.play();
+            } catch (e) {
+              console.log('Vimeo autoplay prevented - showing play button');
+              setShowPlayButton(true);
+            }
+          }
+          
+          setResumeApplied(true);
+          setIsInitialLoad(false);
+        } catch (error) {
+          console.error('Error setting up Vimeo player:', error);
+          setError('Failed to load Vimeo video.');
+        }
+      });
+
+      // Vimeo event listeners
+      vimeoRef.current.on('play', () => {
+        console.log('Vimeo video started playing');
+        setShowPlayButton(false);
+      });
+
+      vimeoRef.current.on('pause', () => {
+        console.log('Vimeo video paused');
+      });
+
+      vimeoRef.current.on('ended', () => {
+        console.log('Vimeo video ended');
+        setEnded(true);
+        setPlaying(false);
+        localStorage.removeItem(STORAGE_KEY_TIME);
+      });
+
+      vimeoRef.current.on('timeupdate', (data) => {
+        if (data.seconds > 0) {
+          localStorage.setItem(STORAGE_KEY_TIME, data.seconds.toString());
+        }
+      });
+    });
+
+    return () => {
+      vimeoRef.current?.destroy?.();
     };
   }, [url, muted, volume]);
 
   // Native HTML5 video setup with improved resume functionality
   useEffect(() => {
-    if (!vidRef.current || isYouTubeUrl(url)) return;
+    if (!vidRef.current || isYouTubeUrl(url) || isVimeoUrl(url)) return;
     const v = vidRef.current;
 
     const handleMeta = () => {
@@ -245,18 +355,14 @@ export default function IntroductionVideoPage() {
       const savedTime = parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0;
       console.log('Saved time found:', savedTime);
 
-      // Resume from saved position if exists and not at the end
-      if (savedTime && savedTime < dur - 5) { // Resume if not within 5 seconds of end
+      if (savedTime && savedTime < dur - 5) {
         console.log(`Resuming native video from ${savedTime} seconds`);
         v.currentTime = savedTime;
-        watchDog.current = savedTime; // Update watchdog
+        watchDog.current = savedTime;
         
-        // Calculate remaining time from saved position
         const remainingTime = dur - savedTime;
         setTimeLeft(Math.max(0, Math.floor(remainingTime)));
-        console.log('Set time left to:', Math.floor(remainingTime));
         
-        // Ensure video plays after seeking (with user interaction fallback)
         setTimeout(() => {
           v.play().then(() => {
             console.log('Native video resumed successfully');
@@ -266,16 +372,12 @@ export default function IntroductionVideoPage() {
           });
         }, 500);
       } else if (savedTime >= dur - 5) {
-        // Video was completed, remove saved time and show continue button
         localStorage.removeItem(STORAGE_KEY_TIME);
         setEnded(true);
         setTimeLeft(0);
-        console.log('Video was completed, showing continue button');
-        return; // Don't auto-play completed video
+        return;
       } else {
-        // No saved time, start from beginning
         setTimeLeft(dur);
-        console.log('Starting from beginning, set time left to:', dur);
         v.play().then(() => {
           console.log('Native video started from beginning successfully');
         }).catch(() => {
@@ -291,12 +393,10 @@ export default function IntroductionVideoPage() {
     const handlePlay = () => {
       console.log('Native video started playing');
       setShowPlayButton(false);
-      // Let polling timer handle the rest
     };
 
     const handlePause = () => {
       console.log('Native video paused');
-      // Let polling timer handle the rest
     };
 
     const handleEnd = () => {
@@ -307,12 +407,10 @@ export default function IntroductionVideoPage() {
     };
 
     const handleTimeUpdate = () => {
-      // Additional safeguard to save time during playback
       if (v.played && v.played.length > 0) {
         localStorage.setItem(STORAGE_KEY_TIME, v.currentTime.toString());
       }
       
-      // Backup timer in case handlePlay didn't trigger properly
       if (!playing && !v.paused && !ended) {
         console.log('Video is playing but state not updated - fixing');
         setPlaying(true);
@@ -329,21 +427,18 @@ export default function IntroductionVideoPage() {
     v.muted = muted;
     v.volume = volume;
 
-    // Don't auto-play here since we handle it in handleMeta
-
     return () => {
       v.removeEventListener('loadedmetadata', handleMeta);
       v.removeEventListener('play', handlePlay);
       v.removeEventListener('pause', handlePause);
       v.removeEventListener('ended', handleEnd);
       v.removeEventListener('timeupdate', handleTimeUpdate);
-      // No need to clear timers - polling timer handles everything
     };
   }, [url, muted, volume, ended]);
 
   // Anti-seek protection only after resume applied
   useEffect(() => {
-    if (!vidRef.current || isYouTubeUrl(url) || !resumeApplied) return;
+    if (!vidRef.current || isYouTubeUrl(url) || isVimeoUrl(url) || !resumeApplied) return;
     const v = vidRef.current;
     const i = setInterval(() => {
       if (v.currentTime - watchDog.current > 1.5) {
@@ -357,18 +452,20 @@ export default function IntroductionVideoPage() {
   }, [url, resumeApplied]);
 
   // Mute/unmute toggle handler
-  const toggleMute = () => {
+  const toggleMute = async () => {
     setMuted((m) => {
       const newMuted = !m;
       localStorage.setItem(STORAGE_KEY_MUTED, newMuted.toString());
       
-      // Apply mute/unmute to YouTube player if exists
+      // Apply mute/unmute to appropriate player
       if (ytRef.current) {
         if (newMuted) {
           ytRef.current.mute();
         } else {
           ytRef.current.unMute();
         }
+      } else if (vimeoRef.current) {
+        vimeoRef.current.setVolume(newMuted ? 0 : volume);
       }
       
       return newMuted;
@@ -392,17 +489,28 @@ export default function IntroductionVideoPage() {
     }
   };
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (isYouTubeUrl(url) && ytRef.current) {
       if (playing) {
         ytRef.current.pauseVideo();
       } else {
         ytRef.current.playVideo();
       }
+    } else if (isVimeoUrl(url) && vimeoRef.current) {
+      try {
+        const paused = await vimeoRef.current.getPaused();
+        if (paused) {
+          await vimeoRef.current.play();
+        } else {
+          await vimeoRef.current.pause();
+        }
+      } catch (e) {
+        console.error('Error toggling Vimeo playback:', e);
+      }
     } else if (vidRef.current) {
       if (vidRef.current.paused) {
         vidRef.current.play().then(() => {
-          setShowPlayButton(false); // Hide play button when successfully playing
+          setShowPlayButton(false);
         }).catch(console.error);
       } else {
         vidRef.current.pause();
@@ -411,9 +519,17 @@ export default function IntroductionVideoPage() {
   };
 
   // Function to handle manual play button click (for autoplay restrictions)
-  const handleManualPlay = () => {
+  const handleManualPlay = async () => {
     if (isYouTubeUrl(url) && ytRef.current) {
       ytRef.current.playVideo();
+    } else if (isVimeoUrl(url) && vimeoRef.current) {
+      try {
+        await vimeoRef.current.play();
+        setShowPlayButton(false);
+        console.log('Manual Vimeo play started successfully');
+      } catch (e) {
+        console.error('Error starting Vimeo playback:', e);
+      }
     } else if (vidRef.current) {
       vidRef.current.play().then(() => {
         setShowPlayButton(false);
@@ -424,18 +540,13 @@ export default function IntroductionVideoPage() {
 
   const fullScreen = () => {
     const v = vidRef.current;
-    if (!v || isYouTubeUrl(url)) return;
+    if (!v || isYouTubeUrl(url) || isVimeoUrl(url)) return;
     (v.requestFullscreen || v.webkitRequestFullscreen || v.msRequestFullscreen)?.call(v);
   };
 
-  // Debug timer updates
-  useEffect(() => {
-    console.log(`Timer updated - Duration: ${videoDuration}, Time Left: ${timeLeft}, Playing: ${playing}`);
-  }, [timeLeft, videoDuration, playing]);
-
   // Add beforeunload event to save current time when user leaves/refreshes
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = async () => {
       if (isYouTubeUrl(url) && ytRef.current) {
         try {
           const currentTime = ytRef.current.getCurrentTime();
@@ -444,6 +555,15 @@ export default function IntroductionVideoPage() {
           }
         } catch (e) {
           console.log('Could not save YouTube time on unload');
+        }
+      } else if (isVimeoUrl(url) && vimeoRef.current) {
+        try {
+          const currentTime = await vimeoRef.current.getCurrentTime();
+          if (currentTime > 0) {
+            localStorage.setItem(STORAGE_KEY_TIME, currentTime.toString());
+          }
+        } catch (e) {
+          console.log('Could not save Vimeo time on unload');
         }
       } else if (vidRef.current) {
         const currentTime = vidRef.current.currentTime;
@@ -502,6 +622,16 @@ export default function IntroductionVideoPage() {
             <div
               id="yt-player"
               className="rounded-xl overflow-hidden shadow-lg w-full h-full"
+            />
+          ) : isVimeoUrl(url) ? (
+            <iframe
+              id="vimeo-player"
+              src={`https://player.vimeo.com/video/${getVimeoId(url)}?autoplay=1&muted=${muted ? 1 : 0}`}
+              className="rounded-xl w-full h-full object-contain shadow-lg"
+              frameBorder="0"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              title="Vimeo video"
             />
           ) : (
             <video
@@ -562,7 +692,7 @@ export default function IntroductionVideoPage() {
           </button>
 
           {/* Volume control only for native video */}
-          {!isYouTubeUrl(url) && (
+          {!isYouTubeUrl(url) && !isVimeoUrl(url) && (
             <>
               <input
                 type="range"
