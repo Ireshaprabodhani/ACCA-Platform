@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle, Search } from 'lucide-react';
 
 const defaultForm = {
   question: '',
@@ -22,45 +22,46 @@ export default function QuizQuestionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState({ English: 1, Sinhala: 1 });
   const [activeLang, setActiveLang] = useState('English');
+  const [searchTerm, setSearchTerm] = useState('');
   const rowsPerPage = 10;
 
   const loadRows = () => {
-  setIsLoading(true);
-  console.log('🔄 Frontend: Loading questions...');
-  console.log('🔗 API URL:', 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz');
-  
-  axios
-    .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz', authHeaders())
-    .then(({ data }) => {
-      console.log('✅ Frontend: Raw API response:', data);
-      console.log('📊 Response type:', typeof data);
-      console.log('📊 Is array?', Array.isArray(data));
-      
-      // Your current logic
-      const questions = Array.isArray(data) ? data : data.questions || [];
-      
-      console.log('📝 Final questions array:', questions);
-      console.log('🔢 Questions count:', questions.length);
-      
-      if (questions.length > 0) {
-        console.log('📄 First question:', questions[0]);
-        const englishCount = questions.filter(q => q.language === 'English').length;
-        const sinhalaCount = questions.filter(q => q.language === 'Sinhala').length;
-        console.log(`🇬🇧 English: ${englishCount}, 🇱🇰 Sinhala: ${sinhalaCount}`);
-      } else {
-        console.log('⚠️ No questions in final array!');
-      }
-      
-      setRows(questions);
-      setCurrentPage({ English: 1, Sinhala: 1 });
-    })
-    .catch((error) => {
-      console.error('❌ Frontend: API Error:', error);
-      console.error('❌ Error response:', error.response);
-      toast.error('Failed to load questions');
-    })
-    .finally(() => setIsLoading(false));
-};
+    setIsLoading(true);
+    console.log('🔄 Frontend: Loading questions...');
+    console.log('🔗 API URL:', 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz');
+    
+    axios
+      .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz', authHeaders())
+      .then(({ data }) => {
+        console.log('✅ Frontend: Raw API response:', data);
+        console.log('📊 Response type:', typeof data);
+        console.log('📊 Is array?', Array.isArray(data));
+        
+        // Your current logic
+        const questions = Array.isArray(data) ? data : data.questions || [];
+        
+        console.log('📝 Final questions array:', questions);
+        console.log('🔢 Questions count:', questions.length);
+        
+        if (questions.length > 0) {
+          console.log('📄 First question:', questions[0]);
+          const englishCount = questions.filter(q => q.language === 'English').length;
+          const sinhalaCount = questions.filter(q => q.language === 'Sinhala').length;
+          console.log(`🇬🇧 English: ${englishCount}, 🇱🇰 Sinhala: ${sinhalaCount}`);
+        } else {
+          console.log('⚠️ No questions in final array!');
+        }
+        
+        setRows(questions);
+        setCurrentPage({ English: 1, Sinhala: 1 });
+      })
+      .catch((error) => {
+        console.error('❌ Frontend: API Error:', error);
+        console.error('❌ Error response:', error.response);
+        toast.error('Failed to load questions');
+      })
+      .finally(() => setIsLoading(false));
+  };
 
   const saveRow = () => {
     if (!form.question.trim()) {
@@ -107,14 +108,30 @@ export default function QuizQuestionsPage() {
 
   useEffect(() => { loadRows(); }, []);
 
-  // Filter and pagination
-  const filteredRows = rows.filter((q) => q.language === activeLang);
+  // Filter by language and search term
+  const filteredRows = rows.filter((q) => {
+    const matchesLanguage = q.language === activeLang;
+    const matchesSearch = searchTerm.trim() === '' || 
+      q.question.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesLanguage && matchesSearch;
+  });
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(prev => ({ ...prev, [activeLang]: 1 }));
+  }, [searchTerm, activeLang]);
+
   const indexOfLastRow = currentPage[activeLang] * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredRows.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
 
   const changePage = (p) => setCurrentPage((prev) => ({ ...prev, [activeLang]: p }));
+
+  // Clear search function
+  const clearSearch = () => {
+    setSearchTerm('');
+  };
 
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
@@ -126,6 +143,11 @@ export default function QuizQuestionsPage() {
           <h1 className="text-2xl font-bold text-purple-900">Quiz Questions</h1>
           <p className="text-purple-600">
             {filteredRows.length} {activeLang} questions
+            {searchTerm && (
+              <span className="text-purple-500">
+                {' '}(filtered from {rows.filter(q => q.language === activeLang).length})
+              </span>
+            )}
           </p>
         </div>
 
@@ -162,6 +184,35 @@ export default function QuizQuestionsPage() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={20} className="text-purple-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search questions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white shadow-sm"
+          />
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-purple-400 hover:text-purple-600"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="mt-2 text-sm text-purple-600">
+            Searching for: "<span className="font-medium">{searchTerm}</span>"
+          </p>
+        )}
+      </div>
+
       {/* Questions List */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
@@ -182,7 +233,18 @@ export default function QuizQuestionsPage() {
                       {indexOfFirstRow + idx + 1}
                     </span>
                     <h3 className="text-lg font-semibold text-purple-900 break-words">
-                      {q.question}
+                      {searchTerm ? (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: q.question.replace(
+                              new RegExp(searchTerm, 'gi'),
+                              (match) => `<mark class="bg-yellow-200 px-1 rounded">${match}</mark>`
+                            )
+                          }}
+                        />
+                      ) : (
+                        q.question
+                      )}
                     </h3>
                   </div>
                   <div className="flex gap-2">
@@ -242,8 +304,19 @@ export default function QuizQuestionsPage() {
           ) : (
             <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
               <p className="text-purple-600">
-                No {activeLang} questions found. Click "Add Question" to create one.
+                {searchTerm 
+                  ? `No ${activeLang} questions found matching "${searchTerm}". Try a different search term.`
+                  : `No ${activeLang} questions found. Click "Add Question" to create one.`
+                }
               </p>
+              {searchTerm && (
+                <button
+                  onClick={clearSearch}
+                  className="mt-2 text-purple-500 hover:text-purple-700 underline"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           )}
         </div>
