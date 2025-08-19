@@ -38,7 +38,7 @@ export const listQuizQuestions = async (req, res) => {
   try {
     console.log('🔍 API called with query:', req.query);
     
-    const { language, search, page = 1, limit = 50 } = req.query;
+    const { language, search, page = 1, limit = 500 } = req.query;
 
     const filter = {};
     if (language) filter.language = language;
