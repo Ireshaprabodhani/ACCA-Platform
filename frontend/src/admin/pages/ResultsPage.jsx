@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Loader2,
   Search,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 
 const fetchJSON = async (url) => {
@@ -41,41 +42,70 @@ export default function ResultsPage() {
   const SCHOOLS_PER_PAGE = 3;
   const ATTEMPTS_PER_PAGE = 5;
 
+  const loadResults = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const data = await fetchJSON(
+        `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
+      );
+
+      data.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+      const grouped = {};
+      data.forEach((a) => {
+        const key = a.schoolName || 'Other Schools';
+        (grouped[key] = grouped[key] || []).push(a);
+      });
+
+      setResults(Object.entries(grouped));
+      setCurrentSchoolPage(1);
+      setCurrentAttemptPage(1);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadResults = async () => {
-      try {
-        setIsLoading(true);
-        setError('');
-        const data = await fetchJSON(
-          `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status`
-        );
-
-        data.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-
-        const grouped = {};
-        data.forEach((a) => {
-          const key = a.schoolName || 'Other Schools';
-          (grouped[key] = grouped[key] || []).push(a);
-        });
-
-        setResults(Object.entries(grouped));
-        setCurrentSchoolPage(1);
-        setCurrentAttemptPage(1);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadResults();
   }, [activeTab]);
+
+  // Delete attempt function
+  const deleteAttempt = async (attemptId, schoolName) => {
+    if (!window.confirm("Are you sure you want to delete this record?")) return;
+
+    try {
+      const jwt = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      if (!jwt) throw new Error('No token - please log in');
+
+      const res = await fetch(
+        `https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/${activeTab}-status/${attemptId}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${jwt}` }
+        }
+      );
+
+      if (!res.ok) throw new Error('Failed to delete record');
+
+      // Update UI locally after deletion
+      setResults(prev =>
+        prev.map(([school, attempts]) => {
+          if (school !== schoolName) return [school, attempts];
+          return [school, attempts.filter(a => a.id !== attemptId)];
+        }).filter(([_, attempts]) => attempts.length > 0) // remove empty schools
+      );
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   // Filter results based on search query
   const filteredResults = useMemo(() => {
     if (!searchQuery.trim()) return results;
-    
-    return results.filter(([schoolName]) => 
+    return results.filter(([schoolName]) =>
       schoolName.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [results, searchQuery]);
@@ -130,11 +160,13 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-purple-50 to-blue-50">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-purple-900 mb-2">Results Dashboard</h1>
         <p className="text-purple-600">View and analyze student performance</p>
       </div>
 
+      {/* Tabs + Export */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex bg-purple-100 rounded-lg p-1">
           {['quiz', 'case'].map((tab) => (
@@ -162,7 +194,7 @@ export default function ResultsPage() {
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -184,16 +216,9 @@ export default function ResultsPage() {
             </button>
           )}
         </div>
-        {searchQuery && (
-          <p className="mt-2 text-sm text-purple-600">
-            {filteredResults.length === 0 
-              ? `No schools found matching "${searchQuery}"` 
-              : `Found ${filteredResults.length} school${filteredResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
-            }
-          </p>
-        )}
       </div>
 
+      {/* Results */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="animate-spin h-12 w-12 text-purple-600" />
@@ -205,20 +230,7 @@ export default function ResultsPage() {
         </div>
       ) : filteredResults.length === 0 ? (
         <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
-          <p className="text-purple-600">
-            {searchQuery 
-              ? `No schools found matching "${searchQuery}"` 
-              : `No results found for ${activeTab === 'quiz' ? 'quiz' : 'case study'}.`
-            }
-          </p>
-          {searchQuery && (
-            <button
-              onClick={clearSearch}
-              className="mt-3 text-purple-700 hover:text-purple-900 font-medium"
-            >
-              Clear search to see all results
-            </button>
-          )}
+          <p className="text-purple-600">No results found.</p>
         </div>
       ) : (
         <>
@@ -239,26 +251,18 @@ export default function ResultsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="bg-purple-600 text-white px-6 py-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-bold">{school}</h2>
-                      <span className="bg-white text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
-                        {totalAttempts} attempt{totalAttempts !== 1 ? 's' : ''}
-                      </span>
-                    </div>
+                  {/* School Header */}
+                  <div className="bg-purple-600 text-white px-6 py-4 flex justify-between items-center">
+                    <h2 className="text-xl font-bold">{school}</h2>
+                    <span className="bg-white text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                      {totalAttempts} attempt{totalAttempts !== 1 ? 's' : ''}
+                    </span>
                   </div>
 
+                  {/* Attempts */}
                   <div className="divide-y divide-purple-100">
                     {paginatedAttempts.map((attempt) => {
                       const isExpanded = expandedAttempts[attempt.id];
-                      const correctAnswers = attempt.questions?.filter(
-                        (q, idx) => {
-                          // Handle both quiz (answer) and case study (correctAnswer) data structures
-                          const correctAnswer = q?.correctAnswer !== undefined ? q.correctAnswer : q?.answer;
-                          return correctAnswer === attempt.answers?.[idx];
-                        }
-                      ).length || 0;
-
                       return (
                         <div key={attempt.id} className="p-4 hover:bg-purple-50 transition">
                           <div className="flex justify-between items-start">
@@ -268,13 +272,19 @@ export default function ResultsPage() {
                               </h3>
                               <p className="text-sm text-purple-600">{attempt.email || 'No email'}</p>
                             </div>
-                            <div className="text-right">
-                              <div className="text-lg font-bold text-purple-700">
-                                Score: {attempt.score}
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-purple-700">
+                                  Score: {attempt.score}
+                                </div>
                               </div>
-                              <div className="text-sm text-purple-500">
-                                {correctAnswers}/{attempt.questions?.length || 0} correct
-                              </div>
+                              <button
+                                onClick={() => deleteAttempt(attempt.id, school)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete attempt"
+                              >
+                                <Trash2 size={18} />
+                              </button>
                             </div>
                           </div>
 
@@ -298,6 +308,7 @@ export default function ResultsPage() {
                             </span>
                           </div>
 
+                          {/* Expanded details */}
                           <AnimatePresence>
                             {isExpanded && (
                               <motion.div
@@ -307,63 +318,15 @@ export default function ResultsPage() {
                                 transition={{ duration: 0.3 }}
                                 className="mt-4"
                               >
+                                {/* Question list */}
                                 <div className="space-y-3">
-                                  {attempt.questions?.map((question, idx) => {
-                                    const selectedAnswer = attempt.answers?.[idx];
-                                    // Handle both quiz (answer) and case study (correctAnswer) data structures
-                                    const correctAnswer = question?.correctAnswer !== undefined ? question.correctAnswer : question?.answer;
-                                    const isCorrect = selectedAnswer === correctAnswer;
-
-                                    return (
-                                      <div key={idx} className="p-3 bg-purple-50 rounded-lg mb-3">
-                                        <div className="font-medium text-purple-900 mb-2">
-                                          Q{idx + 1}: {question?.question || 'Question not available'}
-                                        </div>
-                                        <ul className="space-y-2">
-                                          {question?.options?.map((option, optIdx) => {
-                                            // Apply to BOTH quiz and case study results
-                                            let optionClass = "p-2 rounded-md border";
-                                            
-                                            // Correct answer styling (always green background)
-                                            if (optIdx === correctAnswer) {
-                                              optionClass += " bg-green-100 border-green-300 text-green-800 font-medium";
-                                            }
-                                            
-                                            // User selected answer styling
-                                            if (optIdx === selectedAnswer && optIdx !== correctAnswer) {
-                                              // Wrong answer - red background
-                                              optionClass = "p-2 rounded-md border bg-red-100 border-red-300 text-red-800 font-medium";
-                                            }
-                                            
-                                            // If user selected the correct answer, it gets both correct and selected styling
-                                            if (optIdx === selectedAnswer && optIdx === correctAnswer) {
-                                              optionClass = "p-2 rounded-md border bg-green-200 border-green-400 text-green-900 font-bold";
-                                            }
-                                            
-                                            // Unselected options
-                                            if (optIdx !== correctAnswer && optIdx !== selectedAnswer) {
-                                              optionClass += " bg-gray-50 border-gray-200 text-gray-700";
-                                            }
-
-                                            return (
-                                              <li key={optIdx} className={optionClass}>
-                                                {String.fromCharCode(65 + optIdx)}. {option}
-                                                {optIdx === correctAnswer && optIdx !== selectedAnswer && (
-                                                  <span className="ml-2 text-green-600 font-bold">✓ Correct</span>
-                                                )}
-                                                {optIdx === selectedAnswer && optIdx !== correctAnswer && (
-                                                  <span className="ml-2 text-red-600 font-bold">✗ Your answer</span>
-                                                )}
-                                                {optIdx === selectedAnswer && optIdx === correctAnswer && (
-                                                  <span className="ml-2 text-green-700 font-bold">✓ Correct answer</span>
-                                                )}
-                                              </li>
-                                            );
-                                          })}
-                                        </ul>
+                                  {attempt.questions?.map((q, idx) => (
+                                    <div key={idx} className="p-3 bg-purple-50 rounded-lg">
+                                      <div className="font-medium text-purple-900 mb-2">
+                                        Q{idx + 1}: {q.question}
                                       </div>
-                                    );
-                                  })}
+                                    </div>
+                                  ))}
                                 </div>
                               </motion.div>
                             )}
@@ -373,6 +336,7 @@ export default function ResultsPage() {
                     })}
                   </div>
 
+                  {/* Pagination for attempts */}
                   {totalPages > 1 && (
                     <div className="flex justify-between items-center p-4 border-t border-purple-100">
                       <button
@@ -398,30 +362,6 @@ export default function ResultsPage() {
               );
             })}
           </div>
-
-          {totalSchoolPages > 1 && (
-            <div className="flex justify-between items-center mt-6">
-              <button
-                onClick={() => setCurrentSchoolPage(p => Math.max(1, p - 1))}
-                disabled={currentSchoolPage === 1}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50"
-              >
-                <ChevronLeft size={18} /> Previous Schools
-              </button>
-              <span className="text-purple-600">
-                Showing schools {(currentSchoolPage - 1) * SCHOOLS_PER_PAGE + 1}-
-                {Math.min(currentSchoolPage * SCHOOLS_PER_PAGE, filteredResults.length)} of {filteredResults.length}
-                {searchQuery && ` (filtered from ${results.length} total)`}
-              </span>
-              <button
-                onClick={() => setCurrentSchoolPage(p => Math.min(totalSchoolPages, p + 1))}
-                disabled={currentSchoolPage === totalSchoolPages}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50"
-              >
-                Next Schools <ChevronRight size={18} />
-              </button>
-            </div>
-          )}
         </>
       )}
     </div>
