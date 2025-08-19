@@ -72,5 +72,9 @@ router.get('/case-status',  adminAuth, adminCtrl.getCaseAttemptStatus);
 router.get('/results',      adminAuth, adminCtrl.getSchoolResults);
 router.get('/stats',        adminAuth, adminCtrl.getStats);
 router.get('/leaderboard',  adminAuth, adminCtrl.getLeaderboard);
+router.delete('/quiz-attempts/:id', adminAuth, adminCtrl.deleteQuizAttempt);     
+router.delete('/quiz-attempts',     adminAuth, adminCtrl.deleteQuizAttempts);     
+router.delete('/case-attempts/:id', adminAuth, adminCtrl.deleteCaseAttempt);   
+router.delete('/case-attempts',     adminAuth, adminCtrl.deleteCaseAttempts); 
 
 export default router;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -8,7 +8,9 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Search,
+  X
 } from 'lucide-react';
 
 const fetchJSON = async (url) => {
@@ -35,6 +37,7 @@ export default function ResultsPage() {
   const [expandedAttempts, setExpandedAttempts] = useState({});
   const [currentSchoolPage, setCurrentSchoolPage] = useState(1);
   const [currentAttemptPage, setCurrentAttemptPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const SCHOOLS_PER_PAGE = 3;
   const ATTEMPTS_PER_PAGE = 5;
 
@@ -68,8 +71,23 @@ export default function ResultsPage() {
     loadResults();
   }, [activeTab]);
 
+  // Filter results based on search query
+  const filteredResults = useMemo(() => {
+    if (!searchQuery.trim()) return results;
+    
+    return results.filter(([schoolName]) => 
+      schoolName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [results, searchQuery]);
+
+  // Reset pagination when search query changes
+  useEffect(() => {
+    setCurrentSchoolPage(1);
+    setCurrentAttemptPage(1);
+  }, [searchQuery]);
+
   const exportToExcel = () => {
-    const records = results.flatMap(([school, attempts]) =>
+    const records = filteredResults.flatMap(([school, attempts]) =>
       attempts.map(at => ({
         School: school,
         User: at.userName ?? 'Deleted User',
@@ -99,12 +117,16 @@ export default function ResultsPage() {
     }));
   };
 
-  const paginatedSchools = results.slice(
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  const paginatedSchools = filteredResults.slice(
     (currentSchoolPage - 1) * SCHOOLS_PER_PAGE,
     currentSchoolPage * SCHOOLS_PER_PAGE
   );
 
-  const totalSchoolPages = Math.ceil(results.length / SCHOOLS_PER_PAGE);
+  const totalSchoolPages = Math.ceil(filteredResults.length / SCHOOLS_PER_PAGE);
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-purple-50 to-blue-50">
@@ -132,12 +154,44 @@ export default function ResultsPage() {
 
         <button
           onClick={exportToExcel}
-          disabled={isLoading || results.length === 0}
+          disabled={isLoading || filteredResults.length === 0}
           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download size={18} />
           Export to Excel
         </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-purple-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search schools..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="block w-full pl-10 pr-10 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-purple-900 placeholder-purple-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <X className="h-5 w-5 text-purple-400 hover:text-purple-600" />
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="mt-2 text-sm text-purple-600">
+            {filteredResults.length === 0 
+              ? `No schools found matching "${searchQuery}"` 
+              : `Found ${filteredResults.length} school${filteredResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+            }
+          </p>
+        )}
       </div>
 
       {isLoading ? (
@@ -149,9 +203,22 @@ export default function ResultsPage() {
           <p className="font-medium">Error loading results:</p>
           <p>{error}</p>
         </div>
-      ) : results.length === 0 ? (
+      ) : filteredResults.length === 0 ? (
         <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
-          <p className="text-purple-600">No results found for {activeTab === 'quiz' ? 'quiz' : 'case study'}.</p>
+          <p className="text-purple-600">
+            {searchQuery 
+              ? `No schools found matching "${searchQuery}"` 
+              : `No results found for ${activeTab === 'quiz' ? 'quiz' : 'case study'}.`
+            }
+          </p>
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="mt-3 text-purple-700 hover:text-purple-900 font-medium"
+            >
+              Clear search to see all results
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -343,7 +410,8 @@ export default function ResultsPage() {
               </button>
               <span className="text-purple-600">
                 Showing schools {(currentSchoolPage - 1) * SCHOOLS_PER_PAGE + 1}-
-                {Math.min(currentSchoolPage * SCHOOLS_PER_PAGE, results.length)} of {results.length}
+                {Math.min(currentSchoolPage * SCHOOLS_PER_PAGE, filteredResults.length)} of {filteredResults.length}
+                {searchQuery && ` (filtered from ${results.length} total)`}
               </span>
               <button
                 onClick={() => setCurrentSchoolPage(p => Math.min(totalSchoolPages, p + 1))}
