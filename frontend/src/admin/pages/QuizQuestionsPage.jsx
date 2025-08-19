@@ -25,16 +25,42 @@ export default function QuizQuestionsPage() {
   const rowsPerPage = 10;
 
   const loadRows = () => {
-    setIsLoading(true);
-    axios
-      .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz', authHeaders())
-      .then(({ data }) => {
-        setRows(Array.isArray(data) ? data : data.questions || []);
-        setCurrentPage({ English: 1, Sinhala: 1 });
-      })
-      .catch(() => toast.error('Failed to load questions'))
-      .finally(() => setIsLoading(false));
-  };
+  setIsLoading(true);
+  console.log('🔄 Frontend: Loading questions...');
+  console.log('🔗 API URL:', 'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz');
+  
+  axios
+    .get('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/quiz', authHeaders())
+    .then(({ data }) => {
+      console.log('✅ Frontend: Raw API response:', data);
+      console.log('📊 Response type:', typeof data);
+      console.log('📊 Is array?', Array.isArray(data));
+      
+      // Your current logic
+      const questions = Array.isArray(data) ? data : data.questions || [];
+      
+      console.log('📝 Final questions array:', questions);
+      console.log('🔢 Questions count:', questions.length);
+      
+      if (questions.length > 0) {
+        console.log('📄 First question:', questions[0]);
+        const englishCount = questions.filter(q => q.language === 'English').length;
+        const sinhalaCount = questions.filter(q => q.language === 'Sinhala').length;
+        console.log(`🇬🇧 English: ${englishCount}, 🇱🇰 Sinhala: ${sinhalaCount}`);
+      } else {
+        console.log('⚠️ No questions in final array!');
+      }
+      
+      setRows(questions);
+      setCurrentPage({ English: 1, Sinhala: 1 });
+    })
+    .catch((error) => {
+      console.error('❌ Frontend: API Error:', error);
+      console.error('❌ Error response:', error.response);
+      toast.error('Failed to load questions');
+    })
+    .finally(() => setIsLoading(false));
+};
 
   const saveRow = () => {
     if (!form.question.trim()) {

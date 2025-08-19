@@ -36,11 +36,15 @@ export const addQuizQuestion = async (req, res) => {
 
 export const listQuizQuestions = async (req, res) => {
   try {
+    console.log('🔍 API called with query:', req.query);
+    
     const { language, search, page = 1, limit = 50 } = req.query;
 
     const filter = {};
     if (language) filter.language = language;
     if (search) filter.question = { $regex: search, $options: 'i' };
+    
+    console.log('🔍 Using filter:', filter);
 
     const skip = (page - 1) * limit;
 
@@ -49,9 +53,18 @@ export const listQuizQuestions = async (req, res) => {
       QuizQuestion.find(filter).skip(skip).limit(Number(limit)),
     ]);
 
-    res.json({ total, page: Number(page), questions });
+    console.log('📊 Database results:');
+    console.log('   - Total count:', total);
+    console.log('   - Questions returned:', questions.length);
+    console.log('   - First question sample:', questions[0]);
+    console.log('   - All question IDs:', questions.map(q => q._id));
+
+    const response = { total, page: Number(page), questions };
+    console.log('📤 Sending response:', response);
+
+    res.json(response);
   } catch (err) {
-    console.error('listQuizQuestions:', err);
+    console.error('❌ Error in listQuizQuestions:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
