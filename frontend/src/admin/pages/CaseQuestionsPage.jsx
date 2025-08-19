@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import toast, { Toaster } from 'react-hot-toast';
-import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle, Loader2, Search } from 'lucide-react';
 
 const PER_PAGE = 10;
 const BLANK_FORM = {
@@ -12,7 +11,8 @@ const BLANK_FORM = {
 };
 
 export default function CaseQuestionsPage() {
-  const [rows, setRows] = useState([]);
+  const [allRows, setAllRows] = useState([]); // Store all questions
+  const [filteredRows, setFilteredRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [modalOpen, setModal] = useState(false);
@@ -20,6 +20,7 @@ export default function CaseQuestionsPage() {
   const [form, setForm] = useState(BLANK_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Create axios instance with interceptor to handle token refresh
   const api = axios.create({
@@ -48,48 +49,76 @@ export default function CaseQuestionsPage() {
     }
   );
 
-  const loadRows = async (p = page) => {
+  const loadAllRows = async () => {
     try {
       setIsLoading(true);
-      const { data } = await api.get('/case', {
-        params: { page: p, limit: PER_PAGE, language: 'English' },
-      });
+      let allQuestions = [];
+      let currentPage = 1;
+      let totalPages = 1;
 
-      const mappedQuestions = (data.questions || []).map((q) => ({
-        ...q,
-        answer: q.correctAnswer,
-      }));
+      // Load all pages to get all questions for search functionality
+      do {
+        const { data } = await api.get('/case', {
+          params: { page: currentPage, limit: PER_PAGE, language: 'English' },
+        });
 
-      setRows(mappedQuestions);
-      setTotal(data.total || 0);
-      setPage(data.page || 1);
+        const mappedQuestions = (data.questions || []).map((q) => ({
+          ...q,
+          answer: q.correctAnswer,
+        }));
+
+        allQuestions = [...allQuestions, ...mappedQuestions];
+        setTotal(data.total || 0);
+        totalPages = Math.ceil((data.total || 0) / PER_PAGE);
+        currentPage++;
+      } while (currentPage <= totalPages);
+
+      setAllRows(allQuestions);
+      filterQuestions(allQuestions, searchQuery);
       
       if (isInitialLoad) {
         setIsInitialLoad(false);
       }
     } catch (err) {
-      toast.error('Failed to load questions. Please try again.');
       console.error('Error loading questions:', err);
       
       if (isInitialLoad) {
-        setTimeout(() => loadRows(p), 1000);
+        setTimeout(() => loadAllRows(), 1000);
       }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const filterQuestions = (questions, search) => {
+    if (!search.trim()) {
+      setFilteredRows(questions);
+      return;
+    }
+
+    const filtered = questions.filter(q => 
+      q.question.toLowerCase().includes(search.toLowerCase())
+    );
+    setFilteredRows(filtered);
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    filterQuestions(allRows, value);
+    setPage(1); // Reset to first page when searching
+  };
+
   const saveRow = async () => {
     if (!form.question.trim()) {
-      toast.error('Please enter a question');
+      alert('Please enter a question');
       return;
     }
     if (form.options.some((o) => !o.trim())) {
-      toast.error('Please fill all options');
+      alert('Please fill all options');
       return;
     }
     if (form.answer < 0 || form.answer > 3) {
-      toast.error('Please select the correct answer');
+      alert('Please select the correct answer');
       return;
     }
 
@@ -100,19 +129,15 @@ export default function CaseQuestionsPage() {
         answer: undefined,
       };
 
-      const req = editId 
-        ? api.put(`/case/${editId}`, payload)
-        : api.post('/case', payload);
-
-      await toast.promise(req, {
-        loading: editId ? 'Updating question...' : 'Adding new question...',
-        success: editId ? 'Question updated successfully!' : 'Question added successfully!',
-        error: editId ? 'Failed to update question' : 'Failed to add question'
-      });
+      if (editId) {
+        await api.put(`/case/${editId}`, payload);
+      } else {
+        await api.post('/case', payload);
+      }
 
       setModal(false);
       setForm(BLANK_FORM);
-      loadRows(1);
+      loadAllRows(); // Reload all data
     } catch (error) {
       console.error('Error saving question:', error);
     }
@@ -122,38 +147,47 @@ export default function CaseQuestionsPage() {
     if (!window.confirm(`Are you sure you want to delete:\n"${questionText}"?`)) return;
     
     try {
-      await toast.promise(api.delete(`/case/${id}`), {
-        loading: 'Deleting question...',
-        success: 'Question deleted successfully!',
-        error: 'Failed to delete question'
-      });
-      loadRows(page);
+      await api.delete(`/case/${id}`);
+      loadAllRows(); // Reload all data
     } catch (error) {
       console.error('Error deleting question:', error);
     }
   };
 
+  const clearSearch = () => {
+    setSearchQuery('');
+    filterQuestions(allRows, '');
+    setPage(1);
+  };
+
   useEffect(() => {
-    loadRows(1);
+    loadAllRows();
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-  const firstIndex = (page - 1) * PER_PAGE;
+  // Calculate pagination for filtered results
+  const filteredTotal = filteredRows.length;
+  const filteredTotalPages = Math.max(1, Math.ceil(filteredTotal / PER_PAGE));
+  const startIndex = (page - 1) * PER_PAGE;
+  const endIndex = startIndex + PER_PAGE;
+  const paginatedFilteredRows = filteredRows.slice(startIndex, endIndex);
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
-      <Toaster position="top-center" />
-
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-purple-900">Case Study Questions</h1>
           <p className="text-purple-600">
-            {total} questions available
+            {searchQuery ? filteredTotal : total} questions available
+            {searchQuery && (
+              <span className="ml-2 text-sm">
+                (filtered by: "{searchQuery}")
+              </span>
+            )}
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div className="flex flex-col items-start sm:flex-row gap-3 w-full md:w-auto">
           {/* Add Question Button */}
           <button
             onClick={() => {
@@ -169,6 +203,35 @@ export default function CaseQuestionsPage() {
         </div>
       </div>
 
+      {/* Search Section */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-purple-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search questions..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pl-10 pr-10 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+          />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-purple-400 hover:text-purple-600"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="text-sm text-purple-600 mt-2">
+            Showing {filteredTotal} results for: "{searchQuery}"
+          </p>
+        )}
+      </div>
+
       {/* Loading State */}
       {isLoading && isInitialLoad ? (
         <div className="flex justify-center items-center h-64">
@@ -178,8 +241,8 @@ export default function CaseQuestionsPage() {
         <>
           {/* Questions List */}
           <div className="space-y-4">
-            {rows.length > 0 ? (
-              rows.map((q, idx) => (
+            {paginatedFilteredRows.length > 0 ? (
+              paginatedFilteredRows.map((q, idx) => (
                 <div
                   key={q._id}
                   className="bg-white border border-purple-100 rounded-xl shadow-sm hover:shadow-md transition p-6 relative"
@@ -188,7 +251,7 @@ export default function CaseQuestionsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
                     <div className="flex items-start gap-3">
                       <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-purple-100 text-purple-800 rounded-full text-sm font-medium mt-1">
-                        {firstIndex + idx + 1}
+                        {startIndex + idx + 1}
                       </span>
                       <h3 className="text-lg font-semibold text-purple-900 break-words">
                         {q.question}
@@ -248,32 +311,43 @@ export default function CaseQuestionsPage() {
             ) : (
               <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
                 <p className="text-purple-600">
-                  No case study questions found. Click "Add Question" to create one.
+                  {searchQuery 
+                    ? `No questions found matching "${searchQuery}"`
+                    : 'No case study questions found. Click "Add Question" to create one.'
+                  }
                 </p>
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="mt-2 text-purple-600 hover:text-purple-800 underline"
+                  >
+                    Clear search
+                  </button>
+                )}
               </div>
             )}
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {filteredTotalPages > 1 && (
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8">
               <div className="text-sm text-purple-600">
-                Showing {firstIndex + 1} to {Math.min(firstIndex + PER_PAGE, total)} of {total} questions
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredTotal)} of {filteredTotal} questions
               </div>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page === 1}
-                  onClick={() => loadRows(page - 1)}
+                  onClick={() => setPage(page - 1)}
                   className="p-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50 transition"
                 >
                   <ChevronLeft size={18} />
                 </button>
                 <span className="px-3 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 text-sm">
-                  Page {page} of {totalPages}
+                  Page {page} of {filteredTotalPages}
                 </span>
                 <button
-                  disabled={page === totalPages}
-                  onClick={() => loadRows(page + 1)}
+                  disabled={page === filteredTotalPages}
+                  onClick={() => setPage(page + 1)}
                   className="p-2 bg-white border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50 transition"
                 >
                   <ChevronRight size={18} />
