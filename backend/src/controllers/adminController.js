@@ -207,6 +207,114 @@ export const getCaseAttemptStatus = async (req, res) => {
   }
 };
 
+export const deleteQuizAttempt = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedAttempt = await QuizAttempt.findByIdAndDelete(id);
+
+    if (!deletedAttempt) {
+      return res.status(404).json({ message: 'Quiz attempt not found' });
+    }
+
+    res.json({ 
+      message: 'Quiz attempt deleted successfully', 
+      id: deletedAttempt._id 
+    });
+  } catch (error) {
+    console.error('Delete quiz attempt error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete multiple quiz attempts (by school name or all)
+export const deleteQuizAttempts = async (req, res) => {
+  try {
+    const { schoolName } = req.query;
+
+    let filter = {};
+    if (schoolName) {
+      // Find users from the specific school
+      const users = await User.find({ schoolName }).select('_id');
+      if (users.length === 0) {
+        return res.json({ 
+          deletedCount: 0, 
+          message: `No users found for school: ${schoolName}` 
+        });
+      }
+      const userIds = users.map(u => u._id);
+      filter = { userId: { $in: userIds } };
+    }
+
+    const result = await QuizAttempt.deleteMany(filter);
+
+    res.json({
+      deletedCount: result.deletedCount,
+      message: schoolName 
+        ? `Deleted ${result.deletedCount} quiz attempt(s) from ${schoolName}`
+        : `Deleted ${result.deletedCount} quiz attempt(s)`
+    });
+  } catch (error) {
+    console.error('Delete quiz attempts error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete single case study attempt
+export const deleteCaseAttempt = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedAttempt = await CaseAttempt.findByIdAndDelete(id);
+
+    if (!deletedAttempt) {
+      return res.status(404).json({ message: 'Case study attempt not found' });
+    }
+
+    res.json({ 
+      message: 'Case study attempt deleted successfully', 
+      id: deletedAttempt._id 
+    });
+  } catch (error) {
+    console.error('Delete case attempt error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete multiple case study attempts (by school name or all)
+export const deleteCaseAttempts = async (req, res) => {
+  try {
+    const { schoolName } = req.query;
+
+    let filter = {};
+    if (schoolName) {
+      // Find users from the specific school
+      const users = await User.find({ schoolName }).select('_id');
+      if (users.length === 0) {
+        return res.json({ 
+          deletedCount: 0, 
+          message: `No users found for school: ${schoolName}` 
+        });
+      }
+      const userIds = users.map(u => u._id);
+      filter = { userId: { $in: userIds } };
+    }
+
+    const result = await CaseAttempt.deleteMany(filter);
+
+    res.json({
+      deletedCount: result.deletedCount,
+      message: schoolName 
+        ? `Deleted ${result.deletedCount} case study attempt(s) from ${schoolName}`
+        : `Deleted ${result.deletedCount} case study attempt(s)`
+    });
+  } catch (error) {
+    console.error('Delete case attempts error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
 export const getSchoolResults = async (req, res) => {
   try {
     /* ----------- gather quiz aggregate ----------- */
@@ -256,6 +364,8 @@ export const getSchoolResults = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
 
 // get stats
 export const getStats = async (req, res) => {
@@ -368,6 +478,10 @@ const adminController = {
   deleteUser,
   getQuizAttemptStatus,
   getCaseAttemptStatus,
+  deleteQuizAttempt,
+  deleteQuizAttempts,
+  deleteCaseAttempt,
+  deleteCaseAttempts,
   getSchoolResults,
   getStats,
   getLeaderboard
