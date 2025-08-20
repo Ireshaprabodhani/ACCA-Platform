@@ -76,32 +76,32 @@ export const addUserWithMembers = async (req, res) => {
   }
 };
 
-export const resetUsersCollection = async (req, res) => {
-  try {
-    // Delete all users
-    await User.deleteMany({});
+// export const resetUsersCollection = async (req, res) => {
+//   try {
+//     // Delete all users
+//     await User.deleteMany({});
     
-    // Drop all indexes except _id
-    await User.collection.dropIndexes();
+//     // Drop all indexes except _id
+//     await User.collection.dropIndexes();
     
-    // Recreate the unique email index
-    await User.collection.createIndex({ email: 1 }, { unique: true });
+//     // Recreate the unique email index
+//     await User.collection.createIndex({ email: 1 }, { unique: true });
     
-    // Recreate other indexes
-    await User.collection.createIndex({ firstName: 1 });
-    await User.collection.createIndex({ age: 1 });
+//     // Recreate other indexes
+//     await User.collection.createIndex({ firstName: 1 });
+//     await User.collection.createIndex({ age: 1 });
     
-    res.json({ 
-      message: 'Users collection reset successfully. All indexes recreated.' 
-    });
-  } catch (error) {
-    console.error('Error resetting users collection:', error);
-    res.status(500).json({ 
-      message: 'Error resetting collection', 
-      error: error.message 
-    });
-  }
-};
+//     res.json({ 
+//       message: 'Users collection reset successfully. All indexes recreated.' 
+//     });
+//   } catch (error) {
+//     console.error('Error resetting users collection:', error);
+//     res.status(500).json({ 
+//       message: 'Error resetting collection', 
+//       error: error.message 
+//     });
+//   }
+// };
 
 export const debugUsers = async (req, res) => {
   try {
