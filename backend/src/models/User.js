@@ -1,5 +1,3 @@
-
-
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
@@ -8,29 +6,44 @@ const memberSchema = new mongoose.Schema({
   firstName: { type: String, required: true, index: true },
   lastName: { type: String, required: true },
   whatsappNumber: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { 
+    type: String, 
+    required: true, 
+    // Remove unique: true from member schema since they're embedded
+    lowercase: true,
+    trim: true
+  },
   gender: { type: String, required: true },
   age: { type: Number, index: true, required: true },
   grade: { type: String, required: true },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
 }, {
-  timestamps: true
+  timestamps: true 
 });
 
 const userSchema = new mongoose.Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  whatsappNumber: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  firstName: { type: String, required: true, trim: true },
+  lastName: { type: String, required: true, trim: true },
+  whatsappNumber: { type: String, required: true, trim: true },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true,
+    trim: true
+  },
   gender: { type: String, required: true },
   age: { type: Number, required: true },
   password: { type: String, required: true },
   grade: { type: String, required: true },
-  schoolName: { type: String, required: true },
+  schoolName: { type: String, required: true, trim: true },
   members: [memberSchema],
+  lastLoginAt: { type: Date },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
 }, {
-  timestamps: true
+  timestamps: true 
 });
 
 // Hash password before save
