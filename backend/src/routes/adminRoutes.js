@@ -76,5 +76,6 @@ router.delete('/quiz-attempts/:id', adminAuth, adminCtrl.deleteQuizAttempt);
 router.delete('/quiz-attempts',     adminAuth, adminCtrl.deleteQuizAttempts);     
 router.delete('/case-attempts/:id', adminAuth, adminCtrl.deleteCaseAttempt);   
 router.delete('/case-attempts',     adminAuth, adminCtrl.deleteCaseAttempts); 
+router.get('/debug-users', debugUsers);
 
 export default router;
