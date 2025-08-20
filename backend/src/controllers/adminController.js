@@ -526,7 +526,8 @@ const adminController = {
   deleteCaseAttempts,
   getSchoolResults,
   getStats,
-  getLeaderboard
+  getLeaderboard,
+  debugUsers
 };
 
 export default adminController;
