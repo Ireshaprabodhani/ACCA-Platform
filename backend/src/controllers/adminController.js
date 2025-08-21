@@ -14,7 +14,7 @@ import jwt from 'jsonwebtoken';
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
 const nameRegex = /^[a-zA-Z\s\-\']+$/;
-const gradeRegex = /^(K|Pre-K|[1-9]|1[0-2]|Kindergarten|Grade [1-9]|Grade 1[0-2])$/i;
+const gradeRegex = /^(K|Pre-K|[1-9]|1[0-3]|Kindergarten|Grade [1-9]|Grade 1[0-3]|University|College)$/i;
 
 const validateUserData = (userData, isUpdate = false) => {
   const errors = [];

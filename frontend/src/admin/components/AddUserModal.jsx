@@ -2,6 +2,138 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+// Validation helpers (same as backend)
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+const nameRegex = /^[a-zA-Z\s\-\']+$/;
+// Updated grade regex to include 13 and university
+const gradeRegex = /^(K|Pre-K|[1-9]|1[0-3]|Kindergarten|Grade [1-9]|Grade 1[0-3]|University|College)$/i;
+const validGenders = ['male', 'female', 'other', 'prefer-not-to-say'];
+
+const validateField = (name, value, isMember = false, index = null) => {
+  const errors = [];
+  const prefix = isMember ? `Member ${index + 1}: ` : '';
+
+  switch (name) {
+    case 'firstName':
+    case 'lastName':
+      if (!value || !value.trim()) {
+        errors.push(`${prefix}${name === 'firstName' ? 'First' : 'Last'} name is required`);
+      } else if (!nameRegex.test(value.trim())) {
+        errors.push(`${prefix}${name === 'firstName' ? 'First' : 'Last'} name can only contain letters, spaces, hyphens, and apostrophes`);
+      } else if (value.trim().length > 50) {
+        errors.push(`${prefix}${name === 'firstName' ? 'First' : 'Last'} name cannot exceed 50 characters`);
+      }
+      break;
+
+    case 'email':
+      if (!value || !value.trim()) {
+        errors.push(`${prefix}Email is required`);
+      } else if (!emailRegex.test(value.trim())) {
+        errors.push(`${prefix}Please enter a valid email address`);
+      }
+      break;
+
+    case 'whatsappNumber':
+      if (!value || !value.trim()) {
+        errors.push(`${prefix}WhatsApp number is required`);
+      } else {
+        const cleanPhone = value.replace(/[\s\-\(\)]/g, '');
+        if (!phoneRegex.test(cleanPhone)) {
+          errors.push(`${prefix}Please enter a valid phone number`);
+        }
+      }
+      break;
+
+    case 'gender':
+      if (!value) {
+        errors.push(`${prefix}Gender is required`);
+      } else if (!validGenders.includes(value.toLowerCase())) {
+        errors.push(`${prefix}Gender must be one of: male, female, other, prefer-not-to-say`);
+      }
+      break;
+
+    case 'age':
+      if (!value) {
+        errors.push(`${prefix}Age is required`);
+      } else {
+        const age = Number(value);
+        if (isNaN(age) || age <= 0 || age > 150 || !Number.isInteger(age)) {
+          errors.push(`${prefix}Age must be a positive integer between 1 and 150`);
+        }
+      }
+      break;
+
+    case 'grade':
+      if (!value || !value.toString().trim()) {
+        errors.push(`${prefix}Grade is required`);
+      } else if (!gradeRegex.test(value.toString().trim())) {
+        errors.push(`${prefix}Please enter a valid grade (K, Pre-K, 1-13, University, or College)`);
+      }
+      break;
+
+    case 'schoolName':
+      if (!value || !value.trim()) {
+        errors.push('School name is required');
+      } else if (value.trim().length > 100) {
+        errors.push('School name cannot exceed 100 characters');
+      }
+      break;
+
+    case 'password':
+      if (!value) {
+        errors.push('Password is required');
+      } else if (value.length < 6) {
+        errors.push('Password must be at least 6 characters long');
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return errors;
+};
+
+const validateAllFields = (formData, membersData) => {
+  const errors = {};
+  let hasErrors = false;
+
+  // Validate main form fields
+  Object.keys(formData).forEach(field => {
+    const fieldErrors = validateField(field, formData[field]);
+    if (fieldErrors.length > 0) {
+      errors[field] = fieldErrors;
+      hasErrors = true;
+    }
+  });
+
+  // Validate members
+  if (membersData && membersData.length > 0) {
+    errors.members = [];
+    
+    membersData.forEach((member, index) => {
+      const memberErrors = {};
+      let memberHasErrors = false;
+      
+      Object.keys(member).forEach(field => {
+        const fieldErrors = validateField(field, member[field], true, index);
+        if (fieldErrors.length > 0) {
+          memberErrors[field] = fieldErrors;
+          memberHasErrors = true;
+          hasErrors = true;
+        }
+      });
+      
+      if (memberHasErrors) {
+        errors.members[index] = memberErrors;
+      }
+    });
+  }
+
+  return { errors, hasErrors };
+};
+
 const AddUserModal = ({ onClose, onUserAdded }) => {
   const [form, setForm] = useState({
     firstName: '',
@@ -17,79 +149,154 @@ const AddUserModal = ({ onClose, onUserAdded }) => {
 
   const [members, setMembers] = useState([]);
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  // Grade options including 1-13 and university
+  const gradeOptions = [
+    { value: '', label: 'Select Grade' },
+    { value: 'Pre-K', label: 'Pre-K' },
+    { value: 'K', label: 'Kindergarten' },
+    ...Array.from({ length: 13 }, (_, i) => ({ 
+      value: `${i + 1}`, 
+      label: `Grade ${i + 1}` 
+    })),
+    { value: 'University', label: 'University' },
+    { value: 'College', label: 'College' }
+  ];
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // Validate field when it changes and has been touched
+    if (touched[name]) {
+      const fieldErrors = validateField(name, value);
+      setErrors(prev => ({
+        ...prev,
+        [name]: fieldErrors
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    
+    // Validate field when it loses focus
+    const fieldErrors = validateField(name, form[name]);
+    setErrors(prev => ({
+      ...prev,
+      [name]: fieldErrors
+    }));
+  };
 
   const handleAddMember = () => {
-    setMembers([
-      ...members,
-      { firstName: '', lastName: '', email: '', whatsappNumber: '', grade: '', gender: '', age: '' },
-    ]);
+    setMembers([...members, { 
+      firstName: '', 
+      lastName: '', 
+      email: '', 
+      whatsappNumber: '', 
+      grade: '', 
+      gender: '', 
+      age: '' 
+    }]);
   };
 
   const handleMemberChange = (index, e) => {
+    const { name, value } = e.target;
     const updated = [...members];
-    updated[index][e.target.name] = e.target.value;
+    updated[index][name] = value;
     setMembers(updated);
+    
+    // Validate member field when it changes and has been touched
+    if (touched[`member-${index}-${name}`]) {
+      const fieldErrors = validateField(name, value, true, index);
+      setErrors(prev => ({
+        ...prev,
+        members: {
+          ...prev.members,
+          [index]: {
+            ...(prev.members && prev.members[index]),
+            [name]: fieldErrors
+          }
+        }
+      }));
+    }
   };
 
-  // === Frontend Validation ===
-  const validate = () => {
-    const newErrors = {};
-
-    if (!form.firstName.trim()) newErrors.firstName = 'First Name is required';
-    if (!form.email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Invalid email format';
-
-    if (!form.password) newErrors.password = 'Password is required';
-    else if (form.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-
-    if (form.whatsappNumber && !/^\d{10,15}$/.test(form.whatsappNumber))
-      newErrors.whatsappNumber = 'WhatsApp number must be 10–15 digits';
-
-    if (form.age && (isNaN(form.age) || form.age <= 0)) newErrors.age = 'Age must be a positive number';
-
-    // validate members
-    members.forEach((m, i) => {
-      if (!m.firstName.trim()) newErrors[`member-${i}-firstName`] = 'First Name required';
-      if (m.email && !/\S+@\S+\.\S+/.test(m.email)) newErrors[`member-${i}-email`] = 'Invalid email';
-      if (m.age && (isNaN(m.age) || m.age <= 0)) newErrors[`member-${i}-age`] = 'Age must be positive';
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleMemberBlur = (index, e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [`member-${index}-${name}`]: true }));
+    
+    // Validate member field when it loses focus
+    const fieldErrors = validateField(name, members[index][name], true, index);
+    setErrors(prev => ({
+      ...prev,
+      members: {
+        ...prev.members,
+        [index]: {
+          ...(prev.members && prev.members[index]),
+          [name]: fieldErrors
+        }
+      }
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) {
-      toast.error('Please fix validation errors');
+    
+    // Mark all fields as touched to show all errors
+    const allTouched = {};
+    Object.keys(form).forEach(key => { allTouched[key] = true; });
+    members.forEach((member, index) => {
+      Object.keys(member).forEach(key => {
+        allTouched[`member-${index}-${key}`] = true;
+      });
+    });
+    setTouched(allTouched);
+    
+    // Validate all fields
+    const { errors: validationErrors, hasErrors } = validateAllFields(form, members);
+    setErrors(validationErrors);
+    
+    if (hasErrors) {
+      toast.error('Please fix the validation errors');
       return;
     }
-
+    
     try {
       const payload = {
         ...form,
-        age: form.age ? parseInt(form.age) : undefined,
-        members: members.map((m) => ({
-          ...m,
-          age: m.age ? parseInt(m.age) : undefined,
-        })),
+        age: parseInt(form.age),
+        members: members.map((m) => ({ ...m, age: parseInt(m.age) })),
       };
-
-      await axios.post(
-        'https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/users',
-        payload,
-        { headers: tokenHeader }
-      );
-
+      await axios.post('https://pc3mcwztgh.ap-south-1.awsapprunner.com/api/admin/users', payload, {
+        headers: tokenHeader,
+      });
       toast.success('User added');
       onUserAdded();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add user');
+      if (err.response?.data?.errors) {
+        // Backend validation errors
+        const backendErrors = err.response.data.errors;
+        toast.error(backendErrors.join(', '));
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to add user');
+      }
     }
+  };
+
+  const getError = (fieldName) => {
+    return errors[fieldName] && errors[fieldName][0];
+  };
+
+  const getMemberError = (index, fieldName) => {
+    return errors.members && 
+           errors.members[index] && 
+           errors.members[index][fieldName] && 
+           errors.members[index][fieldName][0];
   };
 
   return (
@@ -99,126 +306,226 @@ const AddUserModal = ({ onClose, onUserAdded }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <input
-                name="firstName"
-                placeholder="First Name"
+              <input 
+                name="firstName" 
+                placeholder="First Name" 
+                required 
+                value={form.firstName}
                 onChange={handleChange}
-                className="border p-2 rounded w-full"
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('firstName') ? 'border-red-500' : ''}`} 
               />
-              {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
+              {getError('firstName') && <p className="text-red-500 text-xs mt-1">{getError('firstName')}</p>}
             </div>
-
-            <input name="lastName" placeholder="Last Name" onChange={handleChange} className="border p-2 rounded" />
-
+            
             <div>
-              <input
-                name="email"
-                placeholder="Email"
+              <input 
+                name="lastName" 
+                placeholder="Last Name" 
+                value={form.lastName}
                 onChange={handleChange}
-                className="border p-2 rounded w-full"
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('lastName') ? 'border-red-500' : ''}`} 
               />
-              {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+              {getError('lastName') && <p className="text-red-500 text-xs mt-1">{getError('lastName')}</p>}
             </div>
-
-            <div>
-              <input
-                name="password"
-                type="password"
-                placeholder="Password"
+            
+            <div className="col-span-2">
+              <input 
+                name="email" 
+                placeholder="Email" 
+                required 
+                value={form.email}
                 onChange={handleChange}
-                className="border p-2 rounded w-full"
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('email') ? 'border-red-500' : ''}`} 
               />
-              {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+              {getError('email') && <p className="text-red-500 text-xs mt-1">{getError('email')}</p>}
             </div>
-
-            <div>
-              <input
-                name="whatsappNumber"
-                placeholder="WhatsApp Number"
+            
+            <div className="col-span-2">
+              <input 
+                name="password" 
+                type="password" 
+                placeholder="Password" 
+                required 
+                value={form.password}
                 onChange={handleChange}
-                className="border p-2 rounded w-full"
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('password') ? 'border-red-500' : ''}`} 
               />
-              {errors.whatsappNumber && <p className="text-red-500 text-sm">{errors.whatsappNumber}</p>}
+              {getError('password') && <p className="text-red-500 text-xs mt-1">{getError('password')}</p>}
             </div>
-
-            <input name="schoolName" placeholder="School Name" onChange={handleChange} className="border p-2 rounded" />
-            <input name="grade" placeholder="Grade" onChange={handleChange} className="border p-2 rounded" />
-            <input name="gender" placeholder="Gender" onChange={handleChange} className="border p-2 rounded" />
-
+            
             <div>
-              <input
-                name="age"
-                type="number"
-                placeholder="Age"
+              <input 
+                name="whatsappNumber" 
+                placeholder="WhatsApp Number" 
+                value={form.whatsappNumber}
                 onChange={handleChange}
-                className="border p-2 rounded w-full"
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('whatsappNumber') ? 'border-red-500' : ''}`} 
               />
-              {errors.age && <p className="text-red-500 text-sm">{errors.age}</p>}
+              {getError('whatsappNumber') && <p className="text-red-500 text-xs mt-1">{getError('whatsappNumber')}</p>}
+            </div>
+            
+            <div>
+              <input 
+                name="schoolName" 
+                placeholder="School Name" 
+                value={form.schoolName}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('schoolName') ? 'border-red-500' : ''}`} 
+              />
+              {getError('schoolName') && <p className="text-red-500 text-xs mt-1">{getError('schoolName')}</p>}
+            </div>
+            
+            <div>
+              <select 
+                name="grade" 
+                value={form.grade}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('grade') ? 'border-red-500' : ''}`}
+              >
+                {gradeOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {getError('grade') && <p className="text-red-500 text-xs mt-1">{getError('grade')}</p>}
+            </div>
+            
+            <div>
+              <select 
+                name="gender" 
+                value={form.gender}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('gender') ? 'border-red-500' : ''}`}
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
+              </select>
+              {getError('gender') && <p className="text-red-500 text-xs mt-1">{getError('gender')}</p>}
+            </div>
+            
+            <div>
+              <input 
+                name="age" 
+                placeholder="Age" 
+                type="number" 
+                value={form.age}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`border p-2 rounded w-full ${getError('age') ? 'border-red-500' : ''}`} 
+              />
+              {getError('age') && <p className="text-red-500 text-xs mt-1">{getError('age')}</p>}
             </div>
           </div>
 
-          {/* Team Members */}
           <div>
             <h4 className="font-semibold mb-2">Team Members</h4>
             {members.map((m, i) => (
-              <div key={i} className="grid grid-cols-3 gap-2 mb-2">
+              <div key={i} className="grid grid-cols-3 gap-2 mb-4 p-3 border rounded-lg">
                 <div>
-                  <input
-                    name="firstName"
-                    placeholder="First Name"
+                  <input 
+                    name="firstName" 
+                    placeholder="First Name" 
+                    value={m.firstName}
                     onChange={(e) => handleMemberChange(i, e)}
-                    className="border p-2 rounded w-full"
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'firstName') ? 'border-red-500' : ''}`} 
                   />
-                  {errors[`member-${i}-firstName`] && (
-                    <p className="text-red-500 text-sm">{errors[`member-${i}-firstName`]}</p>
-                  )}
+                  {getMemberError(i, 'firstName') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'firstName')}</p>}
                 </div>
-                <input
-                  name="lastName"
-                  placeholder="Last Name"
-                  onChange={(e) => handleMemberChange(i, e)}
-                  className="border p-2 rounded"
-                />
+                
                 <div>
-                  <input
-                    name="email"
-                    placeholder="Email"
+                  <input 
+                    name="lastName" 
+                    placeholder="Last Name" 
+                    value={m.lastName}
                     onChange={(e) => handleMemberChange(i, e)}
-                    className="border p-2 rounded w-full"
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'lastName') ? 'border-red-500' : ''}`} 
                   />
-                  {errors[`member-${i}-email`] && (
-                    <p className="text-red-500 text-sm">{errors[`member-${i}-email`]}</p>
-                  )}
+                  {getMemberError(i, 'lastName') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'lastName')}</p>}
                 </div>
-                <input
-                  name="whatsappNumber"
-                  placeholder="WhatsApp Number"
-                  onChange={(e) => handleMemberChange(i, e)}
-                  className="border p-2 rounded"
-                />
-                <input
-                  name="grade"
-                  placeholder="Grade"
-                  onChange={(e) => handleMemberChange(i, e)}
-                  className="border p-2 rounded"
-                />
-                <input
-                  name="gender"
-                  placeholder="Gender"
-                  onChange={(e) => handleMemberChange(i, e)}
-                  className="border p-2 rounded"
-                />
+                
                 <div>
-                  <input
-                    name="age"
-                    type="number"
-                    placeholder="Age"
+                  <input 
+                    name="email" 
+                    placeholder="Email" 
+                    value={m.email}
                     onChange={(e) => handleMemberChange(i, e)}
-                    className="border p-2 rounded w-full"
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'email') ? 'border-red-500' : ''}`} 
                   />
-                  {errors[`member-${i}-age`] && (
-                    <p className="text-red-500 text-sm">{errors[`member-${i}-age`]}</p>
-                  )}
+                  {getMemberError(i, 'email') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'email')}</p>}
+                </div>
+                
+                <div>
+                  <input 
+                    name="whatsappNumber" 
+                    placeholder="WhatsApp Number" 
+                    value={m.whatsappNumber}
+                    onChange={(e) => handleMemberChange(i, e)}
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'whatsappNumber') ? 'border-red-500' : ''}`} 
+                  />
+                  {getMemberError(i, 'whatsappNumber') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'whatsappNumber')}</p>}
+                </div>
+                
+                <div>
+                  <select 
+                    name="grade" 
+                    value={m.grade}
+                    onChange={(e) => handleMemberChange(i, e)}
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'grade') ? 'border-red-500' : ''}`}
+                  >
+                    {gradeOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {getMemberError(i, 'grade') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'grade')}</p>}
+                </div>
+                
+                <div>
+                  <select 
+                    name="gender" 
+                    value={m.gender}
+                    onChange={(e) => handleMemberChange(i, e)}
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'gender') ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                  {getMemberError(i, 'gender') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'gender')}</p>}
+                </div>
+                
+                <div>
+                  <input 
+                    name="age" 
+                    type="number" 
+                    placeholder="Age" 
+                    value={m.age}
+                    onChange={(e) => handleMemberChange(i, e)}
+                    onBlur={(e) => handleMemberBlur(i, e)}
+                    className={`border p-2 rounded w-full ${getMemberError(i, 'age') ? 'border-red-500' : ''}`} 
+                  />
+                  {getMemberError(i, 'age') && <p className="text-red-500 text-xs mt-1">{getMemberError(i, 'age')}</p>}
                 </div>
               </div>
             ))}
