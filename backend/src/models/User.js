@@ -34,11 +34,11 @@ const validateAge = {
 
 const validateGrade = {
   validator: function(grade) {
-    // Allow grades like "1", "2", "10", "11", "12", "K", "Pre-K", etc.
-    const validGrades = /^(K|Pre-K|[1-9]|1[0-2]|Kindergarten|Grade [1-9]|Grade 1[0-2])$/i;
+    // Allow grades 9-13 and university/college
+    const validGrades = /^(9|10|11|12|13|University|College)$/i;
     return validGrades.test(grade.toString());
   },
-  message: 'Please enter a valid grade (K, Pre-K, 1-12, or Kindergarten)'
+  message: 'Please enter a valid grade (9-13, University, or College)'
 };
 
 const validateName = {
