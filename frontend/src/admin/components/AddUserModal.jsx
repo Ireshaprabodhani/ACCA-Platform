@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Validation helpers (same as backend)
+// Validation helpers (updated for grades 9-13 and university)
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
 const nameRegex = /^[a-zA-Z\s\-\']+$/;
-// Updated grade regex to include 13 and university
-const gradeRegex = /^(K|Pre-K|[1-9]|1[0-3]|Kindergarten|Grade [1-9]|Grade 1[0-3]|University|College)$/i;
+const gradeRegex = /^(9|10|11|12|13|University|College)$/i;
 const validGenders = ['male', 'female', 'other', 'prefer-not-to-say'];
 
 const validateField = (name, value, isMember = false, index = null) => {
@@ -68,7 +67,7 @@ const validateField = (name, value, isMember = false, index = null) => {
       if (!value || !value.toString().trim()) {
         errors.push(`${prefix}Grade is required`);
       } else if (!gradeRegex.test(value.toString().trim())) {
-        errors.push(`${prefix}Please enter a valid grade (K, Pre-K, 1-13, University, or College)`);
+        errors.push(`${prefix}Please enter a valid grade (9-13, University, or College)`);
       }
       break;
 
@@ -152,15 +151,14 @@ const AddUserModal = ({ onClose, onUserAdded }) => {
   const [touched, setTouched] = useState({});
   const tokenHeader = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
-  // Grade options including 1-13 and university
+  // Grade options for 9-13 and university only
   const gradeOptions = [
     { value: '', label: 'Select Grade' },
-    { value: 'Pre-K', label: 'Pre-K' },
-    { value: 'K', label: 'Kindergarten' },
-    ...Array.from({ length: 13 }, (_, i) => ({ 
-      value: `${i + 1}`, 
-      label: `Grade ${i + 1}` 
-    })),
+    { value: '9', label: 'Grade 9' },
+    { value: '10', label: 'Grade 10' },
+    { value: '11', label: 'Grade 11' },
+    { value: '12', label: 'Grade 12' },
+    { value: '13', label: 'Grade 13' },
     { value: 'University', label: 'University' },
     { value: 'College', label: 'College' }
   ];

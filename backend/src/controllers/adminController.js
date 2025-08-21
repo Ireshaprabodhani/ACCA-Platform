@@ -14,7 +14,7 @@ import jwt from 'jsonwebtoken';
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
 const nameRegex = /^[a-zA-Z\s\-\']+$/;
-const gradeRegex = /^(K|Pre-K|[1-9]|1[0-3]|Kindergarten|Grade [1-9]|Grade 1[0-3]|University|College)$/i;
+const gradeRegex = /^(9|10|11|12|13|University|College)$/i;
 
 const validateUserData = (userData, isUpdate = false) => {
   const errors = [];
@@ -74,9 +74,9 @@ const validateUserData = (userData, isUpdate = false) => {
 
   // Validate grade
   if (!userData.grade || !userData.grade.toString().trim()) {
-    errors.push('Grade is required');
+  errors.push('Grade is required');
   } else if (!gradeRegex.test(userData.grade.toString().trim())) {
-    errors.push('Please enter a valid grade (K, Pre-K, 1-12, or Kindergarten)');
+    errors.push('Please enter a valid grade (9-13, University, or College)');
   }
 
   // Validate schoolName
