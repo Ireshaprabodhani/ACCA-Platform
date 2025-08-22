@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { PlusCircle, X, ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle, Search } from 'lucide-react';
@@ -23,6 +23,7 @@ export default function QuizQuestionsPage() {
   const [currentPage, setCurrentPage] = useState({ English: 1, Sinhala: 1 });
   const [activeLang, setActiveLang] = useState('English');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debugMode, setDebugMode] = useState(false); // Toggle for debugging
   const rowsPerPage = 10;
 
   const loadRows = () => {
@@ -37,7 +38,6 @@ export default function QuizQuestionsPage() {
         console.log('📊 Response type:', typeof data);
         console.log('📊 Is array?', Array.isArray(data));
         
-        // Your current logic
         const questions = Array.isArray(data) ? data : data.questions || [];
         
         console.log('📝 Final questions array:', questions);
@@ -72,7 +72,7 @@ export default function QuizQuestionsPage() {
       toast.error('Please fill all options');
       return;
     }
-    if (form.answer < 0 || form.answer > 4) { // Changed from 3 to 4 for 5 options
+    if (form.answer < 0 || form.answer > 4) {
       toast.error('Please select the correct answer');
       return;
     }
@@ -108,15 +108,78 @@ export default function QuizQuestionsPage() {
 
   useEffect(() => { loadRows(); }, []);
 
-  // Filter by language and search term
-  const filteredRows = rows.filter((q) => {
-    const matchesLanguage = q.language === activeLang;
-    const matchesSearch = searchTerm.trim() === '' || 
-      q.question.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesLanguage && matchesSearch;
-  });
+  // Enhanced search function with fuzzy matching and word-based search
+  const searchQuestions = useCallback((questions, term) => {
+    if (!term || !term.trim()) return questions;
+    
+    const searchTerm = term.toLowerCase().trim();
+    const searchWords = searchTerm.split(' ').filter(word => word.length > 2); // Only words with 3+ chars
+    
+    if (debugMode) {
+      console.log('🔍 Searching for:', `"${searchTerm}"`);
+      console.log('🔍 Search words:', searchWords);
+      console.log('📊 Total questions to search:', questions.length);
+    }
+    
+    const results = questions.filter((q, index) => {
+      try {
+        // More robust null/undefined checking
+        const questionText = q.question ? String(q.question).toLowerCase().trim() : '';
+        const options = q.options || [];
+        const optionsText = Array.isArray(options) 
+          ? options.map(opt => opt ? String(opt).toLowerCase().trim() : '').join(' ')
+          : '';
+        
+        // Combine all searchable text
+        const allText = `${questionText} ${optionsText}`;
+        
+        if (debugMode) {
+          console.log(`\n--- Question ${index + 1} ---`);
+          console.log('Question:', questionText);
+          console.log('Options:', options);
+          console.log('Combined text:', allText);
+        }
+        
+        // Try exact phrase match first
+        const exactMatch = allText.includes(searchTerm);
+        
+        // Try word-based matching (all words must be found)
+        const wordMatch = searchWords.length > 0 && searchWords.every(word => allText.includes(word));
+        
+        // Try partial word matching (at least one word must be found)
+        const partialMatch = searchWords.length > 0 && searchWords.some(word => allText.includes(word));
+        
+        const finalMatch = exactMatch || wordMatch || (searchWords.length === 1 && partialMatch);
+        
+        if (debugMode) {
+          console.log('Exact match:', exactMatch);
+          console.log('Word match (all):', wordMatch);
+          console.log('Partial match (some):', partialMatch);
+          console.log('Final match:', finalMatch);
+        }
+        
+        return finalMatch;
+        
+      } catch (error) {
+        console.error('Search error for question:', q, error);
+        return false;
+      }
+    });
+    
+    if (debugMode) {
+      console.log('🎯 Search results count:', results.length);
+    }
+    
+    return results;
+  }, [debugMode]);
 
-  // Reset to first page when search term changes
+  // Filter by language and search term
+  const filteredRows = React.useMemo(() => {
+    const langFiltered = rows.filter(q => q.language === activeLang);
+    return searchQuestions(langFiltered, searchTerm);
+  }, [rows, activeLang, searchTerm, searchQuestions]);
+
+  // Reset to first page when search term or language changes
   useEffect(() => {
     setCurrentPage(prev => ({ ...prev, [activeLang]: 1 }));
   }, [searchTerm, activeLang]);
@@ -128,9 +191,16 @@ export default function QuizQuestionsPage() {
 
   const changePage = (p) => setCurrentPage((prev) => ({ ...prev, [activeLang]: p }));
 
-  // Clear search function
   const clearSearch = () => {
     setSearchTerm('');
+  };
+
+  // Highlight search terms in text
+  const highlightSearchTerm = (text, searchTerm) => {
+    if (!searchTerm || !text) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-yellow-200 px-1 rounded">$1</mark>');
   };
 
   return (
@@ -192,7 +262,7 @@ export default function QuizQuestionsPage() {
           </div>
           <input
             type="text"
-            placeholder="Search questions..."
+            placeholder="Search questions or options..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-10 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white shadow-sm"
@@ -206,11 +276,39 @@ export default function QuizQuestionsPage() {
             </button>
           )}
         </div>
-        {searchTerm && (
-          <p className="mt-2 text-sm text-purple-600">
-            Searching for: "<span className="font-medium">{searchTerm}</span>"
-          </p>
-        )}
+        
+        <div className="flex flex-col gap-2 mt-2">
+          <div className="flex items-center gap-4">
+            {searchTerm && (
+              <p className="text-sm text-purple-600">
+                Searching for: "<span className="font-medium">{searchTerm}</span>"
+              </p>
+            )}
+            
+            {/* Debug Toggle Button */}
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className={`text-xs px-2 py-1 rounded ${
+                debugMode ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {debugMode ? 'Debug ON' : 'Debug OFF'}
+            </button>
+          </div>
+          
+          {/* Search Tips */}
+          {searchTerm && filteredRows.length === 0 && (
+            <div className="text-xs text-purple-500 bg-purple-50 p-2 rounded-lg">
+              <p className="font-medium mb-1">Search tips:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Try shorter keywords (e.g., "accounting", "environmental")</li>
+                <li>Check for typos in your search term</li>
+                <li>Search for key words from the question or options</li>
+                <li>Use partial phrases instead of full sentences</li>
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Questions List */}
@@ -223,7 +321,7 @@ export default function QuizQuestionsPage() {
           {currentRows.length > 0 ? (
             currentRows.map((q, idx) => (
               <div
-                key={q._id}
+                key={q._id || idx}
                 className="bg-white border border-purple-100 rounded-xl shadow-sm hover:shadow-md transition p-6 relative"
               >
                 {/* Question Header */}
@@ -236,24 +334,20 @@ export default function QuizQuestionsPage() {
                       {searchTerm ? (
                         <span
                           dangerouslySetInnerHTML={{
-                            __html: q.question.replace(
-                              new RegExp(searchTerm, 'gi'),
-                              (match) => `<mark class="bg-yellow-200 px-1 rounded">${match}</mark>`
-                            )
+                            __html: highlightSearchTerm(q.question || '', searchTerm)
                           }}
                         />
                       ) : (
-                        q.question
+                        q.question || 'No question text'
                       )}
                     </h3>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        // Ensure the form has 5 options when editing
                         const editForm = { ...q };
-                        if (editForm.options.length < 5) {
-                          editForm.options = [...editForm.options, ...Array(5 - editForm.options.length).fill('')];
+                        if (!editForm.options || editForm.options.length < 5) {
+                          editForm.options = [...(editForm.options || []), ...Array(5 - (editForm.options?.length || 0)).fill('')];
                         }
                         setForm(editForm);
                         setEditId(q._id);
@@ -276,7 +370,7 @@ export default function QuizQuestionsPage() {
 
                 {/* Options List */}
                 <ul className="space-y-2 ml-2 pl-6">
-                  {q.options.map((opt, i) => (
+                  {(q.options || []).map((opt, i) => (
                     <li
                       key={i}
                       className={`flex items-start gap-3 p-2 rounded-lg ${
@@ -295,7 +389,17 @@ export default function QuizQuestionsPage() {
                           <CheckCircle size={16} className="text-green-500" />
                         )}
                       </div>
-                      <span className="flex-1 break-words">{opt}</span>
+                      <span className="flex-1 break-words">
+                        {searchTerm && opt ? (
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: highlightSearchTerm(opt, searchTerm)
+                            }}
+                          />
+                        ) : (
+                          opt || 'Empty option'
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -305,7 +409,7 @@ export default function QuizQuestionsPage() {
             <div className="bg-white rounded-xl border border-purple-100 p-8 text-center">
               <p className="text-purple-600">
                 {searchTerm 
-                  ? `No ${activeLang} questions found matching "${searchTerm}". Try a different search term.`
+                  ? `No ${activeLang} questions or options found matching "${searchTerm}". Try a different search term.`
                   : `No ${activeLang} questions found. Click "Add Question" to create one.`
                 }
               </p>
