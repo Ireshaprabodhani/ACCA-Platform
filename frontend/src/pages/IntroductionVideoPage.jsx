@@ -181,13 +181,17 @@ export default function IntroductionVideoPage() {
 
   // YouTube setup with improved resume functionality
   useEffect(() => {
-    if (!isYouTubeUrl(url)) return;
+    if (!isYouTubeUrl(url) || !url) return;
 
     const id = getYouTubeId(url);
     if (!id) {
       setError('Invalid YouTube URL.');
       return;
     }
+
+    // Get initial mute/volume state
+    const initialMuted = localStorage.getItem(STORAGE_KEY_MUTED) === 'true';
+    const initialVolume = parseFloat(localStorage.getItem(STORAGE_KEY_VOLUME)) || 1;
 
     loadYT().then((YT) => {
       ytRef.current = new YT.Player('yt-player', {
@@ -199,7 +203,7 @@ export default function IntroductionVideoPage() {
           playsinline: 1,
           controls: 0,
           rel: 0,
-          mute: muted ? 1 : 0,
+          mute: initialMuted ? 1 : 0,
           start: Math.floor(parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0),
         },
         events: {
@@ -209,8 +213,9 @@ export default function IntroductionVideoPage() {
 
             const savedTime = parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0;
 
-            e.target.setVolume(muted ? 0 : volume * 100);
-            if (muted) {
+            // Apply initial volume and mute settings
+            e.target.setVolume(initialVolume * 100);
+            if (initialMuted) {
               e.target.mute();
             } else {
               e.target.unMute();
@@ -249,13 +254,37 @@ export default function IntroductionVideoPage() {
     });
 
     return () => {
-      ytRef.current?.destroy?.();
+      if (ytRef.current && typeof ytRef.current.destroy === 'function') {
+        ytRef.current.destroy();
+        ytRef.current = null;
+      }
     };
-  }, [url, muted, volume]);
+  }, [url]); // Only depend on URL change
+
+  // Apply mute/volume changes to YouTube after player is ready
+  useEffect(() => {
+    if (isYouTubeUrl(url) && ytRef.current) {
+      try {
+        // Check if player methods are available
+        if (typeof ytRef.current.setVolume === 'function') {
+          ytRef.current.setVolume(volume * 100);
+        }
+        if (typeof ytRef.current.mute === 'function' && typeof ytRef.current.unMute === 'function') {
+          if (muted) {
+            ytRef.current.mute();
+          } else {
+            ytRef.current.unMute();
+          }
+        }
+      } catch (e) {
+        console.log('Error applying YouTube volume/mute:', e);
+      }
+    }
+  }, [muted, volume]); // Removed url dependency
 
   // Vimeo setup
   useEffect(() => {
-    if (!isVimeoUrl(url)) return;
+    if (!isVimeoUrl(url) || !url) return;
 
     const id = getVimeoId(url);
     if (!id) {
@@ -263,8 +292,14 @@ export default function IntroductionVideoPage() {
       return;
     }
 
+    // Get initial mute/volume state
+    const initialMuted = localStorage.getItem(STORAGE_KEY_MUTED) === 'true';
+    const initialVolume = parseFloat(localStorage.getItem(STORAGE_KEY_VOLUME)) || 1;
+
     loadVimeo().then((Vimeo) => {
       const iframe = document.getElementById('vimeo-player');
+      if (!iframe) return;
+      
       vimeoRef.current = new Vimeo.Player(iframe);
 
       vimeoRef.current.ready().then(async () => {
@@ -274,8 +309,8 @@ export default function IntroductionVideoPage() {
 
           const savedTime = parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0;
 
-          // Set volume and mute state
-          await vimeoRef.current.setVolume(muted ? 0 : volume);
+          // Set initial volume and mute state
+          await vimeoRef.current.setVolume(initialMuted ? 0 : initialVolume);
 
           if (savedTime && savedTime < dur - 5) {
             console.log(`Resuming Vimeo video from ${savedTime} seconds`);
@@ -338,14 +373,34 @@ export default function IntroductionVideoPage() {
     });
 
     return () => {
-      vimeoRef.current?.destroy?.();
+      if (vimeoRef.current && typeof vimeoRef.current.destroy === 'function') {
+        vimeoRef.current.destroy();
+        vimeoRef.current = null;
+      }
     };
-  }, [url, muted, volume]);
+  }, [url]); // Only depend on URL change
+
+  // Apply mute/volume changes to Vimeo after player is ready
+  useEffect(() => {
+    if (isVimeoUrl(url) && vimeoRef.current) {
+      try {
+        if (typeof vimeoRef.current.setVolume === 'function') {
+          vimeoRef.current.setVolume(muted ? 0 : volume);
+        }
+      } catch (e) {
+        console.log('Error applying Vimeo volume/mute:', e);
+      }
+    }
+  }, [muted, volume]); // Removed url dependency
 
   // Native HTML5 video setup with improved resume functionality
   useEffect(() => {
-    if (!vidRef.current || isYouTubeUrl(url) || isVimeoUrl(url)) return;
+    if (!vidRef.current || isYouTubeUrl(url) || isVimeoUrl(url) || !url) return;
     const v = vidRef.current;
+
+    // Get initial mute/volume state
+    const initialMuted = localStorage.getItem(STORAGE_KEY_MUTED) === 'true';
+    const initialVolume = parseFloat(localStorage.getItem(STORAGE_KEY_VOLUME)) || 1;
 
     const handleMeta = () => {
       const dur = Math.floor(v.duration);
@@ -354,6 +409,10 @@ export default function IntroductionVideoPage() {
 
       const savedTime = parseFloat(localStorage.getItem(STORAGE_KEY_TIME)) || 0;
       console.log('Saved time found:', savedTime);
+
+      // Apply initial volume and mute settings
+      v.muted = initialMuted;
+      v.volume = initialVolume;
 
       if (savedTime && savedTime < dur - 5) {
         console.log(`Resuming native video from ${savedTime} seconds`);
@@ -424,9 +483,6 @@ export default function IntroductionVideoPage() {
     v.addEventListener('ended', handleEnd);
     v.addEventListener('timeupdate', handleTimeUpdate);
 
-    v.muted = muted;
-    v.volume = volume;
-
     return () => {
       v.removeEventListener('loadedmetadata', handleMeta);
       v.removeEventListener('play', handlePlay);
@@ -434,7 +490,15 @@ export default function IntroductionVideoPage() {
       v.removeEventListener('ended', handleEnd);
       v.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [url, muted, volume, ended]);
+  }, [url]); // Only depend on URL change
+
+  // Apply mute/volume changes to native video
+  useEffect(() => {
+    if (vidRef.current && !isYouTubeUrl(url) && !isVimeoUrl(url)) {
+      vidRef.current.muted = muted;
+      vidRef.current.volume = volume;
+    }
+  }, [muted, volume]); // Removed url dependency
 
   // Anti-seek protection only after resume applied
   useEffect(() => {
@@ -453,23 +517,9 @@ export default function IntroductionVideoPage() {
 
   // Mute/unmute toggle handler
   const toggleMute = async () => {
-    setMuted((m) => {
-      const newMuted = !m;
-      localStorage.setItem(STORAGE_KEY_MUTED, newMuted.toString());
-      
-      // Apply mute/unmute to appropriate player
-      if (ytRef.current) {
-        if (newMuted) {
-          ytRef.current.mute();
-        } else {
-          ytRef.current.unMute();
-        }
-      } else if (vimeoRef.current) {
-        vimeoRef.current.setVolume(newMuted ? 0 : volume);
-      }
-      
-      return newMuted;
-    });
+    const newMuted = !muted;
+    setMuted(newMuted);
+    localStorage.setItem(STORAGE_KEY_MUTED, newMuted.toString());
   };
 
   // Volume change handler (only for native video)
@@ -477,15 +527,13 @@ export default function IntroductionVideoPage() {
     const vol = parseFloat(e.target.value);
     setVolume(vol);
     localStorage.setItem(STORAGE_KEY_VOLUME, vol.toString());
-    if (vidRef.current) {
-      vidRef.current.volume = vol;
-      if (vol === 0) {
-        setMuted(true);
-        localStorage.setItem(STORAGE_KEY_MUTED, 'true');
-      } else if (muted) {
-        setMuted(false);
-        localStorage.setItem(STORAGE_KEY_MUTED, 'false');
-      }
+    
+    if (vol === 0 && !muted) {
+      setMuted(true);
+      localStorage.setItem(STORAGE_KEY_MUTED, 'true');
+    } else if (vol > 0 && muted) {
+      setMuted(false);
+      localStorage.setItem(STORAGE_KEY_MUTED, 'false');
     }
   };
 
